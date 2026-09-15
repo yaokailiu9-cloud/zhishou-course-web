@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/h5.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/wechat-oauth-callback.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/",
