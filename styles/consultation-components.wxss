@@ -1,0 +1,51 @@
+/* Shared native service surfaces, aligned with the original jade/ivory identity. */
+.service-page { padding:32rpx 32rpx calc(64rpx + env(safe-area-inset-bottom)); background:#fbf9f8; min-height:100vh; box-sizing:border-box; color:#002727; font-family:var(--em-font-family); }
+.service-hero { padding:22rpx 0 32rpx; border-bottom:1rpx solid #e3dfd7; margin-bottom:28rpx; }
+.eyebrow { display:block; color:#82704b; font-size:21rpx; letter-spacing:3rpx; margin-bottom:20rpx; }
+.page-title { display:block; font-family:var(--em-font-serif); font-size:48rpx; font-weight:600; line-height:1.4; margin-bottom:18rpx; word-break:break-word; }
+.section-title { display:block; font-family:var(--em-font-serif); font-size:34rpx; font-weight:600; margin:40rpx 0 24rpx; line-height:1.4; }
+.card { padding:32rpx; background:#fff; border:1rpx solid #e8e3df; border-radius:20rpx; margin:24rpx 0; }
+.card .section-title { margin-top:0; }
+.row { display:flex; justify-content:space-between; gap:16rpx; align-items:center; }
+.card-title { font-weight:600; font-size:31rpx; flex:1; min-width:0; word-break:break-word; line-height:1.55; }
+.row > .section-title { flex:1; min-width:0; }
+.service-page .row > button { flex:0 0 auto; width:auto; padding:16rpx 20rpx; }
+.muted { display:block; color:#717878; font-size:25rpx; line-height:1.8; margin:12rpx 0; }
+.body { display:block; font-size:28rpx; line-height:1.9; margin:20rpx 0; white-space:pre-wrap; word-break:break-word; }
+.pill { display:inline-flex; min-height:40rpx; align-items:center; color:#735c27; background:#f4eedf; border-radius:6rpx; padding:6rpx 12rpx; font-size:21rpx; font-weight:500; white-space:nowrap; }
+.service-page button { display:flex; align-items:center; justify-content:center; width:100%; min-height:88rpx; padding:20rpx 24rpx; margin:16rpx 0; font-size:27rpx; font-weight:500; border-radius:12rpx; line-height:1.5; }
+button::after { border:0; }
+.primary { background:#002f30; color:#fff; }
+.primary[disabled] { background:#b9c3bf; color:#fff; }
+.secondary { color:#143f3c; background:#f1f1ec; border:1rpx solid #dcded6; }
+.text-button { color:#496760; background:transparent; }
+.entry-grid { display:flex; gap:16rpx; }
+.entry-grid button { flex:1 1 0; width:0; min-width:0; padding:18rpx 12rpx; }
+.notice { padding:24rpx 26rpx; background:#f3eee3; color:#6c6048; font-size:25rpx; line-height:1.85; border-radius:8rpx; border-left:3rpx solid #c4ad76; margin:24rpx 0; }
+.error { padding:24rpx; background:#fff0ea; color:#8d4536; font-size:26rpx; line-height:1.6; border-radius:12rpx; margin:20rpx 0; word-break:break-word; }
+.error text { display:block; }
+.error button { width:auto; min-height:64rpx; padding:10rpx 24rpx; background:transparent; color:inherit; border:1rpx solid currentColor; margin:18rpx 0 0; font-size:24rpx; }
+.empty { color:#717878; font-size:26rpx; line-height:1.85; padding:36rpx 24rpx; border-top:1rpx solid #e8e3df; margin:20rpx 0; }
+input, textarea, .picker-field { border:1rpx solid #deded7; background:#fcfbf8; border-radius:10rpx; padding:22rpx; margin:20rpx 0; font-size:28rpx; box-sizing:border-box; width:100%; }
+input { height:94rpx; padding:0 22rpx; }
+textarea { min-height:180rpx; height:220rpx; line-height:1.75; }
+label { font-size:26rpx; color:#48665a; }
+.link,.success { display:block; color:#285f51; font-size:25rpx; margin-top:18rpx; }
+.qr-image { display:block; width:360rpx; height:360rpx; margin:24rpx auto; }
+.reply { border-left:3rpx solid #b6a16c; padding:12rpx 24rpx; margin-top:22rpx; background:#f7f5ef; }
+.task { padding:20rpx 0; border-bottom:1rpx solid #e8e3df; }
+.field-label { display:block; font-size:26rpx; font-weight:500; margin-top:28rpx; }
+.field-label + input, .field-label + textarea { margin-top:14rpx; }
+.panel-caption { display:block; color:#8b7850; font-size:20rpx; letter-spacing:3rpx; margin-bottom:12rpx; }
+.journey { display:flex; gap:16rpx; padding:26rpx 0 0; }
+.journey-step { flex:1; min-width:0; border-top:1rpx solid #b7aa87; padding-top:16rpx; }
+.journey-step text { display:block; font-size:23rpx; line-height:1.65; }
+.journey-step .journey-number { color:#a7915c; font-family:Georgia,serif; font-size:28rpx; margin-bottom:10rpx; }
+.journey-step .journey-note { color:#717878; font-size:20rpx; margin-top:4rpx; }
+.member-hero { background:#002f30; border-radius:24rpx; padding:36rpx 32rpx; border:0; color:#fff; }
+.member-hero .eyebrow { color:#ddc48d; }
+.member-hero .muted { color:#bfd0cb; }
+.member-hero .page-title { color:#fff; }
+.member-hero .journey-step { border-color:#41615b; }
+.member-hero .journey-note { color:#bfd0cb; }
+.record-section .section-title { padding-bottom:18rpx; border-bottom:1rpx solid #e8e3df; }

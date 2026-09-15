@@ -1,0 +1,1 @@
+qrcode.js is vendored from qrcode-generator 1.4.4 (MIT), Kazuhiko Arase. Source: https://github.com/kazuhikoarase/qrcode-generator. The upstream copyright and license notice are retained in the source header. Used to render offline personal entry codes; no third-party QR service receives user data.

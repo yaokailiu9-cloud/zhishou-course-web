@@ -1,0 +1,68 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/plaza/plaza",
+    "pages/course-detail/course-detail",
+    "pages/chat/chat",
+    "pages/profile/profile",
+    "pages/manager/manager",
+    "pages/order-detail/order-detail",
+    "pages/profile-edit/profile-edit",
+    "pages/privacy/privacy",
+    "pages/advisor/advisor",
+    "pages/search/search",
+    "pages/customer/customer",
+    "pages/public-class/public-class",
+    "pages/consultation-detail/consultation-detail",
+    "pages/service-workbench/service-workbench",
+    "pages/public-class-detail/public-class-detail",
+    "pages/class-enroll/class-enroll",
+    "pages/my-enrollments/my-enrollments",
+    "pages/class-ticket/class-ticket",
+    "pages/course-manage/course-manage",
+    "pages/course-edit/course-edit",
+    "pages/course-roster/course-roster",
+    "pages/course-poster/course-poster",
+    "pages/support/support"
+  ],
+  "window": {
+    "navigationBarTitleText": "知守",
+    "navigationBarBackgroundColor": "#FBF9F8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FBF9F8"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于在编辑个人资料时获取当前所在地区"
+    }
+  },
+  "requiredPrivateInfos": [
+    "chooseLocation"
+  ],
+  "tabBar": {
+    "color": "#717878",
+    "selectedColor": "#002727",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/plaza/plaza",
+        "text": "课程"
+      },
+      {
+        "pagePath": "pages/chat/chat",
+        "text": "聊天"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

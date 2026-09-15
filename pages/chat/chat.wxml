@@ -1,0 +1,142 @@
+<view class="chat-page">
+  <view class="chat-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
+    <button aria-label="返回" class="nav-back" bindtap="goBack">‹</button>
+    <view class="nav-title">
+      <view
+        class="nav-mark {{canOpenSessionDrawer ? 'nav-mark-button nav-mark-avatar-wrap' : ''}} {{sessionDrawerVisible ? 'nav-mark-active' : ''}}"
+        catchtap="onNavMarkTap"
+      >
+        <image
+          wx:if="{{isManagerView && customerAvatarUrl}}"
+          class="nav-mark-avatar-image"
+          src="{{customerAvatarUrl}}"
+          mode="aspectFill"
+        ></image>
+        <text wx:elif="{{isManagerView}}" class="nav-mark-avatar-text">{{customerAvatarText || '客'}}</text>
+        <text wx:elif="{{canOpenSessionDrawer}}" class="nav-mark-list-icon">☰</text>
+        <text wx:else>✦</text>
+        <text wx:if="{{canOpenSessionDrawer && managerTotalUnread > 0}}" class="nav-mark-badge">{{managerTotalUnread > 99 ? '99+' : managerTotalUnread}}</text>
+      </view>
+      <view class="{{canOpenSessionDrawer ? 'nav-title-copy-button' : ''}}" catchtap="onNavMarkTap">
+        <text class="title-name">{{chatTitle}}</text>
+        <text class="title-sub">{{chatSubtitle}}</text>
+      </view>
+    </view>
+  </view>
+
+  <button class="offline-consultation-entry" bindtap="goOfflineConsultation">线下咨询 · 查看记录与持续沟通</button>
+
+  <view class="service-card {{serviceCardCollapsed ? 'is-collapsed' : ''}}">
+    <view class="service-card-handle" catchtap="toggleServiceCard">
+      <view class="service-handle-arrow {{serviceCardCollapsed ? 'is-down' : 'is-up'}}"></view>
+    </view>
+    <block wx:if="{{serviceCardCollapsed}}">
+      <view class="service-time service-time-only">
+        <text class="time-value">{{remainingText}}</text>
+        <text class="time-label">剩余</text>
+      </view>
+    </block>
+    <block wx:else>
+      <view>
+        <text class="service-label">{{serviceLabel}}</text>
+        <text class="service-desc">{{serviceDesc}}</text>
+      </view>
+      <view class="service-time">
+        <text class="time-label">剩余</text>
+        <text class="time-value">{{remainingText}}</text>
+      </view>
+      <text class="service-price">{{servicePriceText}}</text>
+      <button wx:if="{{serviceEnded && canRenew}}" class="renew-action" loading="{{renewing}}" disabled="{{renewing}}" bindtap="renewService">
+        续费 ¥200/小时
+      </button>
+    </block>
+  </view>
+
+  <scroll-view class="chat-scroll" scroll-y scroll-with-animation scroll-into-view="{{scrollIntoView}}">
+    <view class="system-card">
+      <text>{{systemText}}</text>
+    </view>
+
+    <view class="messages">
+      <block wx:for="{{messages}}" wx:key="id">
+        <view wx:if="{{item.type === 'recall-notice'}}" id="msg-{{item.id}}" class="message-row recall-row">
+          <view class="recall-notice">
+            <text class="recall-notice-text">你撤回了一条消息</text>
+            <text wx:if="{{item.canReedit}}" class="recall-reedit" data-id="{{item.id}}" catchtap="onReeditRecall">重新编辑</text>
+          </view>
+        </view>
+        <view wx:elif="{{item.content}}" id="msg-{{item.id}}" class="message-row {{item.role}}">
+          <view wx:if="{{item.role === 'assistant'}}" class="message-avatar {{canOpenSessionDrawer ? 'message-avatar-button' : ''}}" catchtap="onCustomerAvatarTap">
+            <image wx:if="{{leftAvatarUrl}}" class="chat-avatar-image" src="{{leftAvatarUrl}}" mode="aspectFill"></image>
+            <text wx:else>{{leftAvatarText}}</text>
+          </view>
+          <view
+            class="bubble"
+            catchlongpress="{{isManagerView && item.role === 'user' && item.senderRole === 'manager' && !item.isRecalled ? 'onMessageLongPress' : ''}}"
+            data-id="{{item.id}}"
+          >
+            <text>{{item.content}}</text>
+          </view>
+          <view wx:if="{{item.role === 'user'}}" class="user-message-avatar">
+            <image wx:if="{{rightAvatarUrl}}" class="chat-avatar-image" src="{{rightAvatarUrl}}" mode="aspectFill"></image>
+            <text wx:else>{{rightAvatarText}}</text>
+          </view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <view class="chat-footer">
+    <view wx:if="{{sendError}}" class="send-error"><text>{{sendError}}</text><text wx:if="{{failedMessage}}" class="failed-message" selectable>{{failedMessage}}</text><view class="send-recovery"><button bindtap="loadBackendMessages">刷新记录</button><button bindtap="copyUnsentMessage">复制原文</button></view></view>
+    <view class="chat-composer">
+      <textarea auto-height maxlength="4000" class="composer-input" placeholder="{{composerPlaceholder}}" value="{{input}}" confirm-type="send" disabled="{{sending || !hasAccess || serviceEnded}}" bindinput="onInput" bindconfirm="sendMessage" />
+      <button aria-label="发送消息" loading="{{sending}}" class="composer-send {{serviceEnded || !hasAccess ? 'disabled' : ''}}" disabled="{{sending || !hasAccess || serviceEnded || !input}}" bindtap="sendMessage">↑</button>
+    </view>
+    <text class="disclaimer">本服务为情感问答，不包含医疗诊断。</text>
+  </view>
+
+  <view wx:if="{{sessionDrawerVisible}}" class="session-drawer-root">
+    <view
+      class="session-drawer-mask"
+      bindtap="closeSessionDrawer"
+      catchtouchmove="preventTouchMove"
+    ></view>
+    <view class="session-drawer session-drawer-open" catchtouchmove="preventTouchMove">
+      <view class="session-drawer-header">
+        <view>
+          <text class="session-drawer-title">我的客户</text>
+        </view>
+        <text wx:if="{{managerTotalUnread > 0}}" class="session-drawer-count">{{managerTotalUnread > 99 ? '99+' : managerTotalUnread}}</text>
+      </view>
+      <scroll-view scroll-y class="session-drawer-list" show-scrollbar="{{false}}">
+        <view
+          wx:for="{{managerSessionList}}"
+          wx:key="id"
+          class="session-drawer-item {{item.active ? 'active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="switchToManagerSession"
+        >
+          <view class="session-drawer-avatar">
+            <image wx:if="{{item.avatarUrl}}" class="session-drawer-avatar-image" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+            <text wx:else>{{item.avatarText}}</text>
+            <text wx:if="{{item.unreadCount > 0}}" class="session-drawer-unread">{{item.unreadCount > 99 ? '99+' : item.unreadCount}}</text>
+          </view>
+          <view class="session-drawer-body">
+            <view class="session-drawer-row">
+              <text class="session-drawer-name">{{item.name}}</text>
+              <text class="session-drawer-time">{{item.remainingText}}</text>
+            </view>
+            <text class="session-drawer-preview">{{item.topic}}</text>
+            <view class="session-drawer-meta">
+              <text class="session-drawer-status {{item.displayStatus}}">{{item.statusLabel}}</text>
+            </view>
+          </view>
+        </view>
+        <view wx:if="{{!managerSessionList.length && !managerSessionLoading}}" class="session-drawer-empty">
+          暂无进行中的客户会话
+        </view>
+        <view wx:if="{{managerSessionLoading}}" class="session-drawer-empty">加载中...</view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

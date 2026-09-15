@@ -1,0 +1,9 @@
+<view class="service-page"><view class="service-hero"><text class="eyebrow">工作人员</text><text class="page-title">公开课与线下咨询</text><text class="muted">核实参加、确认预约，持续回应每一次反馈。</text></view><view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新连接</button></view><text wx:if="{{loading}}" class="muted">正在核实工作身份…</text>
+ <block wx:if="{{allowed}}">
+  <button class="text-button" bindtap="goCustomer">进入客户端</button>
+  <view wx:if="{{canAccept}}" class="card"><text class="section-title">免费公开课管理</text><text class="muted">发布课程、分享报名、查看名单和进群情况，扫码核实实际到课。</text><button class="primary" bindtap="manageCourses">进入课程工作台</button></view>
+  <text class="section-title">线下咨询与反馈</text><view wx:for="{{appointments}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="openAppointment"><view class="row"><text class="card-title">{{item.contact_name}} · {{item.child_info.name || '待填写孩子信息'}}</text><text class="pill">{{item.statusText}}</text></view><text class="muted">{{item.status === 'PENDING' ? '期望时间：' + item.requested_time : item.timeText}}</text><text class="body">{{item.concerns}}</text><text class="link">{{item.status === 'PENDING' ? '确认预约' : '查看资料、记录与反馈'}} ›</text></view><view wx:if="{{!appointments.length}}" class="empty">暂无分配给你的线下咨询。</view>
+ <text wx:if="{{appointments.length}}" class="muted">{{nextAppointmentCursor ? '已加载' : '共'}} {{appointments.length}} 条咨询记录</text>
+ <button wx:if="{{nextAppointmentCursor}}" class="secondary" loading="{{moreLoading}}" disabled="{{moreLoading || loading}}" bindtap="moreAppointments">查看更多咨询记录</button>
+ </block>
+</view>

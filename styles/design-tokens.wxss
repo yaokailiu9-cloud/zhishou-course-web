@@ -1,0 +1,223 @@
+/* Serenity visual system for the mini program.
+ * Inspired by the Stitch / AI Studio reference: warm alabaster surfaces,
+ * deep jade primary actions, champagne gold accents, editorial titles.
+ */
+
+page {
+  --em-color-bg: #fbf9f8;
+  --em-color-bg-soft: #f5f3f3;
+  --em-color-surface: #ffffff;
+  --em-color-surface-raised: #ffffff;
+  --em-color-surface-muted: #f5f3f3;
+  --em-color-white: #ffffff;
+
+  --em-color-primary: #002727;
+  --em-color-primary-strong: #001b1b;
+  --em-color-primary-soft: #e7efee;
+  --em-color-primary-line: #1a3d3d;
+  --em-color-clay: #84a8a7;
+  --em-color-taupe: #626e6e;
+
+  --em-color-gold: #fed65b;
+  --em-color-gold-strong: #735c00;
+  --em-color-gold-soft: rgba(254, 214, 91, 0.22);
+
+  --em-color-text: #002727;
+  --em-color-text-strong: #002727;
+  --em-color-text-secondary: #626e6e;
+  --em-color-text-muted: #596666;
+  --em-color-text-placeholder: #687474;
+  --em-color-text-inverse: #ffffff;
+
+  --em-color-success: #1c6b5f;
+  --em-color-success-soft: #e8f2ef;
+  --em-color-warning: #735c00;
+  --em-color-warning-soft: rgba(254, 214, 91, 0.24);
+  --em-color-danger: #b84f4a;
+  --em-color-danger-soft: #f8e9e7;
+
+  --em-color-border: #e8e3df;
+  --em-color-border-muted: rgba(232, 227, 223, 0.72);
+  --em-color-border-strong: #c1c8c7;
+  --em-border-thin: 1rpx;
+  --em-border-regular: 2rpx;
+  --em-border-focus: 3rpx;
+
+  --em-font-family: "Plus Jakarta Sans", "PingFang SC", "Source Han Sans SC", sans-serif;
+  --em-font-serif: Georgia, "Times New Roman", "Songti SC", serif;
+  --em-font-size-xxs: 24rpx;
+  --em-font-size-xs: 26rpx;
+  --em-font-size-sm: 28rpx;
+  --em-font-size-md: 28rpx;
+  --em-font-size-lg: 32rpx;
+  --em-font-size-xl: 40rpx;
+  --em-font-size-2xl: 52rpx;
+  --em-font-size-3xl: 64rpx;
+  --em-line-height-tight: 1.18;
+  --em-line-height-normal: 1.45;
+  --em-line-height-reading: 1.72;
+  --em-font-weight-regular: 400;
+  --em-font-weight-medium: 500;
+  --em-font-weight-semibold: 600;
+  --em-font-weight-bold: 700;
+  --em-font-weight-heavy: 800;
+
+  --em-grid: 8rpx;
+  --em-space-1: 8rpx;
+  --em-space-2: 12rpx;
+  --em-space-3: 16rpx;
+  --em-space-4: 24rpx;
+  --em-space-5: 32rpx;
+  --em-space-6: 40rpx;
+  --em-space-7: 48rpx;
+  --em-space-8: 64rpx;
+  --em-page-x: 32rpx;
+  --em-chat-page-x: 24rpx;
+  --em-page-top: 40rpx;
+  --em-card-padding: 28rpx;
+  --em-card-padding-lg: 40rpx;
+  --em-card-gap: 28rpx;
+  --em-section-gap: 44rpx;
+  --em-safe-bottom: calc(28rpx + env(safe-area-inset-bottom));
+
+  --em-radius-sm: 8rpx;
+  --em-radius-md: 16rpx;
+  --em-radius-lg: 24rpx;
+  --em-radius-xl: 32rpx;
+  --em-radius-2xl: 44rpx;
+  --em-radius-pill: 999rpx;
+  --em-radius-round: 50%;
+
+  --em-shadow-flat: none;
+  --em-shadow-card: 0 18rpx 52rpx rgba(0, 39, 39, 0.06);
+  --em-shadow-card-lg: 0 28rpx 72rpx rgba(0, 39, 39, 0.10);
+  --em-shadow-button: 0 16rpx 34rpx rgba(0, 39, 39, 0.20);
+  --em-shadow-bottom-bar: 0 -12rpx 38rpx rgba(0, 39, 39, 0.08);
+  --em-shadow-focus: 0 0 0 5rpx rgba(0, 39, 39, 0.10);
+
+  --em-height-button: 88rpx;
+  --em-height-button-sm: 64rpx;
+  --em-height-input: 92rpx;
+  --em-height-tabbar: 112rpx;
+  --em-size-avatar-sm: 58rpx;
+  --em-size-avatar-md: 96rpx;
+  --em-size-avatar-lg: 152rpx;
+  --em-size-icon-sm: 32rpx;
+  --em-size-icon-md: 40rpx;
+  --em-size-icon-lg: 52rpx;
+}
+
+.em-page {
+  min-height: 100vh;
+  padding: var(--em-page-top) var(--em-page-x) var(--em-safe-bottom);
+  color: var(--em-color-text);
+  background: var(--em-color-bg);
+  font-family: var(--em-font-family);
+}
+
+.em-surface,
+.em-surface-sm {
+  background: var(--em-color-surface);
+  border: var(--em-border-thin) solid var(--em-color-border);
+  border-radius: var(--em-radius-xl);
+  box-shadow: var(--em-shadow-card);
+}
+
+.em-title-hero,
+.em-title-page,
+.em-title-section {
+  color: var(--em-color-text);
+  font-family: var(--em-font-serif);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.em-title-hero {
+  font-size: var(--em-font-size-3xl);
+  line-height: var(--em-line-height-tight);
+}
+
+.em-title-page {
+  font-size: var(--em-font-size-2xl);
+  line-height: 1.25;
+}
+
+.em-title-section {
+  font-size: var(--em-font-size-xl);
+  line-height: 1.3;
+}
+
+.em-body {
+  color: var(--em-color-text-secondary);
+  font-size: var(--em-font-size-md);
+  font-weight: var(--em-font-weight-regular);
+  line-height: var(--em-line-height-reading);
+}
+
+.em-meta {
+  color: var(--em-color-text-muted);
+  font-size: var(--em-font-size-sm);
+  font-weight: var(--em-font-weight-medium);
+  line-height: var(--em-line-height-normal);
+}
+
+.em-button-primary,
+.em-button-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  line-height: 1;
+}
+
+.em-button-primary {
+  height: var(--em-height-button);
+  padding: 0 var(--em-space-6);
+  color: var(--em-color-text-inverse);
+  font-size: var(--em-font-size-sm);
+  font-weight: var(--em-font-weight-bold);
+  background: var(--em-color-primary);
+  border-radius: var(--em-radius-pill);
+  box-shadow: var(--em-shadow-button);
+}
+
+.em-button-secondary {
+  height: 72rpx;
+  padding: 0 var(--em-space-5);
+  color: var(--em-color-primary);
+  font-size: var(--em-font-size-sm);
+  font-weight: var(--em-font-weight-bold);
+  background: var(--em-color-surface);
+  border: var(--em-border-thin) solid var(--em-color-primary);
+  border-radius: var(--em-radius-pill);
+}
+
+.em-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52rpx;
+  padding: 0 var(--em-space-4);
+  color: var(--em-color-text-secondary);
+  font-size: var(--em-font-size-xs);
+  font-weight: var(--em-font-weight-semibold);
+  background: var(--em-color-surface-muted);
+  border-radius: var(--em-radius-pill);
+}
+
+.em-chip.is-selected {
+  color: var(--em-color-text-inverse);
+  background: var(--em-color-primary);
+}
+
+.em-input {
+  height: var(--em-height-input);
+  min-width: 0;
+  padding: 0 var(--em-space-5);
+  color: var(--em-color-text);
+  font-size: var(--em-font-size-md);
+  background: var(--em-color-surface);
+  border: var(--em-border-thin) solid var(--em-color-border);
+  border-radius: var(--em-radius-pill);
+  box-shadow: 0 8rpx 24rpx rgba(0, 39, 39, 0.05);
+}

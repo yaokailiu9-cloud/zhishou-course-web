@@ -1,0 +1,7 @@
+<view class="service-page course-page"><view class="course-topline"><text class="eyebrow">我的公开课</text><button class="text-button" bindtap="classes">发现课程 ›</button></view><text class="page-title">每一次相见，都值得期待</text>
+ <scroll-view class="course-tabs" scroll-x><view wx:for="{{filters}}" wx:key="key" class="course-tab {{filter === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectFilter">{{item.label}}</view></scroll-view>
+ <view wx:if="{{!loggedIn}}" class="card"><text class="body">登录后查看报名、进群指引和入场凭证。</text><button class="primary" bindtap="login">微信登录</button></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重试</button></view>
+ <view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="open"><view class="row"><text class="card-title">{{item.public_class.title}}</text><text class="pill">{{item.stateText}}</text></view><text class="course-meta">{{item.public_class.timeText}}</text><text class="course-meta">{{item.registrant_name}} · {{item.phoneMasked}}</text><view class="course-card-bottom"><text>{{item.groupText}}</text><text class="link">{{item.stateText === '已取消' ? '查看记录' : '查看报名与入场凭证'}} ›</text></view></view>
+ <text wx:if="{{loading}}" class="muted">正在加载报名记录…</text><view wx:if="{{loggedIn && !loading && !error && !items.length}}" class="empty">暂无此类报名记录。</view><button wx:if="{{nextCursor}}" class="secondary" bindtap="loadMore" disabled="{{loading}}">查看更多</button>
+</view>

@@ -1,0 +1,76 @@
+<view class="detail-page safe-bottom">
+  <view class="detail-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
+    <button class="nav-back" bindtap="goBack">‹</button>
+    <text class="nav-title">订单详情</text>
+  </view>
+
+  <view class="detail-body" style="padding-top: {{navHeight}}px;">
+  <view wx:if="{{loading}}" class="state-card">
+    <text>正在读取记录...</text>
+  </view>
+
+  <block wx:elif="{{order}}">
+    <view class="detail-hero">
+      <view class="client-avatar">
+        <image wx:if="{{order.avatarUrl}}" class="avatar-image" src="{{order.avatarUrl}}" mode="aspectFill"></image>
+        <text wx:else>{{order.avatarText || '客'}}</text>
+      </view>
+      <view class="hero-main">
+        <view class="client-line">
+          <text class="client-name">{{order.name}}</text>
+          <text class="tag-pill">{{order.tag}}</text>
+        </view>
+        <text class="order-title">{{order.title}}</text>
+      </view>
+      <text class="status-pill {{order.statusTone}}">{{order.status}}</text>
+    </view>
+
+    <view class="info-grid">
+      <view class="info-item">
+        <text class="info-label">服务时长</text>
+        <text class="info-value">{{order.durationMinutes}}分钟</text>
+      </view>
+      <view class="info-item">
+        <text class="info-label">金额</text>
+        <text class="info-value">¥{{order.amount}}</text>
+      </view>
+      <view class="info-item wide">
+        <text class="info-label">提交时间</text>
+        <text class="info-value">{{order.time}}</text>
+      </view>
+      <view class="info-item wide">
+        <text class="info-label">会话编号</text>
+        <text class="info-value">{{sessionId || '暂无会话'}}</text>
+      </view>
+    </view>
+
+    <view class="message-list">
+      <view class="records-head">
+        <text class="section-title">聊天记录</text>
+        <view class="text-action" bindtap="refreshDetail">刷新</view>
+      </view>
+
+      <view wx:for="{{messages}}" wx:key="id" class="message-row {{item.role}}">
+        <view wx:if="{{item.role === 'assistant'}}" class="message-avatar">师</view>
+        <view class="bubble">
+          <text>{{item.content}}</text>
+        </view>
+        <view wx:if="{{item.role === 'user'}}" class="message-avatar user">{{order.avatarText || '客'}}</view>
+      </view>
+
+      <view wx:if="{{!messages.length}}" class="state-card compact">
+        <text>暂无聊天记录</text>
+      </view>
+    </view>
+
+    <button wx:if="{{sessionId}}" class="primary-action fixed-action" bindtap="openChat">
+      {{order.status === '已完成' ? '查看聊天' : '进入聊天'}}
+    </button>
+  </block>
+
+  <view wx:else class="state-card">
+    <text>没有找到这条订单记录</text>
+    <button class="primary-action" bindtap="goBack">返回</button>
+  </view>
+  </view>
+</view>

@@ -1,0 +1,11 @@
+const service=require('../../utils/consultationService');const auth=require('../../utils/auth');
+Page({data:{loading:true,busy:false,error:'',allowed:false,canAccept:false,canReply:false,classes:[],enrollments:[],appointments:[],nextAppointmentCursor:null,moreLoading:false},
+ onShow(){this.refresh();},
+ refresh(){const generation=this.listGeneration=(this.listGeneration||0)+1;this.setData({moreLoading:false});if(!auth.requireLogin('请登录负责公开课和咨询的工作人员账号。')){this.setData({loading:false});return;}this.setData({loading:true,error:'',allowed:false});service.call('STAFF_OVERVIEW',{paginate:true}).then(r=>generation===this.listGeneration && this.setData({allowed:true,canAccept:r.canAccept,canReply:r.canReply,classes:(r.classes||[]).map(service.decorate),enrollments:(r.enrollments||[]).map(service.decorate),appointments:(r.appointments||[]).map(service.decorate),nextAppointmentCursor:r.nextAppointmentCursor||null})).catch(e=>{if(generation===this.listGeneration)service.error(this,e);}).finally(()=>{if(generation===this.listGeneration)this.setData({loading:false});});},
+ async moreAppointments(){if(this.data.loading||this.data.moreLoading||!this.data.nextAppointmentCursor)return;const generation=this.listGeneration||0;this.setData({moreLoading:true});try{const r=await service.call('STAFF_OVERVIEW',{paginate:true,appointmentCursor:this.data.nextAppointmentCursor});if(generation!==(this.listGeneration||0))return;this.setData({appointments:this.data.appointments.concat((r.appointments||[]).map(service.decorate)),nextAppointmentCursor:r.nextAppointmentCursor||null});}catch(e){if(generation===(this.listGeneration||0))service.error(this,e);}finally{if(generation===(this.listGeneration||0))this.setData({moreLoading:false});}},
+ manageCourses(){wx.navigateTo({url:'/pages/course-manage/course-manage'});},
+ openAppointment(e){wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id='+e.currentTarget.dataset.id});},
+ callCustomer(e){const n=e.currentTarget.dataset.phone;if(n)wx.makePhoneCall({phoneNumber:n});},
+ shareClass(e){wx.navigateTo({url:'/pages/public-class/public-class?id='+e.currentTarget.dataset.id});},
+ goCustomer(){require('../../utils/chatContext').enterCustomerView();wx.navigateTo({url:'/pages/customer/customer'});}
+});

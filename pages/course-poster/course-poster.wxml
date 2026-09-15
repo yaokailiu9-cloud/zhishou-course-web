@@ -1,0 +1,12 @@
+<view class="service-page course-page">
+ <view class="service-hero"><text class="eyebrow">知守 · 课程邀请</text><text class="page-title">把这堂课，分享给在乎的人</text><text class="muted">发送到微信聊天或群，朋友点开课程卡片即可报名。</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新加载</button></view>
+ <text wx:if="{{loading}}" class="muted">正在读取课程…</text>
+ <block wx:if="{{classInfo}}">
+  <view class="card course-card"><image wx:if="{{classInfo.coverUrl}}" class="course-cover" src="{{classInfo.coverUrl}}" mode="aspectFill"/><view class="course-card-content"><text class="pill">免费公开课</text><text class="card-title">{{classInfo.title}}</text><text class="course-meta">{{classInfo.timeText}}</text><text class="course-meta">{{classInfo.placeText}}</text></view></view>
+  <button wx:if="{{classInfo.status !== 'DRAFT'}}" class="primary" open-type="share">微信分享给朋友或群</button>
+  <text wx:else class="state-note">本场课程为草稿，请发布后再邀请报名。</text>
+  <button class="secondary" bindtap="detail">查看课程详情</button>
+  <view class="card"><text class="section-title">一起参加，很简单</text><view class="progress-line"><text>1 微信分享</text><text>2 免费报名</text><text>3 联系进群</text></view><text class="muted">朋友填写姓名和手机号后，工作人员联系进群，开课地址及参课安排在群内通知。</text></view>
+ </block>
+</view>

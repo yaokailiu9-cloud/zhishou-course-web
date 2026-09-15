@@ -1,0 +1,21 @@
+<view class="service-page">
+ <view class="service-hero member-hero"><text class="eyebrow">客户中心</text><text class="page-title">每一步，都有人陪你</text><text class="muted">从课堂相见，到沟通后的每一次改变。</text><view class="journey"><view class="journey-step"><text class="journey-number">01</text><text>公开课报名</text></view><view class="journey-step"><text class="journey-number">02</text><text>线下咨询</text></view><view class="journey-step"><text class="journey-number">03</text><text>执行与反馈</text></view></view></view>
+ <view class="entry-grid"><button class="primary" bindtap="goClasses">免费公开课</button><button class="secondary" bindtap="apply">{{eligible ? '申请线下咨询' : '查看预约条件'}}</button></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重试</button></view>
+ <view wx:if="{{showForm}}" class="card form-card"><text class="section-title">申请线下咨询</text><text class="muted">提交后等待工作人员确认，请填写方便沟通的时间。</text><text class="field-label">家长姓名</text><input placeholder="家长姓名" value="{{form.name}}" data-key="name" bindinput="input" maxlength="60"/><text class="field-label">联系电话</text><input placeholder="手机号" type="number" maxlength="11" value="{{form.phone}}" data-key="phone" bindinput="input"/><text class="field-label">方便沟通的时间</text><input placeholder="期望时间，如周六下午" value="{{form.requestedTime}}" data-key="requestedTime" bindinput="input" maxlength="160"/><text class="field-label">本次咨询的主要困扰</text><textarea placeholder="希望本次沟通解决什么问题" value="{{form.concerns}}" data-key="concerns" bindinput="input" maxlength="4000"/><button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="submit">提交申请，等待确认</button><button class="text-button" disabled="{{busy}}" bindtap="closeForm">暂不申请</button></view>
+ <view wx:if="{{!isLoggedIn}}" class="card"><text class="section-title">登录后查看你的服务记录</text><text class="muted">报名、预约和反馈会保存在你的微信账号下。</text><button class="primary" bindtap="login">微信登录</button></view>
+ <text wx:if="{{loading}}" class="muted">正在加载你的记录…</text>
+ <block wx:if="{{isLoggedIn}}">
+  <view class="notice">{{eligible ? '已核实参加公开课，可以提交线下咨询申请；具体时间由工作人员确认。' : '参加免费公开课后，由工作人员核实到课情况，再开放咨询申请。'}}</view>
+  <view class="row"><text class="section-title">我的公开课报名</text><button class="text-button" bindtap="goMine">全部报名 ›</button></view>
+  <view wx:for="{{enrollments}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="openClass"><view class="row"><text class="card-title">{{item.public_class.title}}</text><text class="pill">免费</text></view><text class="muted">{{item.statusText}} · {{item.attendanceText}} · {{item.groupText}}</text><text class="body">{{item.public_class.group_guide || '工作人员将联系你进群，课程地址在群内通知。'}}</text><text class="link">查看入场凭证与进群指引 ›</text></view>
+  <view wx:if="{{!loading && !enrollments.length}}" class="empty">还没有报名，先从一堂免费公开课开始。</view>
+  <text class="section-title">我的线下咨询</text>
+  <view wx:for="{{appointments}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="openAppointment"><view class="row"><text class="card-title">{{item.child_info.name || '线下沟通预约'}}</text><text class="pill">{{item.statusText}}</text></view><text class="body">{{item.concerns}}</text><text class="muted">{{item.status === 'PENDING' ? '期望时间：' + item.requested_time : item.timeText}}</text><text class="link">{{item.status === 'CONFIRMED' && !item.child_info ? '填写孩子基础信息' : '查看记录与执行反馈'}} ›</text></view>
+  <view wx:if="{{!loading && !appointments.length}}" class="empty">预约确认后，在这里填写基础信息、查看老师建议并反馈执行情况。</view>
+ </block>
+ <text wx:if="{{appointments.length}}" class="muted">{{nextAppointmentCursor ? '已加载' : '共'}} {{appointments.length}} 条咨询记录</text>
+ <button wx:if="{{nextAppointmentCursor}}" class="secondary" loading="{{moreLoading}}" disabled="{{moreLoading || loading}}" bindtap="moreAppointments">查看更多咨询记录</button>
+ <button class="text-button" bindtap="goHome">返回客户首页</button>
+
+</view>

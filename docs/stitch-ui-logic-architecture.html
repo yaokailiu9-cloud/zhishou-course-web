@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Serenity 情感咨询小程序 - Stitch UI 逻辑架构</title>
+  <style>
+    :root {
+      --bg: #fbf9f8;
+      --panel: #ffffff;
+      --ink: #002727;
+      --muted: #697373;
+      --soft: #eef4f2;
+      --line: #ebe7e2;
+      --gold: #8a7109;
+      --gold-soft: #fff5d7;
+      --danger: #c84b45;
+      --shadow: 0 18px 50px rgba(0, 39, 39, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Plus Jakarta Sans", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 56px 28px 72px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+      gap: 32px;
+      align-items: stretch;
+      margin-bottom: 36px;
+    }
+
+    .hero-main,
+    .hero-side,
+    .section,
+    .flow-card,
+    .phone-frame,
+    .data-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      min-height: 420px;
+      padding: 48px;
+      border-radius: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-main::after {
+      content: "";
+      position: absolute;
+      right: -80px;
+      top: -80px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: var(--gold-soft);
+      opacity: 0.95;
+    }
+
+    .eyebrow {
+      color: var(--gold);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 18px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      color: var(--ink);
+    }
+
+    h1 {
+      max-width: 760px;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(44px, 7vw, 82px);
+      line-height: 1.04;
+      letter-spacing: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-copy {
+      max-width: 680px;
+      margin: 28px 0 0;
+      color: var(--muted);
+      font-size: 20px;
+      font-weight: 650;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 34px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .badge {
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .hero-side {
+      border-radius: 30px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 26px;
+    }
+
+    .price-block {
+      padding: 26px;
+      border-radius: 22px;
+      background: #fffdf8;
+      border: 1px solid #f0e7ce;
+    }
+
+    .price {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .price small {
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .side-list {
+      display: grid;
+      gap: 16px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .side-list li {
+      display: flex;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      margin-top: 10px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+
+    .section {
+      margin-top: 28px;
+      padding: 34px;
+      border-radius: 26px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+
+    h2 {
+      font-size: 30px;
+      line-height: 1.2;
+    }
+
+    .section-note {
+      max-width: 580px;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .tabbar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .tab-item {
+      min-height: 122px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .tab-index {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .tab-title {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .tab-desc {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .phone-frame {
+      border-radius: 34px;
+      padding: 18px;
+    }
+
+    .phone-screen {
+      min-height: 510px;
+      padding: 22px;
+      border-radius: 24px;
+      background: var(--bg);
+      border: 1px solid #f0ece8;
+      overflow: hidden;
+    }
+
+    .phone-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .mini-pill {
+      width: 78px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--ink);
+    }
+
+    .screen-title {
+      margin-bottom: 10px;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: 34px;
+      line-height: 1.05;
+    }
+
+    .screen-copy {
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .search-bar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: #9ba3a3;
+      font-weight: 800;
+    }
+
+    .advisor-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px;
+    }
+
+    .advisor-image {
+      height: 140px;
+      border-radius: 14px;
+      background:
+        linear-gradient(135deg, rgba(0, 39, 39, 0.12), rgba(255, 246, 217, 0.7)),
+        #dfe8e4;
+      margin-bottom: 12px;
+    }
+
+    .advisor-name,
+    .card-title {
+      font-size: 19px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .card-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .cta {
+      height: 44px;
+      display: grid;
+      place-items: center;
+      margin-top: 14px;
+      border-radius: 10px;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .date-grid,
+    .time-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .date-grid {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .time-grid {
+      grid-template-columns: repeat(2, 1fr);
+      margin-top: 14px;
+    }
+
+    .chip {
+      padding: 10px 8px;
+      border-radius: 12px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .chip.active {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .profile-avatar {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      margin: 10px auto 14px;
+      background:
+        radial-gradient(circle at 78% 72%, #fed65b 0 16px, transparent 17px),
+        linear-gradient(135deg, #d7e4df, #9fbab0);
+      box-shadow: 0 14px 28px rgba(0, 39, 39, 0.12);
+    }
+
+    .profile-name {
+      text-align: center;
+      font-size: 26px;
+      font-weight: 950;
+    }
+
+    .gold-strip {
+      max-width: 210px;
+      margin: 8px auto 18px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--gold-soft);
+      color: var(--gold);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .wallet-card {
+      padding: 18px;
+      margin-top: 14px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .wallet-value {
+      margin-top: 8px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .settings-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 34px;
+      gap: 24px;
+      align-items: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .settings-arrow {
+      color: #b6c0be;
+      font-size: 34px;
+      text-align: right;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .flow-card {
+      min-height: 170px;
+      padding: 22px;
+      border-radius: 20px;
+    }
+
+    .flow-num {
+      color: var(--gold);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .flow-title {
+      margin-top: 14px;
+      font-size: 19px;
+      font-weight: 950;
+    }
+
+    .flow-text {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .state-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    .state {
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .arrow {
+      color: var(--gold);
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .data-card {
+      border-radius: 20px;
+      padding: 22px;
+    }
+
+    .data-card ul {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .stitch-prompt {
+      padding: 24px;
+      border-radius: 20px;
+      background: #002727;
+      color: #fff;
+      white-space: pre-wrap;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .screens,
+      .data-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tabbar,
+      .flow-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        padding: 28px 14px 46px;
+      }
+
+      .hero-main,
+      .hero-side,
+      .section {
+        padding: 24px;
+        border-radius: 22px;
+      }
+
+      .tabbar,
+      .flow-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">Serenity · 情感问答 / 咨询预约小程序</div>
+        <h1>一套可直接交给 Stitch 的 UI 逻辑架构</h1>
+        <p class="hero-copy">
+          当前项目围绕“首页发现、预约确认、咨询聊天、个人中心”四个底部入口展开。整体视觉应保持宁静、私密、可信赖，以深墨绿色、暖白背景、黑金会员感和柔和卡片为主。
+        </p>
+        <div class="hero-badges">
+          <span class="badge">微信小程序</span>
+          <span class="badge">¥200 / 60 分钟</span>
+          <span class="badge">一对一文字咨询</span>
+          <span class="badge">Zion 后端</span>
+        </div>
+      </div>
+
+      <aside class="hero-side">
+        <div class="price-block">
+          <div class="eyebrow">核心商业规则</div>
+          <div class="price">¥200 <small>/ 60 分钟</small></div>
+        </div>
+        <ul class="side-list">
+          <li><span class="dot"></span><span>用户选择咨询师后进入底部导航第二页“预约”，确认日期、时间并支付。</span></li>
+          <li><span class="dot"></span><span>支付成功后进入“咨询”聊天页，等待服务人员接单或直接开始会话。</span></li>
+          <li><span class="dot"></span><span>个人中心采用 Serenity 黑金会员式界面，展示资产、积分和系统设置。</span></li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>底部导航信息架构</h2>
+          <p class="section-note">Stitch 设计时优先围绕这四个主 Tab 建立页面层级，详情页和经理工作台作为二级页面处理。</p>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab-item">
+          <div class="tab-index">1</div>
+          <div class="tab-title">首页</div>
+          <div class="tab-desc">品牌露出、搜索入口、推荐咨询师、快速预约。</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-index">2</div>
+          <div class="tab-title">预约</div>
+          <div class="tab-desc">承接“立即预约”按钮，选择日期、时段并确认支付。</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-index">3</div>
+          <div class="tab-title">咨询</div>
+          <div class="tab-desc">一对一聊天、服务状态、剩余时间、快捷问题。</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-index">4</div>
+          <div class="tab-title">我的</div>
+          <div class="tab-desc">会员资料、余额积分、系统与偏好、退出账号。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>页面 UI 结构示意</h2>
+          <p class="section-note">下面不是最终截图，而是给 Stitch 的结构线框：保留页面层级、重点模块、按钮位置和视觉气质。</p>
+        </div>
+      </div>
+      <div class="screens">
+        <article class="phone-frame">
+          <div class="phone-screen">
+            <div class="phone-top"><span>Serenity</span><span class="mini-pill"></span></div>
+            <div class="eyebrow">Serenity · 静心之旅</div>
+            <h3 class="screen-title">欢迎回来</h3>
+            <div class="screen-copy">寻找属于你的宁静时刻，让关系在被尊重的关怀中重新获得呼吸。</div>
+            <div class="search-bar">搜索专家、问题方向或情绪支持</div>
+            <div class="advisor-card">
+              <div class="advisor-image"></div>
+              <div class="advisor-name">叶闻情感关系咨询师</div>
+              <div class="card-meta">情感修复 · 沟通分析 · ★ 7.3</div>
+              <div class="cta">立即预约</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="phone-frame">
+          <div class="phone-screen">
+            <div class="phone-top"><span>预约</span><span class="mini-pill"></span></div>
+            <div class="advisor-card">
+              <div class="advisor-image"></div>
+              <div class="advisor-name">叶闻</div>
+              <div class="card-meta">情感关系咨询师 · ★ 7.3</div>
+            </div>
+            <div class="screen-copy" style="margin-top: 18px;">选择咨询日期</div>
+            <div class="date-grid">
+              <div class="chip">周一<br>14</div>
+              <div class="chip active">周二<br>15</div>
+              <div class="chip">周三<br>16</div>
+              <div class="chip">周四<br>17</div>
+              <div class="chip">周五<br>18</div>
+            </div>
+            <div class="screen-copy" style="margin-top: 18px;">选择咨询时段</div>
+            <div class="time-grid">
+              <div class="chip">09:00</div>
+              <div class="chip active">10:30</div>
+              <div class="chip">14:00</div>
+              <div class="chip">15:30</div>
+            </div>
+            <div class="cta">确认支付 ¥200</div>
+          </div>
+        </article>
+
+        <article class="phone-frame">
+          <div class="phone-screen">
+            <div class="phone-top"><span>Serenity</span><span class="mini-pill"></span></div>
+            <div class="profile-avatar"></div>
+            <div class="profile-name">林舒婉</div>
+            <div class="gold-strip">尊享会员 · 黑金级</div>
+            <div class="wallet-card">
+              <div class="card-meta">账户净值</div>
+              <div class="wallet-value">¥ 12,840.00</div>
+            </div>
+            <div class="wallet-card">
+              <div class="card-meta">积分奖励</div>
+              <div class="wallet-value" style="color: var(--gold);">4,250 PTS</div>
+            </div>
+            <div class="screen-copy" style="margin-top: 26px;">系统与偏好</div>
+            <div class="settings-row">
+              <div>
+                <div class="card-title">隐私与安全</div>
+                <div class="card-meta">管理您的生物特征数据与授权</div>
+              </div>
+              <div class="settings-arrow">›</div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="card-title">帮助与支持</div>
+                <div class="card-meta">尊享会员 24/7 在线服务中心</div>
+              </div>
+              <div class="settings-arrow">›</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>用户预约主流程</h2>
+          <p class="section-note">这是当前代码里最关键的链路：所有“预约”按钮都应该把用户带到底部导航第二页，而不是停留在首页。</p>
+        </div>
+      </div>
+      <div class="flow-grid">
+        <div class="flow-card">
+          <div class="flow-num">01</div>
+          <div class="flow-title">首页发现</div>
+          <div class="flow-text">用户通过搜索、推荐咨询师或专题入口产生预约意图。</div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-num">02</div>
+          <div class="flow-title">选择咨询师</div>
+          <div class="flow-text">点击咨询师卡片查看详情，或直接点击“立即预约”。</div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-num">03</div>
+          <div class="flow-title">预约确认</div>
+          <div class="flow-text">进入 Tab 第二页，选择日期和时间，底部展示 ¥200 总费用。</div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-num">04</div>
+          <div class="flow-title">支付咨询</div>
+          <div class="flow-text">确认支付后创建订单和咨询会话，跳转到聊天页开始服务。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>核心状态机</h2>
+          <p class="section-note">设计时需要让用户清楚知道当前处在哪一步：未预约、待接单、服务中或已结束。</p>
+        </div>
+      </div>
+      <h3>订单状态</h3>
+      <div class="state-line">
+        <span class="state">created 待支付</span>
+        <span class="arrow">→</span>
+        <span class="state">paid 已支付</span>
+        <span class="arrow">→</span>
+        <span class="state">active 服务中</span>
+        <span class="arrow">→</span>
+        <span class="state">finished 已完成</span>
+      </div>
+      <h3 style="margin-top: 30px;">会话状态</h3>
+      <div class="state-line">
+        <span class="state">waiting 等待接单</span>
+        <span class="arrow">→</span>
+        <span class="state">active 正在咨询</span>
+        <span class="arrow">→</span>
+        <span class="state">closed 服务结束</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>数据对象给 UI 的含义</h2>
+          <p class="section-note">Stitch 不需要关心数据库细节，但需要知道每个页面展示哪些业务信息。</p>
+        </div>
+      </div>
+      <div class="data-grid">
+        <div class="data-card">
+          <h3>advisor 咨询师</h3>
+          <ul>
+            <li>姓名、头衔、头像</li>
+            <li>评分、已帮助人数</li>
+            <li>擅长标签、服务简介</li>
+            <li>统一价格 ¥200/小时</li>
+          </ul>
+        </div>
+        <div class="data-card">
+          <h3>consultation_order 订单</h3>
+          <ul>
+            <li>金额、时长、支付状态</li>
+            <li>咨询师、客户、问题备注</li>
+            <li>支付时间、有效截止时间</li>
+          </ul>
+        </div>
+        <div class="data-card">
+          <h3>consultation_session 会话</h3>
+          <ul>
+            <li>等待接单 / 服务中 / 已结束</li>
+            <li>经理、客户、会话主题</li>
+            <li>最近消息和剩余服务时间</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>给 Stitch 的生成提示词</h2>
+          <p class="section-note">可以把下面这段直接粘到 Stitch，用来约束它生成符合当前项目的 UI。</p>
+        </div>
+      </div>
+      <div class="stitch-prompt">请为一个名为 Serenity 的中文情感咨询微信小程序设计 UI。页面包括：首页、预约、咨询聊天、我的。整体视觉使用暖白背景 #FBF9F8、深墨绿色 #002727、少量黑金会员色 #8A7109 / #FFF5D7。设计气质宁静、私密、可信赖，不要娱乐化和医疗化。
+
+首页：顶部展示 Serenity 品牌与“欢迎回来”，搜索框，推荐咨询师卡片，咨询师图片、评分、擅长方向和“立即预约”按钮。
+
+预约页：这是底部导航第二个页面，所有预约按钮都跳转到这里。页面展示选中的咨询师信息、日期选择、时段选择、总费用 ¥200 / 60 分钟，底部固定确认支付按钮。
+
+咨询页：一对一文字咨询聊天界面，顶部显示咨询师，状态条显示服务中和剩余时间，消息区区分用户和咨询师，底部输入栏。
+
+我的页：按照黑金会员中心风格设计。顶部 Serenity，头像、姓名、会员等级，账户净值、积分奖励；删除近期排程卡片；系统与偏好只保留“隐私与安全”“帮助与支持”“关于 Serenity”“退出当前账号”。设置项文字和右侧箭头要拉开间距，左侧不要生成无法识别的图标。</div>
+    </section>
+  </main>
+</body>
+</html>

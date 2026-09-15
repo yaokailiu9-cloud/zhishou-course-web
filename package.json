@@ -1,0 +1,17 @@
+{
+  "name": "empath-consultation-miniapp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "wechat-login": "node server/wechat-login/index.js",
+    "check:h5": "node --test scripts/tests/h5-web.test.js",
+    "test": "node --test scripts/tests/*.test.js",
+    "check:wechat": "python3 scripts/compile_miniapp.py"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "jsqr": "1.4.0"
+  }
+}

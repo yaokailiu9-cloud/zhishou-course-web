@@ -1,0 +1,17 @@
+.env
+server/wechat-login/.env
+.zion/
+node_modules/
+.DS_Store
+
+# Local Zion session and verification outputs
+.codex-work/
+.zion-mcp/
+
+# Local editor, build and delivery artifacts
+.cursor/
+.vercel/
+project.private.config.json
+outputs/
+design-mockups/
+empath-consultation-miniapp-code.zip

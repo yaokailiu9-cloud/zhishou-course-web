@@ -1,0 +1,14 @@
+<view class="service-page course-page">
+ <view wx:if="{{success}}" class="service-hero"><text class="success-mark">✓</text><text class="page-title">报名成功，课堂见</text><text class="muted">下一步：查看进群指引，留意工作人员联系。</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新加载凭证</button></view><text wx:if="{{loading}}" class="muted">正在读取你的报名…</text>
+ <view wx:if="{{!loading && !loggedIn}}" class="card"><text class="section-title">登录后查看你的报名</text><text class="muted">个人入场凭证仅对报名本人可见。</text><button class="primary" bindtap="refresh">微信登录</button></view>
+ <block wx:if="{{enrollment}}">
+  <view class="ticket"><view class="ticket-head"><text class="eyebrow">免费公开课 · 个人凭证</text><text class="card-title">{{enrollment.public_class.title}}</text><text class="course-meta">{{enrollment.public_class.timeText}}</text><text class="course-meta">{{enrollment.public_class.placeText}}</text></view><view class="ticket-body"><text class="ticket-status">{{enrollment.stateText}}</text><text class="body">{{enrollment.registrant_name}} · {{enrollment.phoneMasked}}</text>
+   <block wx:if="{{enrollment.status === 'REGISTERED' && enrollment.attendance_status !== 'ATTENDED'}}"><text class="muted">到场后出示此码，由工作人员核实入场</text><canvas wx:if="{{enrollment.entryPayload}}" canvas-id="entry-code" class="ticket-canvas"/><text class="ticket-code">{{enrollment.entry_code}}</text><text wx:if="{{qrError}}" class="muted">{{qrError}}</text></block>
+   <text wx:elif="{{enrollment.attendance_status === 'ATTENDED'}}" class="success">已核实到课 · {{enrollment.verifiedText}}</text><text wx:else class="muted">本次报名已取消，入场码已失效。</text>
+  </view></view>
+  <view wx:if="{{enrollment.status === 'REGISTERED'}}" class="card"><text class="section-title">进群与开课指引</text><text class="pill">{{enrollment.groupText}}</text><text class="body">{{enrollment.public_class.group_guide || '工作人员将通过报名手机号联系你进群，课程地址在群内通知。'}}</text><image wx:if="{{enrollment.public_class.group_qr.url}}" class="qr-image" src="{{enrollment.public_class.group_qr.url}}" mode="aspectFit" bindtap="groupQr"/><button wx:if="{{enrollment.public_class.contact_phone}}" class="secondary" bindtap="callTeacher">联系课程工作人员</button></view>
+  <button wx:if="{{enrollment.attendance_status === 'ATTENDED'}}" class="primary" bindtap="consultation">申请线下咨询</button><view wx:elif="{{enrollment.status === 'REGISTERED'}}" class="notice">实际参加公开课并经工作人员核实后，可申请线下咨询。</view>
+  <button class="secondary" bindtap="viewClass">查看课程详情</button><button wx:if="{{enrollment.canCancel}}" class="text-button" disabled="{{busy}}" bindtap="cancel">取消本场报名</button>
+ </block>
+</view>

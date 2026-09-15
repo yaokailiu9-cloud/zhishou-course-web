@@ -1,0 +1,100 @@
+<view class="manager-page safe-bottom">
+  <view class="manager-topbar" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px;">
+    <view class="icon-button" bindtap="returnToProfile">
+      <text>‹</text>
+    </view>
+  </view>
+
+  <view class="view-tabs">
+    <button class="view-tab {{activeView === 'workbench' ? 'active' : ''}}" data-view="workbench" bindtap="switchView">工作台</button>
+    <button class="view-tab {{activeView === 'serving' ? 'active' : ''}}" data-view="serving" bindtap="switchView">服务中</button>
+  </view>
+
+  <block wx:if="{{activeView === 'workbench'}}">
+    <view class="hero-line">
+      <text class="hero-title">早上好，主管。</text>
+      <text class="hero-copy">当前绑定客户的服务状态如下。</text>
+    </view>
+
+    <view class="stats-grid stats-grid-compact">
+      <view wx:for="{{stats}}" wx:key="label" class="stat-card">
+        <text class="stat-value">{{item.value}}</text>
+        <text class="stat-label">{{item.label}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{servingCount > 0}}" class="workbench-tip">
+      <text>有 {{servingCount}} 位客户正在服务中，可前往「服务中」查看会话。</text>
+      <button class="ghost-action workbench-link" data-view="serving" bindtap="switchView">进入服务中</button>
+    </view>
+
+    <view wx:elif="{{completedCount > 0}}" class="workbench-tip">
+      <text>当前没有进行中的会话，已有 {{completedCount}} 位客户完成服务。</text>
+    </view>
+
+    <view wx:else class="empty-card">
+      <text>暂无绑定客户会话</text>
+    </view>
+  </block>
+
+  <block wx:elif="{{activeView === 'serving'}}">
+    <view class="hero-line compact">
+      <text class="hero-title">正在进行的会话</text>
+      <text class="hero-copy">保持温和、清晰，并记录关键进展。</text>
+    </view>
+
+    <view class="session-list">
+      <view wx:for="{{servingSessions}}" wx:key="id" class="session-card">
+        <view class="request-head">
+          <view class="client-avatar">
+            <image wx:if="{{item.avatarUrl}}" class="avatar-image" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+            <text wx:else>{{item.avatarText || '客'}}</text>
+          </view>
+          <view class="client-main">
+            <view class="client-line">
+              <text class="client-name">{{item.name}}</text>
+              <text class="tag-pill gold">{{item.tag}}</text>
+            </view>
+            <text class="request-time">开始时间 {{item.startAt}}</text>
+          </view>
+          <text class="timer-pill">{{item.startedAt ? '剩余 ' + item.left : '待开始'}}</text>
+        </view>
+        <text class="request-title">{{item.topic}}</text>
+        <view class="progress-row">
+          <text>已进行 {{item.elapsed}} 分钟</text>
+          <view class="progress-track">
+            <view class="progress-fill" style="width: {{item.progress}}%;"></view>
+          </view>
+          <text>{{item.durationMinutes}} 分钟</text>
+        </view>
+        <view class="session-footer">
+          <text class="session-price">¥{{item.price}}</text>
+          <view class="session-actions">
+            <button
+              class="ghost-action session-action-btn"
+              data-order-id="{{item.orderId}}"
+              data-session-id="{{item.id}}"
+              catchtap="openOrderDetail"
+            >查看记录</button>
+            <button class="primary-action session-action-btn" data-id="{{item.id}}" bindtap="enterChat">进入会话</button>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{!servingSessions.length}}" class="empty-card">
+        <text>暂无进行中的会话</text>
+      </view>
+    </view>
+  </block>
+
+  <view class="customer-service-panel">
+    <view class="customer-service-copy">
+      <text class="customer-service-title">客户服务</text>
+      <text class="customer-service-desc">公开课报名、线下预约与咨询跟进</text>
+    </view>
+    <view class="customer-service-actions">
+      <button class="primary-action" bindtap="goOfflineWorkbench">服务管理</button>
+      <button class="ghost-action" bindtap="goCustomerPortal">进入客户端</button>
+    </view>
+  </view>
+</view>

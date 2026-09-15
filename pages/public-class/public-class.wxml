@@ -1,0 +1,17 @@
+<view class="service-page course-page">
+ <view class="course-topline"><text class="eyebrow">一起学习 · 免费参加</text><button class="text-button" bindtap="goMine">我的报名 ›</button></view>
+ <view class="course-intro"><text class="page-title">让理解发生，
+从一堂课开始。</text><text class="muted">走进课堂，一起练习倾听与沟通。</text><view class="journey"><view class="journey-step"><text class="journey-number">01</text><text>免费报名</text><text class="journey-note">填写姓名与手机号</text></view><view class="journey-step"><text class="journey-number">02</text><text>联系进群</text><text class="journey-note">群内查看开课地址</text></view><view class="journey-step"><text class="journey-number">03</text><text>到场学习</text><text class="journey-note">核实后可申请咨询</text></view></view></view>
+ <view class="course-search"><input placeholder="搜索课程名称或城市" value="{{search}}" bindinput="searchInput" bindconfirm="refresh" confirm-type="search" maxlength="60"/><button class="secondary" bindtap="refresh" disabled="{{loading}}">搜索</button></view><view class="course-section-head"><text class="section-title">公开课报名</text><text class="muted">免费 · 线下参加</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新加载</button></view>
+ <view wx:for="{{classes}}" wx:key="id" class="card course-card" data-id="{{item.id}}" bindtap="choose">
+  <image wx:if="{{item.coverUrl}}" class="course-cover" src="{{item.coverUrl}}" mode="aspectFill"/>
+  <view wx:else class="course-cover-fallback"><text class="eyebrow">知守 · 公开课堂</text><text class="cover-word">一起学习，更懂彼此。</text></view>
+  <view class="course-card-content"><view class="row"><text class="card-title">{{item.title}}</text><text class="pill">免费公开课</text></view><text class="course-meta">{{item.timeText}}</text><text class="course-meta">{{item.placeText}}</text><text wx:if="{{item.description}}" class="body">{{item.description}}</text><view class="course-card-bottom"><text>{{item.canEnroll ? item.seatsText : item.closedReason}}</text><text class="link">查看详情 ›</text></view></view>
+ </view>
+ <text wx:if="{{loading}}" class="muted">正在加载课程…</text>
+ <view wx:if="{{!loading && !error && !classes.length}}" class="empty">{{search ? '没有找到相关课程，试试其他关键词。' : '新一期公开课正在安排，发布后会在这里开放报名。'}}</view>
+ <button wx:if="{{nextCursor}}" class="secondary" bindtap="loadMore" disabled="{{loading}}">查看更多课程</button>
+ <view class="notice">留下姓名和手机号报名，工作人员联系你进群。课程地址在群内通知；实际到课核实后，可申请线下咨询。</view>
+ <button class="text-button" bindtap="goCustomer">我的报名与咨询</button>
+</view>

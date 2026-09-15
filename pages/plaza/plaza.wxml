@@ -1,0 +1,63 @@
+<view class="course-page">
+  <view class="course-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
+    <text class="nav-title">课程</text>
+  </view>
+
+  <navigator class="nav-search" url="/pages/search/search?mode=courses" aria-label="搜索课程">
+    <view class="search-icon">⌕</view>
+    <text class="search-placeholder">搜索课程名称或主题</text>
+  </navigator>
+
+  <view class="course-body">
+    <view class="library-intro"><text class="library-kicker">知守 · 成长课堂</text><text class="library-title">慢慢学习，
+更好地理解彼此。</text><text class="library-desc">父母学习 · 线上共修 · 家庭教育</text></view>
+    <navigator class="public-class-link" url="/pages/public-class/public-class"><view><text class="public-link-kicker">线下公开课堂 · 免费参加</text><text class="public-link-title">公开课报名</text></view><text class="public-link-arrow">↗</text></navigator>
+
+    <view wx:if="{{featuredCourse}}" class="featured-banner" data-id="{{featuredCourse.id}}" bindtap="openCourse">
+      <image wx:if="{{featuredCourse.coverUrl}}" class="featured-cover" src="{{featuredCourse.coverUrl}}" mode="aspectFill"></image>
+      <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
+      <view class="featured-mask"></view>
+      <view class="featured-badge" wx:if="{{featuredCourse.badge}}">{{featuredCourse.badge}}</view>
+      <view class="featured-copy">
+        <text class="featured-kicker">精选推荐</text>
+        <text class="featured-title">{{featuredCourse.title}}</text>
+        <view class="featured-meta">
+          <text>{{featuredCourse.durationText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-head">
+      <text class="section-title">全部课程</text>
+      <text class="section-count">{{visibleCourses.length}} 门</text>
+    </view>
+
+    <view class="course-grid">
+      <view
+        wx:for="{{visibleCourses}}"
+        wx:key="id"
+        class="course-card"
+        data-id="{{item.id}}"
+        bindtap="openCourse"
+      >
+        <view class="card-cover-wrap">
+          <image wx:if="{{item.coverUrl}}" class="card-cover" src="{{item.coverUrl}}" mode="aspectFill"></image>
+          <view wx:else class="course-cover-placeholder"><text class="cover-message">封面待更新</text></view>
+          <text wx:if="{{item.durationText}}" class="card-duration">{{item.durationText}}</text>
+          <view wx:if="{{item.badge}}" class="card-badge">{{item.badge}}</view>
+        </view>
+        <view class="card-body">
+          <text class="card-title">{{item.title}}</text>
+          <text wx:if="{{item.subtitle}}" class="card-subtitle">{{item.subtitle}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="empty-state">正在加载课程…</view>
+    <view wx:elif="{{error}}" class="empty-state"><text>{{error}}</text><button class="retry-button" bindtap="fetchCourses">重新加载</button></view>
+    <view wx:elif="{{!visibleCourses.length}}" class="empty-state">
+      <text class="empty-title">暂无课程</text>
+      <text class="empty-desc">稍后再来看看，或联系管理员上传课程。</text>
+    </view>
+  </view>
+</view>

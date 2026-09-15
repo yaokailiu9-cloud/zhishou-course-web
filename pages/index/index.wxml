@@ -1,0 +1,57 @@
+<view class="home-page safe-bottom">
+  <view class="custom-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
+    <view class="nav-left">
+      <view class="nav-avatar nav-brand">
+        <image wx:if="{{userInfo.avatarUrl && !avatarFailed}}" class="nav-avatar-img" src="{{userInfo.avatarUrl}}" mode="aspectFill" binderror="onAvatarError"/>
+        <text wx:else>知</text>
+      </view>
+      <view class="nav-copy">
+        <text class="nav-title">{{userName}}</text>
+        <text class="nav-greeting">知守</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="public-class-entry">
+    <view class="hero-arch"></view>
+    <text class="public-class-kicker">知守 · 公开课堂</text>
+    <text class="public-class-title">透过现象看本质，\n父母有道，孩子有路。</text>
+    <text class="public-class-desc">一堂免费公开课，开启学习与沟通。\n到课核实后，可申请线下咨询。</text>
+    <view class="public-class-actions">
+      <button class="join-button" bindtap="goPublicClasses">免费公开课报名 <text>↗</text></button>
+    </view>
+  </view>
+
+  <view class="home-paths">
+    <button class="home-path" bindtap="goPlaza"><text class="path-number">01 / 学习</text><text class="path-title">课程学习 <text>↗</text></text><text class="path-desc">关系沟通 · 情绪成长</text></button>
+    <button class="home-path" bindtap="goCustomerPortal"><text class="path-number">02 / 陪伴</text><text class="path-title">我的报名与咨询 <text>↗</text></text><text class="path-desc">入场凭证 · 预约 · 执行反馈</text></button>
+  </view>
+
+  <view class="search-box" bindtap="goSearch">
+    <view class="search-lens"></view>
+    <text class="search-text">搜索共修课程与学习主题</text>
+  </view>
+
+  <view class="section-head">
+    <view><text class="section-kicker">父母学习 · 同伴共修</text><text class="section-title">线上共修课程</text></view>
+    <text class="section-note">自愿参与 · 持续践行</text>
+  </view>
+
+  <view class="home-course-list">
+    <view wx:if="{{loadingCourses}}" class="loading-notice">正在加载课程…</view>
+    <view wx:elif="{{courseError}}" class="loading-notice"><text>{{courseError}}</text><button class="retry-button" bindtap="fetchFeaturedCourses">重新加载</button></view>
+    <view wx:elif="{{!featuredCourses.length}}" class="loading-notice">共修课程准备中，可先查看免费公开课。</view>
+    <view wx:for="{{featuredCourses}}" wx:key="id" class="home-course-card">
+      <navigator class="home-course-cover" url="/pages/course-detail/course-detail?id={{item.id}}" aria-label="查看{{item.title}}">
+        <image wx:if="{{item.coverUrl}}" class="home-course-image" src="{{item.coverUrl}}" mode="aspectFill"/>
+        <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
+        <text class="home-course-badge">{{item.badge}}</text>
+      </navigator>
+      <view class="home-course-body">
+        <text class="home-course-title">{{item.title}}</text>
+        <text wx:if="{{item.subtitle}}" class="home-course-subtitle">{{item.subtitle}}</text>
+        <view class="home-course-footer"><text>课程介绍与参与说明</text><button class="course-button" bindtap="openCourse" data-id="{{item.id}}">查看课程 ↗</button></view>
+      </view>
+    </view>
+  </view>
+</view>

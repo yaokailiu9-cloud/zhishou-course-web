@@ -1,0 +1,64 @@
+<view class="detail-page">
+  <view class="detail-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
+    <button class="nav-back" bindtap="goBack">‹</button>
+    <text class="nav-title">课程详情</text>
+  </view>
+
+  <view wx:if="{{loading || error}}" class="detail-state" style="padding-top: {{navHeight + 40}}px;"><text>{{loading ? '正在加载课程…' : error}}</text><button wx:if="{{error}}" class="retry-button" bindtap="retryCourse">重新加载</button><button class="retry-button" bindtap="goBack">返回课程列表</button></view>
+  <scroll-view wx:elif="{{course}}" class="detail-scroll" scroll-y style="padding-top: {{navHeight}}px;">
+    <view class="video-hero">
+      <video
+        wx:if="{{showVideoPlayer && playingVideoUrl}}"
+        id="courseVideo"
+        class="course-video"
+        src="{{playingVideoUrl}}"
+        poster="{{course.coverUrl}}"
+        controls
+        show-center-play-btn
+        enable-play-gesture
+        object-fit="contain"
+        binderror="onVideoError"
+      ></video>
+      <block wx:else>
+        <image wx:if="{{course.coverUrl}}" class="hero-cover" src="{{course.coverUrl}}" mode="aspectFill"></image>
+        <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
+        <view wx:if="{{course.coverUrl}}" class="hero-mask"></view>
+        <view wx:if="{{course.chapters[0].videoUrl}}" class="play-button" bindtap="previewCourse">
+          <view class="play-triangle"></view>
+        </view>
+      </block>
+      <text wx:if="{{course.badge}}" class="detail-course-badge">{{course.badge}}</text>
+      <text wx:if="{{course.durationText}}" class="hero-duration">{{course.durationText}}</text>
+    </view>
+
+    <view class="detail-main">
+      <view class="title-block">
+        <text class="course-title">{{course.title}}</text>
+        <text wx:if="{{course.subtitle}}" class="course-subtitle">{{course.subtitle}}</text>
+      </view>
+
+      <view wx:for="{{contentSections}}" wx:key="title" class="course-info-section"><text class="course-info-title">{{item.title}}</text><text class="course-info-body">{{item.body}}</text></view>
+
+      <view class="catalog-head">
+        <text class="catalog-title">课程目录</text>
+        <text class="catalog-count">{{course.chapters.length}} 节</text>
+      </view>
+
+      <view wx:if="{{course.chapters.length}}" class="catalog-panel">
+        <view wx:for="{{course.chapters}}" wx:key="id" class="chapter-row {{activeChapterIndex === index ? 'active' : ''}}" data-index="{{index}}" bindtap="openChapter">
+          <view class="chapter-index">{{index + 1}}</view>
+          <view class="chapter-copy">
+            <text class="chapter-title">{{item.title}}</text>
+            <text wx:if="{{item.duration}}" class="chapter-duration">{{item.duration}}</text>
+          </view>
+          <text class="chapter-play-tag">{{item.videoUrl ? '可播放' : '准备中'}}</text>
+        </view>
+      </view>
+
+      <view wx:else class="catalog-empty">
+        <text class="catalog-empty-title">目录准备中</text>
+        <text class="catalog-empty-desc">课时上传后会显示在这里</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

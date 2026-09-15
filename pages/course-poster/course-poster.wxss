@@ -1,0 +1,2 @@
+@import "../../styles/course-components.wxss";
+.course-card-content .card-title { display: block; margin-top: 18rpx; }

@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>情感问答小程序改版预览</title>
+  <style>
+    :root {
+      --bg: #fbf8f3;
+      --bg-soft: #f8f4ef;
+      --surface: #fffcfa;
+      --surface-muted: #f8f3ef;
+      --primary: #d46b65;
+      --primary-strong: #c95450;
+      --primary-soft: #fff1ef;
+      --text: #292631;
+      --strong: #231f1d;
+      --secondary: #776c66;
+      --muted: #98918d;
+      --border: #eee5df;
+      --border-strong: #ded6d0;
+      --success: #248a53;
+      --success-soft: #e8f6ea;
+      --warning: #b9853d;
+      --warning-soft: #fff4dc;
+      --shadow: 0 14px 36px rgba(70, 55, 45, 0.08);
+      --button-shadow: 0 10px 22px rgba(212, 107, 101, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background: #eee7df;
+      font-family: "Source Han Sans SC", "Noto Sans CJK SC", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 32px;
+    }
+
+    .header {
+      max-width: 1280px;
+      margin: 0 auto 24px;
+    }
+
+    .header h1 {
+      margin: 0;
+      color: var(--strong);
+      font-size: 30px;
+      line-height: 1.25;
+    }
+
+    .header p {
+      margin: 8px 0 0;
+      color: var(--secondary);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(220px, 1fr));
+      gap: 22px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .phone {
+      height: 720px;
+      overflow: hidden;
+      background: linear-gradient(180deg, var(--bg), var(--bg-soft));
+      border: 1px solid rgba(70, 55, 45, 0.12);
+      border-radius: 30px;
+      box-shadow: 0 22px 56px rgba(70, 55, 45, 0.14);
+    }
+
+    .screen {
+      height: 100%;
+      padding: 28px 18px;
+      overflow: hidden;
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .title {
+      margin: 8px 0 14px;
+      color: var(--strong);
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .search,
+    .card,
+    .bar,
+    .inputbar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .search {
+      padding: 13px 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .chip {
+      padding: 7px 12px;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--primary-soft);
+      border-radius: 999px;
+    }
+
+    .card {
+      padding: 16px;
+      margin-top: 12px;
+    }
+
+    .advisor {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .avatar {
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      color: #fffdfb;
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(145deg, #dfaaa5, #c95450);
+      border-radius: 50%;
+    }
+
+    .name {
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .meta {
+      margin-top: 4px;
+      color: var(--secondary);
+      font-size: 12px;
+    }
+
+    .price {
+      color: var(--primary);
+      font-size: 18px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .button {
+      display: grid;
+      min-width: 76px;
+      height: 36px;
+      margin-top: 8px;
+      place-items: center;
+      color: #fffdfb;
+      font-size: 13px;
+      font-weight: 800;
+      background: var(--primary);
+      border-radius: 7px;
+      box-shadow: var(--button-shadow);
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 20px 0;
+    }
+
+    .big-avatar {
+      display: grid;
+      width: 86px;
+      height: 86px;
+      place-items: center;
+      color: #fffdfb;
+      font-size: 30px;
+      font-weight: 800;
+      background: linear-gradient(145deg, #dfaaa5, #c95450);
+      border: 4px solid var(--surface);
+      border-radius: 50%;
+      box-shadow: var(--shadow);
+    }
+
+    .service-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      color: var(--secondary);
+      font-size: 14px;
+      border-bottom: 1px dashed var(--border-strong);
+    }
+
+    .service-row:last-child {
+      border-bottom: 0;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+      text-align: center;
+    }
+
+    .step {
+      color: var(--secondary);
+      font-size: 12px;
+    }
+
+    .num {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      margin: 0 auto 6px;
+      place-items: center;
+      color: var(--primary);
+      font-weight: 800;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      box-shadow: var(--shadow);
+    }
+
+    .bar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      margin-bottom: 24px;
+    }
+
+    .status {
+      padding: 5px 10px;
+      color: var(--success);
+      font-size: 12px;
+      font-weight: 800;
+      background: var(--success-soft);
+      border-radius: 999px;
+    }
+
+    .message {
+      max-width: 78%;
+      padding: 12px 14px;
+      margin: 14px 0;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      border-radius: 14px;
+    }
+
+    .message.left {
+      background: #fff;
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow);
+      border-top-left-radius: 22px;
+    }
+
+    .message.right {
+      margin-left: auto;
+      background: var(--primary-soft);
+      border-top-right-radius: 22px;
+    }
+
+    .inputbar {
+      display: grid;
+      grid-template-columns: 1fr 64px;
+      gap: 8px;
+      padding: 10px;
+      margin-top: 30px;
+    }
+
+    .input {
+      padding: 10px 12px;
+      color: var(--muted);
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 13px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 14px;
+      overflow: hidden;
+    }
+
+    .stat {
+      padding: 16px 0;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+
+    .stat:last-child {
+      border-right: 0;
+    }
+
+    .stat b {
+      color: var(--text);
+      font-size: 21px;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--secondary);
+      font-size: 12px;
+    }
+
+    .income {
+      color: #fffdfb;
+      background: linear-gradient(135deg, var(--primary), #df9187);
+      border: 0;
+      box-shadow: var(--button-shadow);
+    }
+
+    .income .meta,
+    .income .name,
+    .income .price {
+      color: #fffdfb;
+    }
+
+    @media (max-width: 1180px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
+      }
+    }
+
+    @media (max-width: 620px) {
+      .page {
+        padding: 18px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <h1>小程序视觉改版预览</h1>
+      <p>这是浏览器里的静态样张，真实实现已应用到小程序 WXSS/WXML/JS 文件中。</p>
+    </header>
+
+    <section class="grid">
+      <article class="phone">
+        <div class="screen">
+          <div class="eyebrow">首页</div>
+          <div class="title">遇到情感问题，<br />找一位合适的经理聊聊</div>
+          <div class="search">搜索问题、关键词或经理</div>
+          <div class="chips">
+            <span class="chip">恋爱沟通</span><span class="chip">婚姻关系</span><span class="chip">关系修复</span><span class="chip">情绪疏导</span>
+          </div>
+          <div class="advisor card">
+            <div class="avatar">林</div>
+            <div><div class="name">林静</div><div class="meta">评分 4.9 · 已帮助328人</div></div>
+            <div><div class="price">¥200</div><div class="button">预约</div></div>
+          </div>
+          <div class="advisor card">
+            <div class="avatar">陈</div>
+            <div><div class="name">陈默</div><div class="meta">分手陪伴 · 已帮助256人</div></div>
+            <div><div class="price">¥200</div><div class="button">预约</div></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="screen">
+          <div class="eyebrow">咨询师详情</div>
+          <div class="profile">
+            <div class="big-avatar">林</div>
+            <div><div class="title" style="margin:0">林静</div><div class="meta">在线 · 评分 4.9 · 已帮助1286人</div></div>
+          </div>
+          <div class="chips"><span class="chip">倾听耐心</span><span class="chip">沟通矛盾</span><span class="chip">温和专业</span></div>
+          <div class="card">
+            <div class="name">服务说明</div>
+            <div class="service-row"><span>一对一文字问答</span><b>60分钟</b></div>
+            <div class="service-row"><span>服务价格</span><b class="price">¥200/小时</b></div>
+          </div>
+          <div class="flow">
+            <div class="step"><div class="num">1</div>提交问题</div>
+            <div class="step"><div class="num">2</div>经理确认</div>
+            <div class="step"><div class="num">3</div>开始问答</div>
+            <div class="step"><div class="num">4</div>服务结束</div>
+          </div>
+          <div class="button" style="height:44px;margin-top:28px">立即预约 ¥200/小时</div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="screen">
+          <div class="eyebrow">服务中聊天</div>
+          <div class="bar"><span class="status">服务中</span><b>剩余 42:18</b><span class="price">¥200/小时</span></div>
+          <div class="message left">你好，很高兴在这里见到你。有什么想和我聊聊的吗？</div>
+          <div class="message right">最近我们总因为小事争吵，我有点累了。</div>
+          <div class="message left">能理解你的感受。我们可以一起看看这些冲突背后的原因，以及你们沟通的模式。</div>
+          <div class="inputbar"><div class="input">输入消息...</div><div class="button" style="margin:0">发送</div></div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="screen">
+          <div class="eyebrow">个人中心</div>
+          <div class="profile card">
+            <div class="avatar">客</div>
+            <div><div class="name">客户小安</div><div class="chip" style="display:inline-block;margin-top:8px">VIP会员</div></div>
+          </div>
+          <div class="card income">
+            <div class="meta">账户余额</div>
+            <div class="price" style="font-size:34px;margin-top:8px">¥1,280.00</div>
+            <div class="meta">余额可用于预约咨询服务</div>
+          </div>
+          <div class="card stat-grid">
+            <div class="stat"><b>0</b><span>待支付</span></div>
+            <div class="stat"><b>1</b><span>服务中</span></div>
+            <div class="stat"><b>3</b><span>已完成</span></div>
+          </div>
+          <div class="card"><div class="name">当前咨询</div><div class="meta">服务中 · 剩余42分钟</div><div class="button">进入咨询</div></div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="screen">
+          <div class="eyebrow">经理工作台</div>
+          <div class="card income">
+            <div class="meta">今日收入</div>
+            <div class="price" style="font-size:34px;margin-top:8px">¥800</div>
+          </div>
+          <div class="card stat-grid">
+            <div class="stat"><b>6</b><span>待接单</span></div>
+            <div class="stat"><b>2</b><span>服务中</span></div>
+            <div class="stat"><b>18</b><span>已完成</span></div>
+          </div>
+          <div class="card">
+            <div class="advisor" style="grid-template-columns:52px 1fr auto">
+              <div class="avatar">客</div>
+              <div><div class="name">匿名用户</div><div class="meta">恋爱情感 · 10分钟前</div></div>
+              <span class="chip">待接单</span>
+            </div>
+            <p class="meta">和男朋友吵架了，不知道该怎么办，想找人聊聊...</p>
+            <div class="button">接受对接</div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

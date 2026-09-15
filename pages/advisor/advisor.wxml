@@ -1,0 +1,98 @@
+<view wx:if="{{loading || error || !advisor}}" class="advisor-state"><text>{{loading ? '正在加载专家介绍…' : error || '该专家介绍不存在。'}}</text><button wx:if="{{!loading}}" class="retry-button" bindtap="refresh">重新加载</button><button class="retry-button" bindtap="goBack">返回</button></view>
+<view class="advisor-page safe-bottom" wx:if="{{advisor && !loading && !error}}">
+  <view class="advisor-hero">
+    <view class="hero-avatar">
+      <image wx:if="{{advisor.imageUrl}}" src="{{advisor.imageUrl}}" mode="aspectFill"></image>
+      <text wx:else>{{advisor.avatarText}}</text>
+    </view>
+    <view class="hero-copy">
+      <text class="advisor-name">{{advisor.name}}</text>
+      <text class="advisor-title">{{advisor.title}}</text>
+      <view class="score-line">
+        <text>★ {{advisor.rating}}</text>
+        <text>·</text>
+        <text>已帮助 {{advisor.helped}} 人</text>
+      </view>
+    </view>
+  </view>
+
+  <text class="advisor-quote">“{{advisor.bio}}”</text>
+
+  <scroll-view class="tag-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+    <view class="tag-row">
+      <text wx:for="{{advisor.tags}}" wx:key="*this" class="tag">{{item}}</text>
+    </view>
+  </scroll-view>
+
+  <view class="service-card">
+    <view class="service-head">
+      <text class="service-title">服务说明</text>
+      <text class="service-price">到课后可申请</text>
+    </view>
+    <view class="service-grid">
+      <view>
+        <text class="service-label">咨询形式</text>
+        <text class="service-value">线下沟通</text>
+      </view>
+      <view>
+        <text class="service-label">预约方式</text>
+        <text class="service-value">老师确认安排</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="flow-card">
+    <text class="section-title">服务流程</text>
+    <view class="flow-list">
+      <view class="flow-item">
+        <text class="flow-num">01</text>
+        <view>
+          <text class="flow-title">参加免费公开课</text>
+          <text class="flow-desc">报名留下姓名和手机号，参加课程后由工作人员核实。</text>
+        </view>
+      </view>
+      <view class="flow-item">
+        <text class="flow-num">02</text>
+        <view>
+          <text class="flow-title">申请与确认预约</text>
+          <text class="flow-desc">提交申请后，工作人员确认具体咨询时间。</text>
+        </view>
+      </view>
+      <view class="flow-item">
+        <text class="flow-num">03</text>
+        <view>
+          <text class="flow-title">到店沟通与跟进</text>
+          <text class="flow-desc">预约确认后填写孩子基础信息；沟通后查看建议、反馈执行情况。</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="notice-card">
+    <view class="notice-row">
+      <text class="notice-icon">隐</text>
+      <view>
+        <text class="notice-title">隐私保护</text>
+        <text class="notice-desc">咨询内容会被严格保护，请避免提交敏感身份信息。</text>
+      </view>
+    </view>
+    <view class="notice-row">
+      <text class="notice-icon">界</text>
+      <view>
+        <text class="notice-title">服务边界</text>
+        <text class="notice-desc">本服务为情感问答，不包含医疗诊断。</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="sticky-pay">
+    <view>
+      <text class="pay-label">线下咨询</text>
+      <view>
+        <text class="pay-price">参加公开课后申请</text>
+        <text class="pay-unit"></text>
+      </view>
+    </view>
+    <button class="pay-button" bindtap="confirmAndPay" disabled="{{paying || bookingBlocked}}">{{bookingButtonText}}</button>
+  </view>
+</view>
