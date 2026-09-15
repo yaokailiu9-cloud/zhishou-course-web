@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "start": "node index.js",
+    "start:h5": "node index.js",
     "wechat-login": "node server/wechat-login/index.js",
     "check:h5": "node --test scripts/tests/h5-web.test.js",
     "test": "node --test scripts/tests/*.test.js",
     "check:wechat": "python3 scripts/compile_miniapp.py"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "devDependencies": {
     "jsqr": "1.4.0"

@@ -3,6 +3,20 @@ const assert = require('node:assert/strict');
 
 process.env.SESSION_SECRET = 'test-secret-that-is-long-enough-for-h5-session';
 const {sign, verify, decodeRef, refToken, safeReturn, friendly} = require('../../server/h5');
+const {createServer, staticFile} = require('../../index');
+
+function request(server, pathname) {
+  return new Promise((resolve, reject) => {
+    const address = server.address();
+    const req = require('node:http').request({host:'127.0.0.1',port:address.port,path:pathname}, res => {
+      const chunks=[];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks).toString('utf8')}));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
 
 test('签名会话可验证且篡改后失效',()=>{
   const token=sign({account:{id:'12'},jwt:'token',exp:Math.floor(Date.now()/1000)+30});
@@ -37,4 +51,18 @@ test('H5 页面不含小程序协议、咨询师或人物图片入口',async()=>
   assert.match(html,/我推荐的学员/);
   assert.doesNotMatch(html,/咨询师|心理专家|open-type=|wx\./);
   assert.doesNotMatch(html,/<img[^>]+(?:专家|老师|人物)/);
+});
+
+test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
+  const server=createServer();
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const health=await request(server,'/healthz');
+  assert.equal(health.status,200);
+  assert.deepEqual(JSON.parse(health.body),{ok:true,service:'zhishou-course-web'});
+  const page=await request(server,'/web/');
+  assert.equal(page.status,200);
+  assert.match(page.headers['content-type'],/text\/html/);
+  assert.match(page.body,/二阶 · 线上共修/);
+  assert.equal(staticFile('/web/%2e%2e/package.json'),null);
 });
