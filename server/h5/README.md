@@ -2,6 +2,16 @@
 
 网页入口是 `/web/`，课程与报名继续调用 Zion 主动作流。微信内点击登录后，服务端使用公众号网页授权取得微信身份，再创建或恢复对应的 Zion 账号。
 
+## Zeabur 部署
+
+Zeabur 使用仓库根目录部署时，选择 Node.js 服务并设置：
+
+- Start Command：`npm start`
+- Health Check Path：`/healthz`
+- 网页入口：`/web/`
+
+根目录 `index.js` 会同时提供网页静态资源、`/api/h5`、`/api/wechat-oauth-callback` 和健康检查。不要使用 Zeabur 默认的 `node /src/index.js`，该路径不在本项目中。
+
 部署环境必须配置：
 
 - `WECHAT_OA_APP_ID`：已认证公众号的 AppID。
