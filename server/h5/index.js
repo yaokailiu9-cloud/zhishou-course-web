@@ -45,7 +45,9 @@ function parseCookies(req) {
 }
 
 function readSession(req) {
-  const session = verify(parseCookies(req)[SESSION_COOKIE]);
+  const token = parseCookies(req)[SESSION_COOKIE];
+  if (!token) return null;
+  const session = verify(token);
   return session && session.jwt && session.account ? session : null;
 }
 
@@ -111,7 +113,11 @@ async function invoke(jwt, operation, payload = {}) {
   if (typeof output === "string") output = JSON.parse(output);
   let result = output && (output.result || output);
   if (typeof result === "string") result = JSON.parse(result);
-  if (!result || result.ok !== true) throw new Error("COURSE:课程服务暂不可用");
+  if (!result || result.ok !== true) {
+    const message = output && (output.message || output.errorMessage || output.error && output.error.message)
+      || result && (result.message || result.errorMessage || result.error && result.error.message);
+    throw new Error(`COURSE:${message || "课程服务暂不可用"}`);
+  }
   return result.data;
 }
 
@@ -170,19 +176,30 @@ async function body(req) {
 function friendly(error) {
   const message = String(error && error.message || "");
   if (message.startsWith("CONFIG:")) return "网页微信登录尚未完成公众号参数配置";
-  if (/微信|课程|报名|推荐|手机号|姓名|登录|截止|名额|取消/.test(message)) {
+  if (/微信|课程|报名|推荐|手机号|姓名|登录|截止|名额|取消|工作人员|权限|发布|名单/.test(message)) {
     return message.replace(/^(?:AUTH|COURSE|INPUT|ZION):/, "").replace(/^(?:org\.graalvm\.polyglot\.)?PolyglotException:\s*Error:\s*/, "").split("\n")[0].slice(0, 120);
   }
   return "服务暂时不可用，请稍后重试";
 }
 
+async function managerBootstrap(session) {
+  if (!session) return {canManage:false, managerClasses:[]};
+  try {
+    const data = await invoke(session.jwt, "STAFF_CLASSES", {});
+    return {canManage:true, managerClasses:data.classes || []};
+  } catch (_) {
+    return {canManage:false, managerClasses:[]};
+  }
+}
+
 async function bootstrap(req) {
   const session = readSession(req);
-  const [courseData, enrollments, referralStatus, referrals] = await Promise.all([
+  const [courseData, enrollments, referralStatus, referrals, manager] = await Promise.all([
     invoke(session && session.jwt, "LIST_CLASSES", {}),
     session ? invoke(session.jwt, "MY_ENROLLMENTS", {}) : Promise.resolve({items:[]}),
     session ? invoke(session.jwt, "MY_REFERRAL_STATUS", {}) : Promise.resolve({binding:null}),
-    session ? invoke(session.jwt, "MY_REFERRALS", {}) : Promise.resolve({items:[]})
+    session ? invoke(session.jwt, "MY_REFERRALS", {}) : Promise.resolve({items:[]}),
+    managerBootstrap(session)
   ]);
   return {
     loggedIn:!!session,
@@ -191,7 +208,9 @@ async function bootstrap(req) {
     enrollments:enrollments.items || [],
     referralBinding:referralStatus.binding || null,
     referrals:referrals.items || [],
-    referralToken:session ? refToken(session.account.id) : ""
+    referralToken:session ? refToken(session.account.id) : "",
+    canManage:manager.canManage,
+    managerClasses:manager.managerClasses
   };
 }
 
@@ -213,11 +232,19 @@ async function handleApi(req, res) {
     if (action === "course") return json(res, 200, {ok:true, data:await invoke(readSession(req)?.jwt, "GET_CLASS", {classId:url.searchParams.get("id")})});
     const session = readSession(req);
     if (!session) return json(res, 401, {ok:false, message:"请先微信登录"});
+    if (action === "staff" && req.method === "GET") return json(res, 200, {ok:true, data:await invoke(session.jwt, "STAFF_CLASSES", {})});
+    if (action === "roster" && req.method === "GET") return json(res, 200, {ok:true, data:await invoke(session.jwt, "COURSE_ROSTER", {classId:url.searchParams.get("classId")})});
     if (req.method !== "POST" && action !== "referrals") return json(res, 405, {ok:false, message:"请求方式无效"});
     if (action === "referrals") return json(res, 200, {ok:true, data:await invoke(session.jwt, "MY_REFERRALS", {})});
     const input = await body(req);
     if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone})});
     if (action === "cancel") return json(res, 200, {ok:true, data:await invoke(session.jwt, "CANCEL_ENROLLMENT", {enrollmentId:input.enrollmentId})});
+    if (action === "saveClass") return json(res, 200, {ok:true, data:await invoke(session.jwt, "SAVE_CLASS", {
+      status:"PUBLISHED", title:input.title, description:input.description, city:input.city,
+      capacity:input.capacity, groupGuide:input.groupGuide, notice:input.notice,
+      startsAt:input.startsAt, registrationClosesAt:input.registrationClosesAt || null,
+      checkinClosesAt:input.checkinClosesAt || null
+    })});
     return json(res, 404, {ok:false, message:"接口不存在"});
   } catch (error) {
     return json(res, 500, {ok:false, message:friendly(error)});

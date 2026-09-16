@@ -71,6 +71,24 @@ test('免费公开课程支持直接报名，底部导航有可识别的当前�
   assert.match(css,/min-height:52px/);
 });
 
+test('课程管理只经后端工作人员操作并展示本人课程报名统计',async()=>{
+  const fs=require('node:fs/promises');
+  const root=require('node:path').join(__dirname,'../..');
+  const [html,js,server]=await Promise.all([
+    fs.readFile(require('node:path').join(root,'web/index.html'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/app.js'),'utf8'),
+    fs.readFile(require('node:path').join(root,'server/h5/index.js'),'utf8')
+  ]);
+  assert.match(html,/公开课程管理/);
+  assert.match(js,/查看报名名单/);
+  assert.match(js,/canManage:false/);
+  assert.match(js,/api\('roster'/);
+  assert.match(js,/api\('saveClass'/);
+  assert.match(server,/invoke\(session\.jwt, "STAFF_CLASSES"/);
+  assert.match(server,/invoke\(session\.jwt, "COURSE_ROSTER"/);
+  assert.match(server,/invoke\(session\.jwt, "SAVE_CLASS"/);
+});
+
 test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   const server=createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

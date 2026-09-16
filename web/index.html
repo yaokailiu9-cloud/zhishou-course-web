@@ -86,6 +86,13 @@
           <div id="bindingNote" class="binding-note" hidden></div>
           <div id="referralList" class="plain-list"><p class="empty">登录后可查看推荐记录。</p></div>
         </section>
+
+        <section class="section compact manager-section" id="managerSection" hidden>
+          <div class="section-head"><div><small>管理入口</small><h2>公开课程管理</h2></div><span class="manager-pill">已授权</span></div>
+          <p class="hint">发布免费公开课，并查看本人负责课程的报名人数与名单。</p>
+          <button class="primary-button manager-create" id="managerNewCourse" type="button">发布免费公开课</button>
+          <div id="managerCourseList" class="plain-list"></div>
+        </section>
       </section>
     </main>
 
@@ -124,6 +131,31 @@
       <p class="form-note" id="enrollNote">提交后可在“我的”查看报名状态和课程通知。</p>
       <button class="primary-button" type="submit">确认免费报名</button>
     </form>
+  </dialog>
+
+  <dialog id="managerCourseDialog" class="sheet compact-sheet">
+    <div class="sheet-handle"></div>
+    <button class="close" type="button" data-close aria-label="关闭">×</button>
+    <form id="managerCourseForm">
+      <p class="eyebrow dark">公开课程管理</p>
+      <h2>发布免费公开课</h2>
+      <label>课程名称<input name="title" maxlength="120" required placeholder="例如：读懂孩子的情绪"></label>
+      <label>课程介绍<textarea name="description" maxlength="4000" placeholder="适合谁参加，本次会学习什么"></textarea></label>
+      <label>开课城市<input name="city" maxlength="60" placeholder="例如：深圳"></label>
+      <label>开课时间<input name="startsAt" type="datetime-local" required></label>
+      <label>报名截止（选填）<input name="registrationClosesAt" type="datetime-local"></label>
+      <label>名额上限<input name="capacity" type="number" min="0" max="10000" value="100" required><small>填写 0 表示不限名额。</small></label>
+      <label>进群指引<textarea name="groupGuide" maxlength="2000" required placeholder="请说明如何联系工作人员、如何受邀进群"></textarea></label>
+      <label>参课须知<textarea name="notice" maxlength="2000" placeholder="如签到要求、携带物品等"></textarea></label>
+      <p class="form-note">发布后会立即显示在免费公开课卡组中，家长可直接报名。</p>
+      <button class="primary-button" type="submit">发布课程</button>
+    </form>
+  </dialog>
+
+  <dialog id="rosterDialog" class="sheet compact-sheet">
+    <div class="sheet-handle"></div>
+    <button class="close" type="button" data-close aria-label="关闭">×</button>
+    <div id="rosterContent"></div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
