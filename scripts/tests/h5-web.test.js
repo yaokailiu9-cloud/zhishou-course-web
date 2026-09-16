@@ -53,6 +53,23 @@ test('H5 页面不含小程序协议、咨询师或人物图片入口',async()=>
   assert.doesNotMatch(html,/<img[^>]+(?:专家|老师|人物)/);
 });
 
+test('公开课程展示报名费，底部导航有可识别的当前状态',async()=>{
+  const fs=require('node:fs/promises');
+  const root=require('node:path').join(__dirname,'../..');
+  const [html,js,css]=await Promise.all([
+    fs.readFile(require('node:path').join(root,'web/index.html'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/app.js'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/app.css'),'utf8')
+  ]);
+  assert.match(html,/公开课程报名费为 ¥100\/人/);
+  assert.match(html,/aria-current="page"/);
+  assert.match(html,/class="nav-icon"/);
+  assert.match(js,/const PUBLIC_COURSE_FEE=100/);
+  assert.match(js,/公开课程报名费 ¥\$\{PUBLIC_COURSE_FEE\}\/人/);
+  assert.match(css,/safe-area-inset-bottom/);
+  assert.match(css,/min-height:52px/);
+});
+
 test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   const server=createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

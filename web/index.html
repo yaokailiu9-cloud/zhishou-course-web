@@ -49,7 +49,7 @@
       </section>
 
       <section class="view" id="coursesView" data-view="courses">
-        <div class="page-title"><p class="eyebrow dark">知守 · 共修课堂</p><h1>课程</h1><p>汇集线上共修与家庭教育课程。</p></div>
+        <div class="page-title"><p class="eyebrow dark">知守 · 共修课堂</p><h1>课程</h1><p>汇集线上共修与家庭教育课程；公开课程报名费为 ¥100/人。</p></div>
         <label class="search"><span>⌕</span><input id="courseSearch" type="search" placeholder="搜索课程名称或主题" autocomplete="off"></label>
         <div class="course-list" id="courseList" aria-live="polite"></div>
       </section>
@@ -77,9 +77,18 @@
     </main>
 
     <nav class="bottom-nav" aria-label="主导航">
-      <button class="active" type="button" data-nav="home"><span>⌂</span>首页</button>
-      <button type="button" data-nav="courses"><span>▤</span>课程</button>
-      <button type="button" data-nav="mine"><span>○</span>我的</button>
+      <button class="active" type="button" data-nav="home" aria-current="page">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7v9.2a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M9.2 21v-6.4h5.6V21"/></svg>
+        <span class="nav-label">首页</span>
+      </button>
+      <button type="button" data-nav="courses" aria-current="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M7.5 8h9M7.5 12h9M7.5 16h6"/></svg>
+        <span class="nav-label">课程</span>
+      </button>
+      <button type="button" data-nav="mine" aria-current="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.8 20c.8-4 3.2-6 7.2-6s6.4 2 7.2 6"/></svg>
+        <span class="nav-label">我的</span>
+      </button>
     </nav>
   </div>
 
@@ -98,8 +107,9 @@
       <input type="hidden" name="classId">
       <label>家长姓名<input name="name" maxlength="60" required placeholder="请输入真实姓名"></label>
       <label>联系电话<input name="phone" inputmode="numeric" maxlength="11" required placeholder="请输入11位手机号"></label>
-      <p class="form-note">提交后可在“我的”查看报名状态和课程通知。</p>
-      <button class="primary-button" type="submit">确认报名</button>
+      <p class="form-fee" id="enrollFee" hidden>公开课程报名费：¥100/人</p>
+      <p class="form-note" id="enrollNote">提交后可在“我的”查看报名状态和课程通知。</p>
+      <button class="primary-button" type="submit">提交报名信息</button>
     </form>
   </dialog>
 
