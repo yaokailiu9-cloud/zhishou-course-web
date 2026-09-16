@@ -12,9 +12,17 @@ html{font-size:14px}
 .bottom-nav .nav-icon{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
 .bottom-nav .nav-label{font-size:11px;letter-spacing:.02em}
 .course-price{color:#a66e08!important;font-weight:700}
+.section-intro{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.6}
+.free-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:5px 10px;background:#eaf2f0;color:var(--ink);font-size:12px;font-weight:700}
+.public-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px;padding:0;list-style:none}.public-steps li{min-width:0;padding:10px 8px;border-top:2px solid #d9c69a}.public-steps b,.public-steps strong,.public-steps span{display:block}.public-steps b{color:#9c824b;font-size:12px;letter-spacing:.08em}.public-steps strong{margin:5px 0 3px;font-size:13px}.public-steps span{color:var(--muted);font-size:11px;line-height:1.4}
+.public-course-grid{display:grid;gap:10px}.public-course-card{width:100%;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;text-align:left;color:var(--ink);box-shadow:0 8px 18px rgba(7,63,59,.05)}.public-course-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#8b7444;font-size:12px}.public-course-card-copy h3{margin:12px 0 5px;font-family:STSong,"Songti SC",serif;font-size:20px;font-weight:500;line-height:1.35}.public-course-card-copy p{margin:3px 0;color:var(--muted);font-size:12px;line-height:1.5}.public-course-card-copy .course-price{color:#277168!important}.public-empty{margin:0;padding:14px 10px;border:1px dashed #cddbd7;border-radius:12px;background:#f7fbfa;color:#52706b}
+.all-courses-action{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:42px;margin-top:8px;padding:7px 2px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font-weight:700;text-align:left}.all-courses-action span{font-size:18px;color:#9c824b}
+.advanced-course-section{padding:8px 18px 26px;border-top:1px solid var(--line)}.advanced-course-section .section-head{margin:20px 0 12px}.advanced-row{width:100%}.free-thumb{background:linear-gradient(145deg,#e8eee8,#75a39b)!important}
 .fee-card{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:15px 0 2px;padding:13px 14px;border:1px solid #eadfc8;border-radius:12px;background:#fffaf0;color:#6f5730;font-size:13px}
 .fee-card strong{color:#9e6808;font-size:22px;line-height:1}.fee-card strong small{font-size:12px;font-weight:600}
+.free-fee-card{border-color:#cce1dc;background:#f0f8f6;color:#25655f}.free-fee-card strong{color:#197167;font-size:19px}
 .form-fee{margin:14px 0 8px;padding:10px 12px;border-radius:10px;background:#fff5d9;color:#865905;font-size:13px;font-weight:700}
+.free-form-note{background:#eef7f5;color:#22665e}
 .toast{bottom:calc(var(--nav-height) + var(--nav-safe) + 14px)}
 @media(min-width:721px){body{padding:24px 0}.shell{min-height:calc(100dvh - 48px);border-radius:24px;overflow:hidden}.bottom-nav{bottom:24px;border-radius:0 0 24px 24px}.sheet{left:50%;transform:translateX(-50%);border-radius:24px;margin:auto;max-height:84vh}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}

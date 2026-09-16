@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#073f3b">
   <meta name="description" content="知守家庭教育线上共修课程与报名">
   <title>知守 · 共修课程</title>
-  <link rel="stylesheet" href="/web/app.css">
+  <link rel="stylesheet" href="/web/app.css?v=20260916-free-public-course">
 </head>
 <body>
   <div class="shell">
@@ -26,6 +26,18 @@
           <p>从一阶践行走向二阶精进，以同伴共学为根基、落地实操为核心，帮助家庭从根源看懂长期育儿卡点。</p>
           <button class="hero-action" type="button" data-nav="courses">查看二阶共修课程 <span>↗</span></button>
         </div>
+
+        <section class="section public-section">
+          <div class="section-head"><div><small>01 / 学习</small><h2>免费公开课</h2></div><span class="free-pill">免费</span></div>
+          <p class="section-intro">从一堂课开始，走进课堂，一起练习倾听与沟通。</p>
+          <ol class="public-steps" aria-label="公开课参与步骤">
+            <li><b>01</b><strong>免费报名</strong><span>填写姓名与手机号</span></li>
+            <li><b>02</b><strong>联系进群</strong><span>群内查看开课地址</span></li>
+            <li><b>03</b><strong>到场学习</strong><span>入场信息及时通知</span></li>
+          </ol>
+          <div class="public-course-grid" id="freeCourseGrid" aria-live="polite"></div>
+          <button class="all-courses-action" type="button" data-nav="courses">查看全部公开课程 <span>→</span></button>
+        </section>
 
         <section class="section featured-section">
           <div class="section-head"><div><small>精选推荐</small><h2>二阶 · 线上共修</h2></div><span class="paid-pill">付费</span></div>
@@ -49,9 +61,10 @@
       </section>
 
       <section class="view" id="coursesView" data-view="courses">
-        <div class="page-title"><p class="eyebrow dark">知守 · 共修课堂</p><h1>课程</h1><p>汇集线上共修与家庭教育课程；公开课程报名费为 ¥100/人。</p></div>
+        <div class="page-title"><p class="eyebrow dark">知守 · 共修课堂</p><h1>免费公开课</h1><p>走进课堂，一起练习倾听与沟通；报名不收取费用。</p></div>
         <label class="search"><span>⌕</span><input id="courseSearch" type="search" placeholder="搜索课程名称或主题" autocomplete="off"></label>
         <div class="course-list" id="courseList" aria-live="polite"></div>
+        <section class="advanced-course-section"><div class="section-head"><div><small>进阶学习</small><h2>二阶 · 线上共修</h2></div><span class="paid-pill">付费</span></div><div id="advancedCourseList"></div></section>
       </section>
 
       <section class="view" id="mineView" data-view="mine">
@@ -107,13 +120,13 @@
       <input type="hidden" name="classId">
       <label>家长姓名<input name="name" maxlength="60" required placeholder="请输入真实姓名"></label>
       <label>联系电话<input name="phone" inputmode="numeric" maxlength="11" required placeholder="请输入11位手机号"></label>
-      <p class="form-fee" id="enrollFee" hidden>公开课程报名费：¥100/人</p>
+      <p class="form-fee free-form-note" id="enrollFee" hidden>本场为免费公开课，报名不收取费用。</p>
       <p class="form-note" id="enrollNote">提交后可在“我的”查看报名状态和课程通知。</p>
-      <button class="primary-button" type="submit">提交报名信息</button>
+      <button class="primary-button" type="submit">确认免费报名</button>
     </form>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/web/app.js" defer></script>
+  <script src="/web/app.js?v=20260916-free-public-course" defer></script>
 </body>
 </html>
