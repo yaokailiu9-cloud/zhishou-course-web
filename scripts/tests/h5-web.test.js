@@ -67,6 +67,9 @@ test('免费公开课程支持直接报名，底部导航有可识别的当前�
   assert.match(html,/class="nav-icon"/);
   assert.match(js,/微信登录并免费报名/);
   assert.match(js,/免费报名已提交/);
+  assert.match(js,/function coverUrl/);
+  assert.match(js,/course-poster/);
+  assert.match(css,/aspect-ratio:698\/370/);
   assert.match(css,/safe-area-inset-bottom/);
   assert.match(css,/min-height:52px/);
 });
