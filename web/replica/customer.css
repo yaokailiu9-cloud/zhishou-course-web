@@ -1,0 +1,51 @@
+/* Shared native service surfaces, aligned with the original jade/ivory identity. */
+.service-page { padding:calc(32 * var(--rpx)) calc(32 * var(--rpx)) calc(calc(64 * var(--rpx)) + env(safe-area-inset-bottom)); background:#fbf9f8; min-height:100vh; box-sizing:border-box; color:#002727; font-family:var(--em-font-family); }
+.service-hero { padding:calc(22 * var(--rpx)) 0 calc(32 * var(--rpx)); border-bottom:calc(1 * var(--rpx)) solid #e3dfd7; margin-bottom:calc(28 * var(--rpx)); }
+.eyebrow { display:block; color:#82704b; font-size:calc(21 * var(--rpx)); letter-spacing:calc(3 * var(--rpx)); margin-bottom:calc(20 * var(--rpx)); }
+.page-title { display:block; font-family:var(--em-font-serif); font-size:calc(48 * var(--rpx)); font-weight:600; line-height:1.4; margin-bottom:calc(18 * var(--rpx)); word-break:break-word; }
+.section-title { display:block; font-family:var(--em-font-serif); font-size:calc(34 * var(--rpx)); font-weight:600; margin:calc(40 * var(--rpx)) 0 calc(24 * var(--rpx)); line-height:1.4; }
+.card { padding:calc(32 * var(--rpx)); background:#fff; border:calc(1 * var(--rpx)) solid #e8e3df; border-radius:calc(20 * var(--rpx)); margin:calc(24 * var(--rpx)) 0; }
+.card .section-title { margin-top:0; }
+.row { display:flex; justify-content:space-between; gap:calc(16 * var(--rpx)); align-items:center; }
+.card-title { font-weight:600; font-size:calc(31 * var(--rpx)); flex:1; min-width:0; word-break:break-word; line-height:1.55; }
+.row > .section-title { flex:1; min-width:0; }
+.service-page .row > button { flex:0 0 auto; width:auto; padding:calc(16 * var(--rpx)) calc(20 * var(--rpx)); }
+.muted { display:block; color:#717878; font-size:calc(25 * var(--rpx)); line-height:1.8; margin:calc(12 * var(--rpx)) 0; }
+.body { display:block; font-size:calc(28 * var(--rpx)); line-height:1.9; margin:calc(20 * var(--rpx)) 0; white-space:pre-wrap; word-break:break-word; }
+.pill { display:inline-flex; min-height:calc(40 * var(--rpx)); align-items:center; color:#735c27; background:#f4eedf; border-radius:calc(6 * var(--rpx)); padding:calc(6 * var(--rpx)) calc(12 * var(--rpx)); font-size:calc(21 * var(--rpx)); font-weight:500; white-space:nowrap; }
+.service-page button { display:flex; align-items:center; justify-content:center; width:100%; min-height:calc(88 * var(--rpx)); padding:calc(20 * var(--rpx)) calc(24 * var(--rpx)); margin:calc(16 * var(--rpx)) 0; font-size:calc(27 * var(--rpx)); font-weight:500; border-radius:calc(12 * var(--rpx)); line-height:1.5; }
+button::after { border:0; }
+.primary { background:#002f30; color:#fff; }
+.primary[disabled] { background:#b9c3bf; color:#fff; }
+.secondary { color:#143f3c; background:#f1f1ec; border:calc(1 * var(--rpx)) solid #dcded6; }
+.text-button { color:#496760; background:transparent; }
+.entry-grid { display:flex; gap:calc(16 * var(--rpx)); }
+.entry-grid button { flex:1 1 0; width:0; min-width:0; padding:calc(18 * var(--rpx)) calc(12 * var(--rpx)); }
+.notice { padding:calc(24 * var(--rpx)) calc(26 * var(--rpx)); background:#f3eee3; color:#6c6048; font-size:calc(25 * var(--rpx)); line-height:1.85; border-radius:calc(8 * var(--rpx)); border-left:calc(3 * var(--rpx)) solid #c4ad76; margin:calc(24 * var(--rpx)) 0; }
+.error { padding:calc(24 * var(--rpx)); background:#fff0ea; color:#8d4536; font-size:calc(26 * var(--rpx)); line-height:1.6; border-radius:calc(12 * var(--rpx)); margin:calc(20 * var(--rpx)) 0; word-break:break-word; }
+.error text { display:block; }
+.error button { width:auto; min-height:calc(64 * var(--rpx)); padding:calc(10 * var(--rpx)) calc(24 * var(--rpx)); background:transparent; color:inherit; border:calc(1 * var(--rpx)) solid currentColor; margin:calc(18 * var(--rpx)) 0 0; font-size:calc(24 * var(--rpx)); }
+.empty { color:#717878; font-size:calc(26 * var(--rpx)); line-height:1.85; padding:calc(36 * var(--rpx)) calc(24 * var(--rpx)); border-top:calc(1 * var(--rpx)) solid #e8e3df; margin:calc(20 * var(--rpx)) 0; }
+input, textarea, .picker-field { border:calc(1 * var(--rpx)) solid #deded7; background:#fcfbf8; border-radius:calc(10 * var(--rpx)); padding:calc(22 * var(--rpx)); margin:calc(20 * var(--rpx)) 0; font-size:calc(28 * var(--rpx)); box-sizing:border-box; width:100%; }
+input { height:calc(94 * var(--rpx)); padding:0 calc(22 * var(--rpx)); }
+textarea { min-height:calc(180 * var(--rpx)); height:calc(220 * var(--rpx)); line-height:1.75; }
+label { font-size:calc(26 * var(--rpx)); color:#48665a; }
+.link,.success { display:block; color:#285f51; font-size:calc(25 * var(--rpx)); margin-top:calc(18 * var(--rpx)); }
+.qr-image { display:block; width:calc(360 * var(--rpx)); height:calc(360 * var(--rpx)); margin:calc(24 * var(--rpx)) auto; }
+.reply { border-left:calc(3 * var(--rpx)) solid #b6a16c; padding:calc(12 * var(--rpx)) calc(24 * var(--rpx)); margin-top:calc(22 * var(--rpx)); background:#f7f5ef; }
+.task { padding:calc(20 * var(--rpx)) 0; border-bottom:calc(1 * var(--rpx)) solid #e8e3df; }
+.field-label { display:block; font-size:calc(26 * var(--rpx)); font-weight:500; margin-top:calc(28 * var(--rpx)); }
+.field-label + input, .field-label + textarea { margin-top:calc(14 * var(--rpx)); }
+.panel-caption { display:block; color:#8b7850; font-size:calc(20 * var(--rpx)); letter-spacing:calc(3 * var(--rpx)); margin-bottom:calc(12 * var(--rpx)); }
+.journey { display:flex; gap:calc(16 * var(--rpx)); padding:calc(26 * var(--rpx)) 0 0; }
+.journey-step { flex:1; min-width:0; border-top:calc(1 * var(--rpx)) solid #b7aa87; padding-top:calc(16 * var(--rpx)); }
+.journey-step text { display:block; font-size:calc(23 * var(--rpx)); line-height:1.65; }
+.journey-step .journey-number { color:#a7915c; font-family:Georgia,serif; font-size:calc(28 * var(--rpx)); margin-bottom:calc(10 * var(--rpx)); }
+.journey-step .journey-note { color:#717878; font-size:calc(20 * var(--rpx)); margin-top:calc(4 * var(--rpx)); }
+.member-hero { background:#002f30; border-radius:calc(24 * var(--rpx)); padding:calc(36 * var(--rpx)) calc(32 * var(--rpx)); border:0; color:#fff; }
+.member-hero .eyebrow { color:#ddc48d; }
+.member-hero .muted { color:#bfd0cb; }
+.member-hero .page-title { color:#fff; }
+.member-hero .journey-step { border-color:#41615b; }
+.member-hero .journey-note { color:#bfd0cb; }
+.record-section .section-title { padding-bottom:calc(18 * var(--rpx)); border-bottom:calc(1 * var(--rpx)) solid #e8e3df; }

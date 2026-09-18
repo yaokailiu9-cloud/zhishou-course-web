@@ -3,8 +3,8 @@
 .course-topline { display:flex; justify-content:space-between; align-items:center; gap:16rpx; margin-bottom:16rpx; }
 .course-topline .eyebrow { margin:0; }
 .course-topline button { width:auto; min-height:64rpx; padding:8rpx 12rpx; margin:0; font-size:24rpx; }
-.course-cover { width:100%; height:360rpx; display:block; border-radius:20rpx; background:#e5e9e3; }
-.course-cover-fallback { position:relative; overflow:hidden; box-sizing:border-box; min-height:320rpx; padding:40rpx 32rpx; border-radius:20rpx; background:#003436; color:#fff; display:flex; flex-direction:column; justify-content:space-between; }
+.course-cover { width:100%; height:310rpx; display:block; border-radius:20rpx; background:#e5e9e3; }
+.course-cover-fallback { position:relative; overflow:hidden; box-sizing:border-box; width:100%; height:310rpx; padding:40rpx 32rpx; border-radius:20rpx; background:#003436; color:#fff; display:flex; flex-direction:column; justify-content:space-between; }
 .course-cover-fallback::after { content:""; position:absolute; right:-52rpx; top:35rpx; width:210rpx; height:310rpx; border:1rpx solid #6a7968; border-radius:140rpx 140rpx 0 0; transform:rotate(15deg); opacity:.55; }
 .course-cover-fallback text { display:block; position:relative; z-index:1; }
 .course-cover-fallback .eyebrow { color:#ddc48d; }
@@ -12,7 +12,7 @@
 .course-cover-fallback .muted { color:#c5d4d0; }
 .course-card { padding:0; overflow:hidden; }
 .course-card .course-cover { height:310rpx; border-radius:0; }
-.course-card .course-cover-fallback { min-height:200rpx; border-radius:0; }
+.course-card .course-cover-fallback { height:310rpx; border-radius:0; }
 .course-card .course-cover-fallback .cover-word { font-size:38rpx; }
 .course-card-content { padding:30rpx; }
 .course-card-content .row { align-items:flex-start; }

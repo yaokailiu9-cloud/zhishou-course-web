@@ -218,6 +218,30 @@ async function handleApi(req, res) {
   try {
     const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
     const action = url.searchParams.get("action") || "bootstrap";
+    // Browser replica uses the existing user session; never an administrator token.
+    if (action === "session") {
+      const session = readSession(req);
+      return json(res, 200, {ok:true, data:{loggedIn:!!session, user:session ? session.account : null}});
+    }
+    if (action === "graphql" || action === "logout") {
+      const origin = req.headers.origin;
+      const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
+      if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
+      if (!String(req.headers["content-type"] || "").startsWith("application/json") || (origin && origin !== new URL(expected).origin)) {
+        return json(res, 403, {ok:false,message:"请求来源无效"});
+      }
+    }
+    if (action === "graphql") {
+      const input = await body(req);
+      if (typeof input.query !== "string" || input.query.length > 60000 || !input.query.trim()) return json(res, 400, {errors:[{message:"请求格式无效"}]});
+      const session = readSession(req);
+      try {
+        const data = await zionGraphql(input.query, input.variables, input.anonymous ? null : session?.jwt);
+        return json(res, 200, {data});
+      } catch(error) {
+        return json(res, 200, {errors:[{message:friendly(error)}]});
+      }
+    }
     if (action === "login") {
       const state = sign({kind:"oauth", referrerId:decodeRef(url.searchParams.get("ref")), returnTo:safeReturn(url.searchParams.get("return")), exp:Math.floor(Date.now()/1000)+600});
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;

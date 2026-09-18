@@ -8,12 +8,14 @@
     "wechat-login": "node server/wechat-login/index.js",
     "check:h5": "node --test scripts/tests/h5-web.test.js",
     "test": "node --test scripts/tests/*.test.js",
-    "check:wechat": "python3 scripts/compile_miniapp.py"
+    "check:wechat": "python3 scripts/compile_miniapp.py",
+    "build:web": "python3 scripts/build-web-replica.py"
   },
   "engines": {
     "node": "20.x"
   },
   "devDependencies": {
-    "jsqr": "1.4.0"
+    "jsqr": "1.4.0",
+    "linkedom": "^0.18.13"
   }
 }

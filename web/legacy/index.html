@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#073f3b">
+  <meta name="description" content="知守家庭教育线上共修课程与报名">
+  <title>知守 · 共修课程</title>
+  <link rel="stylesheet" href="/web/legacy/app.css?v=20260918-answer-library">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="知守首页">
+        <span class="brand-mark">知</span>
+        <span><strong>知守</strong><small>父母学习 · 家庭成长</small></span>
+      </a>
+      <button class="user-chip" id="loginButton" type="button">微信登录</button>
+    </header>
+
+    <main>
+      <section class="view active" id="homeView" data-view="home">
+        <div class="hero">
+          <p class="eyebrow">天启无书 · 纠偏培优体系</p>
+          <h1>透过现象，直击本质，<br>让父母有道、孩子有路。</h1>
+          <p>从一阶践行走向二阶精进，以同伴共学为根基、落地实操为核心，帮助家庭从根源看懂长期育儿卡点。</p>
+          <button class="hero-action" type="button" data-nav="courses">查看《答案库》系列课程 <span>↗</span></button>
+        </div>
+
+        <section class="section public-section">
+          <div class="section-head"><div><small>01 / 学习</small><h2>免费公开课</h2></div><span class="free-pill">免费</span></div>
+          <p class="section-intro">从一堂课开始，走进课堂，一起练习倾听与沟通。</p>
+          <ol class="public-steps" aria-label="公开课参与步骤">
+            <li><b>01</b><strong>免费报名</strong><span>填写姓名与手机号</span></li>
+            <li><b>02</b><strong>联系进群</strong><span>群内查看开课地址</span></li>
+            <li><b>03</b><strong>到场学习</strong><span>入场信息及时通知</span></li>
+          </ol>
+          <div class="public-course-grid" id="freeCourseGrid" aria-live="polite"></div>
+          <button class="all-courses-action" type="button" data-nav="courses">查看全部公开课程 <span>→</span></button>
+        </section>
+
+        <section class="section featured-section">
+          <div class="section-head"><div><small>精选推荐</small><h2>《答案库》系列课程</h2></div><span class="paid-pill">付费</span></div>
+          <article class="featured-card" id="featuredCard">
+            <div class="course-art" aria-hidden="true"><span>03</span><small>线上共修营</small></div>
+            <div class="featured-copy">
+              <p class="kicker">知守 · 共修课堂</p>
+              <h3>《透过现象·直击本质》二阶线上共修营·03期</h3>
+              <p>跳出治标式处理，从根源破解长期难以改善的育儿卡点。</p>
+              <button class="text-action" type="button" data-preview-course>了解课程 <span>→</span></button>
+            </div>
+          </article>
+        </section>
+
+        <section class="section promise">
+          <p class="eyebrow dark">权益说明</p>
+          <h2>原有免费课程与家庭教育指导权益完整保留</h2>
+          <p>二阶共修营属于额外研发的增值付费进阶项目，仅面向完成一阶共修的学员自愿报名，不影响原有免费服务与后续帮扶。</p>
+        </section>
+      </section>
+
+      <section class="view" id="coursesView" data-view="courses">
+        <div class="page-title"><p class="eyebrow dark">知守 · 共修课堂</p><h1>免费公开课</h1><p>走进课堂，一起练习倾听与沟通；报名不收取费用。</p></div>
+        <label class="search"><span>⌕</span><input id="courseSearch" type="search" placeholder="搜索课程名称或主题" autocomplete="off"></label>
+        <div class="course-list" id="courseList" aria-live="polite"></div>
+        <section class="advanced-course-section"><div class="section-head"><div><small>进阶学习</small><h2>《答案库》系列课程</h2></div><span class="paid-pill">付费</span></div><div id="advancedCourseList"></div></section>
+      </section>
+
+      <section class="view" id="mineView" data-view="mine">
+        <div class="profile-panel" id="profilePanel">
+          <div class="avatar-placeholder" id="profileAvatar">知</div>
+          <div><strong id="profileName">微信登录后查看</strong><small>知守</small></div>
+          <button class="outline-button" id="profileLogin" type="button">微信登录</button>
+        </div>
+
+        <section class="section compact">
+          <div class="section-head"><div><small>报名记录</small><h2>我的课程</h2></div></div>
+          <div id="enrollmentList" class="plain-list"><p class="empty">登录后可查看报名与入场信息。</p></div>
+        </section>
+
+        <section class="section compact referral-section">
+          <div class="section-head"><div><small>课程推荐</small><h2>我推荐的学员</h2></div><span id="referralCount">0人</span></div>
+          <p class="hint">好友首次通过你的专属链接完成微信登录后，推荐关系会自动锁定。你可以查看直属推荐人的课程报名状态。</p>
+          <button class="primary-button" id="shareButton" type="button">生成并分享我的推荐链接</button>
+          <div id="bindingNote" class="binding-note" hidden></div>
+          <div id="referralList" class="plain-list"><p class="empty">登录后可查看推荐记录。</p></div>
+        </section>
+
+        <section class="section compact manager-section" id="managerSection" hidden>
+          <div class="section-head"><div><small>管理入口</small><h2>公开课程管理</h2></div><span class="manager-pill">已授权</span></div>
+          <p class="hint">发布免费公开课，并查看本人负责课程的报名人数与名单。</p>
+          <button class="primary-button manager-create" id="managerNewCourse" type="button">发布免费公开课</button>
+          <div id="managerCourseList" class="plain-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button class="active" type="button" data-nav="home" aria-current="page">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7v9.2a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M9.2 21v-6.4h5.6V21"/></svg>
+        <span class="nav-label">首页</span>
+      </button>
+      <button type="button" data-nav="courses" aria-current="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M7.5 8h9M7.5 12h9M7.5 16h6"/></svg>
+        <span class="nav-label">课程</span>
+      </button>
+      <button type="button" data-nav="mine" aria-current="false">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.8 20c.8-4 3.2-6 7.2-6s6.4 2 7.2 6"/></svg>
+        <span class="nav-label">我的</span>
+      </button>
+    </nav>
+  </div>
+
+  <dialog id="courseDialog" class="sheet">
+    <div class="sheet-handle"></div>
+    <button class="close" type="button" data-close aria-label="关闭">×</button>
+    <div id="courseDetail"></div>
+  </dialog>
+
+  <dialog id="enrollDialog" class="sheet compact-sheet">
+    <div class="sheet-handle"></div>
+    <button class="close" type="button" data-close aria-label="关闭">×</button>
+    <form id="enrollForm">
+      <p class="eyebrow dark">课程报名</p>
+      <h2>填写报名信息</h2>
+      <input type="hidden" name="classId">
+      <label>家长姓名<input name="name" maxlength="60" required placeholder="请输入真实姓名"></label>
+      <label>联系电话<input name="phone" inputmode="numeric" maxlength="11" required placeholder="请输入11位手机号"></label>
+      <p class="form-fee free-form-note" id="enrollFee" hidden>本场为免费公开课，报名不收取费用。</p>
+      <p class="form-note" id="enrollNote">提交后可在“我的”查看报名状态和课程通知。</p>
+      <button class="primary-button" type="submit">确认免费报名</button>
+    </form>
+  </dialog>
+
+  <dialog id="managerCourseDialog" class="sheet compact-sheet">
+    <div class="sheet-handle"></div>
+    <button class="close" type="button" data-close aria-label="关闭">×</button>
+    <form id="managerCourseForm">
+      <p class="eyebrow dark">公开课程管理</p>
+      <h2>发布免费公开课</h2>
+      <label>课程名称<input name="title" maxlength="120" required placeholder="例如：读懂孩子的情绪"></label>
+      <label>课程介绍<textarea name="description" maxlength="4000" placeholder="适合谁参加，本次会学习什么"></textarea></label>
+      <label>开课城市<input name="city" maxlength="60" placeholder="例如：深圳"></label>
+      <label>开课时间<input name="startsAt" type="datetime-local" required></label>
+      <label>报名截止（选填）<input name="registrationClosesAt" type="datetime-local"></label>
+      <label>名额上限<input name="capacity" type="number" min="0" max="10000" value="100" required><small>填写 0 表示不限名额。</small></label>
+      <label>进群指引<textarea name="groupGuide" maxlength="2000" required placeholder="请说明如何联系工作人员、如何受邀进群"></textarea></label>
+      <label>参课须知<textarea name="notice" maxlength="2000" placeholder="如签到要求、携带物品等"></textarea></label>
+      <p class="form-note">发布后会立即显示在免费公开课卡组中，家长可直接报名。</p>
+      <button class="primary-button" type="submit">发布课程</button>
+    </form>
+  </dialog>
+
+  <dialog id="rosterDialog" class="sheet compact-sheet">
+    <div class="sheet-handle"></div>
+    <button class="close" type="button" data-close aria-label="关闭">×</button>
+    <div id="rosterContent"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/web/legacy/app.js?v=20260918-answer-library" defer></script>
+</body>
+</html>

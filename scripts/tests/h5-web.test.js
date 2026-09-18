@@ -45,8 +45,13 @@ test('配置错误与课程业务错误可读，技术错误不泄露',()=>{
 
 test('H5 页面不含小程序协议、咨询师或人物图片入口',async()=>{
   const fs=require('node:fs/promises');
-  const html=await fs.readFile(require('node:path').join(__dirname,'../../web/index.html'),'utf8');
-  assert.match(html,/二阶 · 线上共修/);
+  const root=require('node:path').join(__dirname,'../..');
+  const [html,js]=await Promise.all([
+    fs.readFile(require('node:path').join(root,'web/legacy/index.html'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/legacy/app.js'),'utf8')
+  ]);
+  assert.match(html,/《答案库》系列课程/);
+  assert.doesNotMatch(html+js,/建档家长\s*[¥：:]?\s*(?:680|1680)|未建档家长|已建档家长/);
   assert.match(html,/微信登录/);
   assert.match(html,/我推荐的学员/);
   assert.doesNotMatch(html,/咨询师|心理专家|open-type=|wx\./);
@@ -57,9 +62,9 @@ test('免费公开课程支持直接报名，底部导航有可识别的当前�
   const fs=require('node:fs/promises');
   const root=require('node:path').join(__dirname,'../..');
   const [html,js,css]=await Promise.all([
-    fs.readFile(require('node:path').join(root,'web/index.html'),'utf8'),
-    fs.readFile(require('node:path').join(root,'web/app.js'),'utf8'),
-    fs.readFile(require('node:path').join(root,'web/app.css'),'utf8')
+    fs.readFile(require('node:path').join(root,'web/legacy/index.html'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/legacy/app.js'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/legacy/app.css'),'utf8')
   ]);
   assert.match(html,/免费公开课/);
   assert.match(html,/确认免费报名/);
@@ -78,8 +83,8 @@ test('课程管理只经后端工作人员操作并展示本人课程报名统�
   const fs=require('node:fs/promises');
   const root=require('node:path').join(__dirname,'../..');
   const [html,js,server]=await Promise.all([
-    fs.readFile(require('node:path').join(root,'web/index.html'),'utf8'),
-    fs.readFile(require('node:path').join(root,'web/app.js'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/legacy/index.html'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/legacy/app.js'),'utf8'),
     fs.readFile(require('node:path').join(root,'server/h5/index.js'),'utf8')
   ]);
   assert.match(html,/公开课程管理/);
@@ -102,6 +107,9 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   const page=await request(server,'/web/');
   assert.equal(page.status,200);
   assert.match(page.headers['content-type'],/text\/html/);
-  assert.match(page.body,/二阶 · 线上共修/);
+  assert.match(page.body,/《答案库》系列课程/);
+  const legacy=await request(server,'/web/legacy/');
+  assert.equal(legacy.status,200);
+  assert.match(legacy.body,/我推荐的学员/);
   assert.equal(staticFile('/web/%2e%2e/package.json'),null);
 });

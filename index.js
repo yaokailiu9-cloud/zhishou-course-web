@@ -10,7 +10,12 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml'
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif'
 };
 
 function send(res, status, body, headers = {}) {
@@ -25,7 +30,7 @@ function json(res, status, data) {
 function staticFile(pathname) {
   const requestPath = pathname === '/web' || pathname === '/web/'
     ? 'index.html'
-    : pathname.slice('/web/'.length);
+    : pathname.slice('/web/'.length) + (pathname.endsWith('/') ? 'index.html' : '');
   let decoded;
   try {
     decoded = decodeURIComponent(requestPath);
