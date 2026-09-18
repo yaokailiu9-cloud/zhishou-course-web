@@ -82,3 +82,23 @@ if(op==='SAVE_CHILD_FEEDBACK') {
   update('public_class_enrollment',and(eq('id',r.id),eq('feedback_revision',Number(r.feedback_revision||0)),eq('feedback_status',r.feedback_status,'text')),values);
   result(s,{intake:intakeView(intake(r.id,true))});
 }
+// Management may assign an unbound customer directly; existing ownership is immutable.
+if(op==='BIND_CUSTOMER') {
+  staff(s,'canAccept');var customerId=id(p.customerId),agent=activeReferrer(p.agentAccountId);
+  if(agent.service_kind!=='AGENT')fail('请选择管理人员已指定的代理');
+  if(String(customerId)===String(agent.account_id))fail('不能把代理自己绑定为客户');
+  var customer=gql('query CourseReferralAccount($where:account_bool_exp!){rows:account(where:$where,limit:1){id}}',{where:eq('id',customerId)}).rows[0];
+  if(!customer)fail('客户账号不存在，请先让客户登录');
+  if(list('service_provider',and(eq('account_id',customerId),eq('service_status','ACTIVE','text')),'id',1).length)fail('只能将客户账号绑定给代理');
+  var binding=list('course_referral',eq('referred_account_id',customerId),'id referrer_id referred_account_id locked_at source',1)[0];
+  if(binding&&String(binding.referrer_id)!==String(agent.account_id))fail('该客户已有推荐人，不能改绑');
+  if(!binding){
+    insert('course_referral',{referrer_id:agent.account_id,referred_account_id:customerId,source:'MANAGER_ASSIGNED',locked_at:new Date().toISOString()},'course_referral_referred_account_id_key');
+    binding=list('course_referral',eq('referred_account_id',customerId),'id referrer_id referred_account_id locked_at source',1)[0];
+    if(!binding||String(binding.referrer_id)!==String(agent.account_id))fail('客户归属已确定，请刷新查看');
+  }
+  result(s,{binding:binding});
+}
+if(op==='MANAGED_CUSTOMER_REFERRAL') {
+  staff(s,'canAccept');result(s,{binding:list('course_referral',eq('referred_account_id',id(p.customerId)),'id referrer_id referred_account_id locked_at source',1)[0]||null});
+}

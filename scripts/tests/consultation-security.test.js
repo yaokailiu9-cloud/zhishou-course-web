@@ -141,3 +141,9 @@ test('草稿不启动倒计时，确认完成才生成服务器3小时等待，�
  row=e.db.public_class_enrollment[0];row.feedback_confirmed_at=new Date(Date.now()-10800001).toISOString();row.feedback_available_at=new Date(Date.now()-1).toISOString();assert.equal(e.run(201,'GET_CHILD_INTAKE',{enrollmentId:21}).data.intake.feedback_content,'工作人员完成梳理');
 });
 test('代理身份即使错误携带工作人员能力也不能越权',()=>{const db=fixture();db.service_provider.push({id:3,account_id:203,service_kind:'AGENT',service_status:'ACTIVE',can_reply:true,can_accept_order:true});const e=engine(db);assert.equal(e.run(203,'FAMILY_OVERVIEW').data.role,'AGENT');assert.throws(()=>e.run(203,'SET_AGENT',{accountId:201,active:true}),/工作人员/);assert.throws(()=>e.run(203,'STAFF_CHILD_INTAKES'),/工作人员/);});
+test('仅管理人员可直接绑定未归属客户，同代理重复绑定幂等，已有归属不可改绑',()=>{
+ const e=engine(fixture());e.run(101,'SET_AGENT',{accountId:203,active:true});assert.throws(()=>e.run(201,'BIND_CUSTOMER',{customerId:202,agentAccountId:203}),/工作人员/);assert.throws(()=>e.run(203,'BIND_CUSTOMER',{customerId:202,agentAccountId:203}),/工作人员/);
+ const r=e.run(101,'BIND_CUSTOMER',{customerId:202,agentAccountId:203}).data.binding;assert.equal(r.source,'MANAGER_ASSIGNED');assert.equal(r.referrer_id,203);e.run(101,'BIND_CUSTOMER',{customerId:202,agentAccountId:203});assert.equal(e.db.course_referral.length,1);
+ e.run(101,'SET_AGENT',{accountId:201,active:true});assert.throws(()=>e.run(101,'BIND_CUSTOMER',{customerId:202,agentAccountId:201}),/不能改绑/);assert.throws(()=>e.run(101,'BIND_CUSTOMER',{customerId:203,agentAccountId:203}),/自己/);assert.throws(()=>e.run(101,'BIND_CUSTOMER',{customerId:102,agentAccountId:203}),/只能将客户/);
+ assert.equal(e.run(101,'MANAGED_CUSTOMER_REFERRAL',{customerId:202}).data.binding.referrer_id,203);assert.throws(()=>e.run(202,'MANAGED_CUSTOMER_REFERRAL',{customerId:202}),/工作人员/);
+});

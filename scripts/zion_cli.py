@@ -3,10 +3,9 @@
 import json, os, subprocess, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN = Path('/Users/nidie/.codex/plugins/cache/zion/zion-nocode/2.1.6')
+CLI_VERSION = '2.7.7'
 def run(*args):
-    env = dict(os.environ, PLUGIN_ROOT=str(PLUGIN))
-    p = subprocess.run([str(PLUGIN/'bin/zion-mcp'), *args], cwd=ROOT, env=env, text=True, capture_output=True, timeout=180)
+    p = subprocess.run(['npx', '-y', 'zion-mcp@'+CLI_VERSION, *args], cwd=ROOT, env=os.environ, text=True, capture_output=True, timeout=180)
     if p.returncode:
         raise RuntimeError(p.stderr or p.stdout)
     return json.loads(p.stdout)

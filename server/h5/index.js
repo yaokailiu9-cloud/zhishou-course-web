@@ -194,11 +194,12 @@ async function managerBootstrap(session) {
 
 async function bootstrap(req) {
   const session = readSession(req);
+  const family = session ? await invoke(session.jwt, "FAMILY_OVERVIEW", {}) : {canInvite:false, role:"GUEST"};
   const [courseData, enrollments, referralStatus, referrals, manager] = await Promise.all([
     invoke(session && session.jwt, "LIST_CLASSES", {}),
     session ? invoke(session.jwt, "MY_ENROLLMENTS", {}) : Promise.resolve({items:[]}),
     session ? invoke(session.jwt, "MY_REFERRAL_STATUS", {}) : Promise.resolve({binding:null}),
-    session ? invoke(session.jwt, "MY_REFERRALS", {}) : Promise.resolve({items:[]}),
+    session && family.canInvite ? invoke(session.jwt, "MY_REFERRALS", {}) : Promise.resolve({items:[]}),
     managerBootstrap(session)
   ]);
   return {
@@ -208,7 +209,9 @@ async function bootstrap(req) {
     enrollments:enrollments.items || [],
     referralBinding:referralStatus.binding || null,
     referrals:referrals.items || [],
-    referralToken:session ? refToken(session.account.id) : "",
+    referralToken:session && family.canInvite ? refToken(session.account.id) : "",
+    role:family.role,
+    canInvite:!!family.canInvite,
     canManage:manager.canManage,
     managerClasses:manager.managerClasses
   };
@@ -261,7 +264,7 @@ async function handleApi(req, res) {
     if (req.method !== "POST" && action !== "referrals") return json(res, 405, {ok:false, message:"请求方式无效"});
     if (action === "referrals") return json(res, 200, {ok:true, data:await invoke(session.jwt, "MY_REFERRALS", {})});
     const input = await body(req);
-    if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone})});
+    if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone,referrerId:decodeRef(input.ref) || session.referrerId || null})});
     if (action === "cancel") return json(res, 200, {ok:true, data:await invoke(session.jwt, "CANCEL_ENROLLMENT", {enrollmentId:input.enrollmentId})});
     if (action === "saveClass") return json(res, 200, {ok:true, data:await invoke(session.jwt, "SAVE_CLASS", {
       status:"PUBLISHED", title:input.title, description:input.description, city:input.city,
@@ -284,10 +287,9 @@ async function handleOauthCallback(req, res) {
     if (!code) throw new Error("AUTH:未获得微信授权");
     const profile = await exchangeWechatCode(code);
     const login = await authenticateWechatAccount(profile);
-    if (state.referrerId && String(state.referrerId) !== String(login.account.id)) {
-      await invoke(login.jwt, "LOCK_REFERRER", {referrerId:state.referrerId});
-    }
-    setSession(res, {jwt:login.jwt, account:login.account, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
+    // Keep the invitation through login; Zion binds ownership only after enrollment.
+    const referrerId = state.referrerId && String(state.referrerId) !== String(login.account.id) ? state.referrerId : null;
+    setSession(res, {jwt:login.jwt, account:login.account, referrerId, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
     return redirect(res, safeReturn(state.returnTo));
   } catch (error) {
     return redirect(res, `/web/?loginError=${encodeURIComponent(friendly(error))}`);
