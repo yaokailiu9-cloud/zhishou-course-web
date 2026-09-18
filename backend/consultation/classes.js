@@ -90,11 +90,14 @@ if(op==='ENROLL') {
   var existing=list('public_class_enrollment',key,ENROLL_FIELDS,1)[0];
   if(existing&&existing.status==='REGISTERED')result(s,{enrollment:existing});
   else {
+    var firstEnrollment=!list('public_class_enrollment',eq('customer_id',s.actor.accountId),'id',1).length;
+    var candidate=firstEnrollment&&p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?activeReferrer(p.referrerId):null;
     var view=classView(c,false);if(!view.canEnroll||!c.organizer_id)fail(view.closedReason||'本场尚未开放报名');
     var values={customer_id:s.actor.accountId,public_class_id:c.id,registrant_name:text(p.name,'姓名',60,true),phone:phone(p.phone),status:'REGISTERED',attendance_status:'PENDING',group_status:'PENDING',entry_code:entryCode(),canceled_at:null,verified_at:null,verified_by_id:null,checkin_method:null};
     lockClass(c,{reserved_count:Number(c.reserved_count||0)+1});
     if(existing)update('public_class_enrollment',and(eq('id',existing.id),eq('status','CANCELED','text')),values);
     else if(!insert('public_class_enrollment',values,'public_class_enrollment_customer_class_key'))fail('报名状态已变化，请刷新查看');
+    if(candidate)insert('course_referral',{referrer_id:candidate.account_id,referred_account_id:s.actor.accountId,locked_at:new Date().toISOString(),source:'FIRST_ENROLLMENT'},'course_referral_referred_account_id_key');
     result(s,{enrollment:list('public_class_enrollment',key,ENROLL_FIELDS,1)[0]});
   }
 }
@@ -107,24 +110,15 @@ if(op==='MY_ENROLLMENTS') {
 }
 if(op==='LOCK_REFERRER') {
   login(s);
-  var referrerId=id(p.referrerId);
-  if(String(referrerId)===String(s.actor.accountId))fail('不能把自己设为推荐人');
-  var existingReferral=list('course_referral',eq('referred_account_id',s.actor.accountId),'id created_at locked_at source referrer_id referred_account_id referrer { id username wechat_nickname wechat_avatar_url }',1)[0];
-  if(existingReferral)result(s,{binding:existingReferral,locked:false});
-  else {
-    var referrer=gql('query CourseReferralAccount($where:account_bool_exp!){rows:account(where:$where,limit:1){id username wechat_nickname wechat_avatar_url}}',{where:eq('id',referrerId)}).rows[0];
-    if(!referrer)fail('推荐链接已失效');
-    insert('course_referral',{referrer_id:referrerId,referred_account_id:s.actor.accountId,locked_at:new Date().toISOString(),source:'WECHAT_H5'},'course_referral_referred_account_id_key');
-    existingReferral=list('course_referral',eq('referred_account_id',s.actor.accountId),'id created_at locked_at source referrer_id referred_account_id referrer { id username wechat_nickname wechat_avatar_url }',1)[0];
-    result(s,{binding:existingReferral,locked:true});
-  }
+  // Legacy login calls must never establish a customer relationship.
+  result(s,{binding:list('course_referral',eq('referred_account_id',s.actor.accountId),'id referrer_id locked_at',1)[0]||null,locked:false});
 }
 if(op==='MY_REFERRAL_STATUS') {
   login(s);
   result(s,{binding:list('course_referral',eq('referred_account_id',s.actor.accountId),'id created_at locked_at source referrer_id referred_account_id referrer { id username wechat_nickname wechat_avatar_url }',1)[0]||null});
 }
 if(op==='MY_REFERRALS') {
-  login(s);
+  login(s);if(!s.actor.canInvite)fail('当前账号没有代理权限');
   var referralPage=paged('course_referral',eq('referrer_id',s.actor.accountId),'id created_at locked_at source referrer_id referred_account_id referred_account { id username wechat_nickname wechat_avatar_url public_class_enrollments { id created_at status attendance_status public_class_id public_class { id title starts_at status } } }');
   result(s,referralPage);
 }
@@ -202,4 +196,5 @@ if(op==='STAFF_OVERVIEW') {
   var history=pageRows('offline_appointment',eq('provider_id',s.actor.providerId),APPOINTMENT_FIELDS,p.appointmentCursor,200,p.paginate===true);
   result(s,{classes:list('public_class',eq('organizer_id',s.actor.providerId),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:eq('organizer_id',s.actor.providerId)},ENROLL_FIELDS,200):[],appointments:history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
 }
+// FAMILY_HANDLERS: build script inserts family.js here.
 context.setReturn('state',s);

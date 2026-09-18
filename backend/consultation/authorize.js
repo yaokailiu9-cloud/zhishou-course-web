@@ -3,10 +3,11 @@ var operation = text(context.getArg("operation"), "操作", 60, true);
 var payload = context.getArg("payload") || {};
 if (typeof payload === "string") payload = JSON.parse(payload);
 if (!payload || Array.isArray(payload) || typeof payload !== "object" || JSON.stringify(payload).length > 100000) fail("请求格式无效");
-var actor = {accountId: accountId ? id(accountId) : null, providerId: null, canReply: false, canAccept: false};
+var actor = {accountId: accountId ? id(accountId) : null, providerId: null, canReply: false, canAccept: false, agentId: null, canInvite: false};
 if (actor.accountId) {
-  var provider = list("service_provider", and(eq("account_id", actor.accountId), eq("service_status", "ACTIVE", "text")), "id can_reply can_accept_order", 1)[0];
-  if (provider) { actor.providerId = provider.id; actor.canReply = provider.can_reply === true; actor.canAccept = provider.can_accept_order === true; }
+  var provider = list("service_provider", and(eq("account_id", actor.accountId), eq("service_status", "ACTIVE", "text")), "id service_kind can_reply can_accept_order", 1)[0];
+  if (provider && provider.service_kind === 'AGENT') { actor.agentId = provider.id; actor.canInvite = true; }
+  else if (provider) { actor.providerId = provider.id; actor.canReply = provider.can_reply === true; actor.canAccept = provider.can_accept_order === true; actor.canInvite = actor.canAccept; }
 }
 var state = {operation:operation, payload:payload, actor:actor, result:null};
 if (operation === "CHECK_USERNAME") {
