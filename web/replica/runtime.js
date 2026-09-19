@@ -121,6 +121,24 @@
     const fragment=document.createDocumentFragment();current._inputCounter=0;
     children(source.pages[current.route].tree,current.data,fragment,current);
     root.replaceChildren(fragment);root.dataset.route=current.route;
+    if(current.route==='pages/chat/chat'){
+      const composer=root.querySelector('.chat-composer');
+      if(composer&&!current.data.hasAccess){
+        composer.classList.add('web-chat-empty');
+        const copy=document.createElement('div');copy.className='web-chat-empty-copy';
+        const title=document.createElement('strong');title.textContent='暂无历史会话';
+        const note=document.createElement('span');note.textContent='咨询记录与后续沟通，可在线下咨询中查看';
+        copy.append(title,note);
+        const action=document.createElement('button');action.type='button';action.className='web-chat-consultation';action.textContent='查看咨询';
+        action.addEventListener('click',()=>current.goOfflineConsultation());
+        composer.replaceChildren(copy,action);
+      }else if(composer){
+        const input=composer.querySelector('textarea');
+        if(input){input.rows=1;input.setAttribute('aria-label','聊天消息');
+          requestAnimationFrame(()=>{if(input.isConnected)input.style.height=Math.min(144,Math.max(44,input.scrollHeight))+'px'});
+        }
+      }
+    }
     if(current.route==='pages/profile/profile'){
       const subtitle=root.querySelector('.login-subtitle');if(subtitle)subtitle.textContent='在微信内打开，通过公众号授权登录';
       const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可查看报名、咨询和学习记录；昵称和头像可在个人资料中修改。';
