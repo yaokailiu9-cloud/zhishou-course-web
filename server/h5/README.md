@@ -1,6 +1,6 @@
 # 知守课程 H5
 
-网页入口是 `/web/`，课程与报名继续调用 Zion 主动作流。微信内点击登录后，网页取得公众号一次性授权 `code`，服务端将 `code` 交给 Zion 的 `loginWithWechat`，由 Zion 完成换票并创建或恢复对应账号。公众号 AppSecret 不进入本仓库或网页部署环境。
+网页入口是 `/web/`，课程与报名继续调用 Zion 主动作流。微信内点击登录后，网页取得公众号一次性授权 `code`。部署环境配置了公众号 AppSecret 时，服务端直接向微信换取真实用户身份，再创建或恢复对应的 Zion 账号；未配置时保留 Zion `loginWithWechat` 兼容路径。AppSecret 只保存在本地或部署平台的加密环境变量中，不进入 GitHub。
 
 ## Zeabur 部署
 
@@ -15,10 +15,11 @@ Zeabur 使用仓库根目录部署时，选择 Node.js 服务并设置：
 部署环境必须配置：
 
 - `WECHAT_OA_APP_ID`：已认证公众号的 AppID；本项目默认使用 `wx6dafecca8d5fd24e`，可由环境变量覆盖。
+- `WECHAT_OA_APP_SECRET`：公众号 AppSecret；在 Vercel/Zeabur 中按 Secret 类型保存，禁止提交到仓库。
 - `SESSION_SECRET`：至少 32 位随机字符串，用于签名登录会话、OAuth state 和推荐链接；旧部署若已使用 `SECRET`，服务端会兼容读取。
 - `PUBLIC_ORIGIN`：正式 HTTPS 域名，例如 `https://course.example.com`。
 - `ZION_GRAPHQL_URL`：可省略，默认使用项目 `JmAxbl1MMe4` 的正式 GraphQL 地址。
 
-公众号后台需要把 `PUBLIC_ORIGIN` 的域名配置为网页授权域名。回调地址固定为 `/api/wechat-oauth-callback`。Zion 项目 `JmAxbl1MMe4` 的微信登录设置中也必须填写同一个公众号 AppID 和对应 AppSecret；密钥只保存在 Zion，不要写入 GitHub。
+公众号后台需要把 `PUBLIC_ORIGIN` 的域名配置为网页授权域名。回调地址固定为 `/api/wechat-oauth-callback`。生产环境通过服务器端 OAuth 使用公众号 AppID 与 AppSecret，Zion 继续保存账号、报名与推荐关系。
 
 推荐链接的 `ref` 参数是服务端签名值。用户首次通过推荐链接完成微信登录时写入推荐关系；后端唯一约束确保一名用户只能锁定一个推荐人。用户只能经动作流读取自己发出的直属推荐关系。

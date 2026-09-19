@@ -84,7 +84,7 @@ function wechatAppId() {
   return String(process.env.WECHAT_OA_APP_ID || DEFAULT_WECHAT_OA_APP_ID).trim();
 }
 
-async function authenticateWechatAccount(code) {
+async function authenticateWechatWithZion(code) {
   const data = await zionGraphql(`mutation H5WechatLogin($code:String!){
     loginWithWechat(code:$code,createIfNotExists:true){
       account{id username phoneNumber profileImageUrl permissionRoles}
@@ -102,6 +102,65 @@ async function authenticateWechatAccount(code) {
       avatarUrl:account.profileImageUrl || ""
     }
   };
+}
+
+async function exchangeWechatCode(code) {
+  const tokenUrl = new URL("https://api.weixin.qq.com/sns/oauth2/access_token");
+  tokenUrl.search = new URLSearchParams({
+    appid:wechatAppId(),
+    secret:required("WECHAT_OA_APP_SECRET"),
+    code,
+    grant_type:"authorization_code"
+  }).toString();
+  const token = await jsonRequest(tokenUrl);
+  if (token.errcode || !token.openid || !token.access_token) throw new Error("AUTH:微信授权已失效，请重新登录");
+
+  const profileUrl = new URL("https://api.weixin.qq.com/sns/userinfo");
+  profileUrl.search = new URLSearchParams({
+    access_token:token.access_token,
+    openid:token.openid,
+    lang:"zh_CN"
+  }).toString();
+  const profile = await jsonRequest(profileUrl);
+  if (profile.errcode || !profile.openid) throw new Error("AUTH:无法读取微信用户信息");
+  return profile;
+}
+
+async function authenticateWechatProfile(profile) {
+  const identity = crypto.createHash("sha256").update(`${wechatAppId()}:${profile.openid}`).digest("hex").slice(0, 36);
+  const username = `wxh5_${identity}`;
+  const password = `ZhS_${crypto.createHmac("sha256", required("SESSION_SECRET")).update(profile.openid).digest("base64url")}`;
+  const auth = await zionGraphql(`mutation H5WechatProfileLogin($username:String!,$password:String!){
+    authenticateWithUsername(username:$username,password:$password,register:true){account{id username}jwt{token}}
+  }`, {username, password});
+  const login = auth.authenticateWithUsername;
+  if (!login || !login.account || !login.jwt || !login.jwt.token) throw new Error("AUTH:微信身份登录失败");
+
+  const accountData = {
+    wechat_nickname:String(profile.nickname || "微信用户").slice(0, 80),
+    wechat_avatar_url:String(profile.headimgurl || "").slice(0, 1500),
+    wechat_openid:profile.openid,
+    wechat_unionid:profile.unionid || "",
+    user_type:"customer",
+    last_login_at:new Date().toISOString()
+  };
+  const updated = await zionGraphql(`mutation UpdateH5WechatProfile($id:bigint!,$data:account_set_input!){
+    update_account_by_pk(pk_columns:{id:$id},_set:$data){id username wechat_nickname wechat_avatar_url}
+  }`, {id:login.account.id, data:accountData}, login.jwt.token);
+  const account = updated.update_account_by_pk || login.account;
+  return {
+    jwt:login.jwt.token,
+    account:{
+      id:String(account.id),
+      name:account.wechat_nickname || profile.nickname || "微信用户",
+      avatarUrl:account.wechat_avatar_url || profile.headimgurl || ""
+    }
+  };
+}
+
+async function authenticateWechatAccount(code) {
+  if (!String(process.env.WECHAT_OA_APP_SECRET || "").trim()) return authenticateWechatWithZion(code);
+  return authenticateWechatProfile(await exchangeWechatCode(code));
 }
 
 async function invoke(jwt, operation, payload = {}) {

@@ -66,18 +66,54 @@ test('网页授权使用天启无书公众号 AppID，并允许部署环境覆�
 
 test('微信回调 code 只交给 Zion loginWithWechat 换取业务会话',async t=>{
   const originalFetch=global.fetch;
+  const originalSecret=process.env.WECHAT_OA_APP_SECRET;
+  delete process.env.WECHAT_OA_APP_SECRET;
   let sent;
   global.fetch=async(url,options)=>{
     sent={url,body:JSON.parse(options.body)};
     return {ok:true,text:async()=>JSON.stringify({data:{loginWithWechat:{account:{id:'88',username:'微信用户甲',profileImageUrl:'https://example.invalid/avatar.png'},jwt:{token:'zion-user-jwt'}}}})};
   };
-  t.after(()=>{global.fetch=originalFetch});
+  t.after(()=>{
+    global.fetch=originalFetch;
+    if(originalSecret===undefined) delete process.env.WECHAT_OA_APP_SECRET; else process.env.WECHAT_OA_APP_SECRET=originalSecret;
+  });
   const login=await authenticateWechatAccount('one-time-wechat-code');
   assert.equal(sent.url,'https://zion-app.functorz.com/zero/JmAxbl1MMe4/api/graphql-v2');
   assert.equal(sent.body.variables.code,'one-time-wechat-code');
   assert.match(sent.body.query,/loginWithWechat/);
   assert.doesNotMatch(sent.body.query,/authenticateWithUsername|appsecret|access_token/i);
   assert.deepEqual(login,{jwt:'zion-user-jwt',account:{id:'88',name:'微信用户甲',avatarUrl:'https://example.invalid/avatar.png'}});
+});
+
+test('生产环境用公众号 AppSecret 换取资料并创建或恢复 Zion 账号',async t=>{
+  const originalFetch=global.fetch;
+  const originalSecret=process.env.WECHAT_OA_APP_SECRET;
+  process.env.WECHAT_OA_APP_SECRET='test-only-official-account-secret';
+  const calls=[];
+  global.fetch=async(url,options={})=>{
+    calls.push({url:String(url),body:options.body?JSON.parse(options.body):null,authorization:options.headers&&options.headers.authorization});
+    if(String(url).startsWith('https://api.weixin.qq.com/sns/oauth2/access_token')) {
+      return {ok:true,text:async()=>JSON.stringify({openid:'openid-001',access_token:'access-token-001'})};
+    }
+    if(String(url).startsWith('https://api.weixin.qq.com/sns/userinfo')) {
+      return {ok:true,text:async()=>JSON.stringify({openid:'openid-001',unionid:'unionid-001',nickname:'微信用户乙',headimgurl:'https://example.invalid/b.png'})};
+    }
+    if(calls.filter(call=>call.body).length===1) {
+      return {ok:true,text:async()=>JSON.stringify({data:{authenticateWithUsername:{account:{id:'99',username:'wxh5_test'},jwt:{token:'zion-profile-jwt'}}}})};
+    }
+    return {ok:true,text:async()=>JSON.stringify({data:{update_account_by_pk:{id:'99',username:'wxh5_test',wechat_nickname:'微信用户乙',wechat_avatar_url:'https://example.invalid/b.png'}}})};
+  };
+  t.after(()=>{
+    global.fetch=originalFetch;
+    if(originalSecret===undefined) delete process.env.WECHAT_OA_APP_SECRET; else process.env.WECHAT_OA_APP_SECRET=originalSecret;
+  });
+  const login=await authenticateWechatAccount('one-time-wechat-code');
+  assert.match(calls[0].url,/appid=wx6dafecca8d5fd24e/);
+  assert.match(calls[0].url,/code=one-time-wechat-code/);
+  assert.match(calls[2].body.query,/authenticateWithUsername/);
+  assert.equal(calls[3].authorization,'Bearer zion-profile-jwt');
+  assert.equal(calls[3].body.variables.data.wechat_openid,'openid-001');
+  assert.deepEqual(login,{jwt:'zion-profile-jwt',account:{id:'99',name:'微信用户乙',avatarUrl:'https://example.invalid/b.png'}});
 });
 
 test('H5 页面不含小程序协议、咨询师或人物图片入口',async()=>{
