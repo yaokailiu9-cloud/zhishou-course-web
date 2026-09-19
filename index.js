@@ -10,6 +10,7 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -78,6 +79,10 @@ function createServer() {
     }
     if (url.pathname === '/healthz') {
       json(res, 200, {ok: true, service: 'zhishou-course-web'});
+      return;
+    }
+    if (url.pathname === '/MP_verify_GFzG9U79F1ySzmh4.txt') {
+      await serveWeb(req, res, '/web/MP_verify_GFzG9U79F1ySzmh4.txt');
       return;
     }
     if (url.pathname === '/api/h5') {
