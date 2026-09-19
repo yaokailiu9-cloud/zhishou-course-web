@@ -126,6 +126,14 @@ The current mini program code should move toward:
 
 Until the real Zion user-event/action flow exists, `wechat_login_record` may be used only as a temporary audit record, not as proof that a real account login is complete.
 
+## H5 WeChat OAuth Login (2026-09-19)
+
+- 网页端使用天启无书公众号 AppID `wx6e046fecc7bfb0d5` 构造 `oauth2/authorize` 地址；该 AppID 是公开标识，可由部署环境 `WECHAT_OA_APP_ID` 覆盖。
+- 微信回调的一次性 `code` 必须交给当前 Zion 项目 `JmAxbl1MMe4` 的 `loginWithWechat`；Zion 返回用户 JWT 后，网页服务仅把 JWT 放入 HttpOnly 签名会话。
+- 公众号 AppSecret 只配置在 Zion 微信登录设置中，不再放入网页服务器环境变量，也不得进入 GitHub。
+- 2026-09-19 运行时探测确认 `loginWithWechat` mutation 存在，但正式项目当前返回 `wechat authentication web app id does not exist`。在 Zion 中保存与公众号一致的网页应用 AppID/AppSecret 后，才可进行真实微信授权验收。
+- 公众号后台网页授权域名为 `www.apply.tianqiwushu.cn`，网页回调路径为 `/api/wechat-oauth-callback`。
+
 ## Manager / Service Provider Direction
 
 经理端不是普通用户 UI 的一个隐藏页面，必须有后端身份和权限支撑。

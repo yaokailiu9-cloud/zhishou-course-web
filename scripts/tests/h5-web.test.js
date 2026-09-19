@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.SESSION_SECRET = 'test-secret-that-is-long-enough-for-h5-session';
-const {sign, verify, decodeRef, refToken, safeReturn, friendly} = require('../../server/h5');
+const {sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, authenticateWechatAccount} = require('../../server/h5');
 const {createServer, staticFile} = require('../../index');
 
 function request(server, pathname) {
@@ -39,8 +39,34 @@ test('OAuth 返回地址只能停留在网页应用内',()=>{
 
 test('配置错误与课程业务错误可读，技术错误不泄露',()=>{
   assert.equal(friendly(new Error('CONFIG:WECHAT_OA_APP_ID')),'网页微信登录尚未完成公众号参数配置');
+  assert.equal(friendly(new Error('ZION:config: wechat authentication web app id does not exist')),'Zion 尚未配置公众号网页应用，请先填写公众号 AppID 和 AppSecret');
   assert.equal(friendly(new Error('ZION:PolyglotException: Error: 本场名额已满')),'本场名额已满');
   assert.equal(friendly(new Error('database password leaked')),'服务暂时不可用，请稍后重试');
+});
+
+test('网页授权使用天启无书公众号 AppID，并允许部署环境覆盖',()=>{
+  const previous=process.env.WECHAT_OA_APP_ID;
+  delete process.env.WECHAT_OA_APP_ID;
+  assert.equal(wechatAppId(),'wx6e046fecc7bfb0d5');
+  process.env.WECHAT_OA_APP_ID='wx-environment-app-id';
+  assert.equal(wechatAppId(),'wx-environment-app-id');
+  if(previous===undefined) delete process.env.WECHAT_OA_APP_ID; else process.env.WECHAT_OA_APP_ID=previous;
+});
+
+test('微信回调 code 只交给 Zion loginWithWechat 换取业务会话',async t=>{
+  const originalFetch=global.fetch;
+  let sent;
+  global.fetch=async(url,options)=>{
+    sent={url,body:JSON.parse(options.body)};
+    return {ok:true,text:async()=>JSON.stringify({data:{loginWithWechat:{account:{id:'88',username:'微信用户甲',profileImageUrl:'https://example.invalid/avatar.png'},jwt:{token:'zion-user-jwt'}}}})};
+  };
+  t.after(()=>{global.fetch=originalFetch});
+  const login=await authenticateWechatAccount('one-time-wechat-code');
+  assert.equal(sent.url,'https://zion-app.functorz.com/zero/JmAxbl1MMe4/api/graphql-v2');
+  assert.equal(sent.body.variables.code,'one-time-wechat-code');
+  assert.match(sent.body.query,/loginWithWechat/);
+  assert.doesNotMatch(sent.body.query,/authenticateWithUsername|appsecret|access_token/i);
+  assert.deepEqual(login,{jwt:'zion-user-jwt',account:{id:'88',name:'微信用户甲',avatarUrl:'https://example.invalid/avatar.png'}});
 });
 
 test('H5 页面不含小程序协议、咨询师或人物图片入口',async()=>{
@@ -112,6 +138,11 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   assert.equal(page.status,200);
   assert.match(page.headers['content-type'],/text\/html/);
   assert.match(page.body,/《答案库》系列课程/);
+  const login=await request(server,'/api/h5?action=login&return=%2Fweb%2F%23%2Fpages%2Fprofile%2Fprofile');
+  assert.equal(login.status,302);
+  assert.match(login.headers.location,/open\.weixin\.qq\.com\/connect\/oauth2\/authorize/);
+  assert.match(login.headers.location,/appid=wx6e046fecc7bfb0d5/);
+  assert.match(login.headers.location,/scope=snsapi_userinfo/);
   const legacy=await request(server,'/web/legacy/');
   assert.equal(legacy.status,200);
   assert.match(legacy.body,/我推荐的学员/);
