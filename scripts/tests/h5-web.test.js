@@ -58,7 +58,7 @@ test('配置错误与课程业务错误可读，技术错误不泄露',()=>{
 test('网页授权使用天启无书公众号 AppID，并允许部署环境覆盖',()=>{
   const previous=process.env.WECHAT_OA_APP_ID;
   delete process.env.WECHAT_OA_APP_ID;
-  assert.equal(wechatAppId(),'wx6e046fecc7bfb0d5');
+  assert.equal(wechatAppId(),'wx6dafecca8d5fd24e');
   process.env.WECHAT_OA_APP_ID='wx-environment-app-id';
   assert.equal(wechatAppId(),'wx-environment-app-id');
   if(previous===undefined) delete process.env.WECHAT_OA_APP_ID; else process.env.WECHAT_OA_APP_ID=previous;
@@ -152,7 +152,7 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   const login=await request(server,'/api/h5?action=login&return=%2Fweb%2F%23%2Fpages%2Fprofile%2Fprofile');
   assert.equal(login.status,302);
   assert.match(login.headers.location,/open\.weixin\.qq\.com\/connect\/oauth2\/authorize/);
-  assert.match(login.headers.location,/appid=wx6e046fecc7bfb0d5/);
+  assert.match(login.headers.location,/appid=wx6dafecca8d5fd24e/);
   assert.match(login.headers.location,/scope=snsapi_userinfo/);
   const legacy=await request(server,'/web/legacy/');
   assert.equal(legacy.status,200);

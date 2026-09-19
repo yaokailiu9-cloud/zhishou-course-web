@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 
 const DEFAULT_ZION_GRAPHQL_URL = "https://zion-app.functorz.com/zero/JmAxbl1MMe4/api/graphql-v2";
-const DEFAULT_WECHAT_OA_APP_ID = "wx6e046fecc7bfb0d5";
+const DEFAULT_WECHAT_OA_APP_ID = "wx6dafecca8d5fd24e";
 const ACTION_FLOW_ID = "9f60a0be-4628-4268-a769-661264846cf4";
 const ACTION_FLOW_VERSION = 1;
 const SESSION_COOKIE = "zhishou_h5_session";
