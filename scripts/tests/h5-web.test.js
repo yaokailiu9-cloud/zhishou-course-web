@@ -24,6 +24,17 @@ test('签名会话可验证且篡改后失效',()=>{
   assert.equal(verify(token.slice(0,-1)+(token.endsWith('a')?'b':'a')),null);
 });
 
+test('旧部署的 SECRET 可兼容作为会话签名密钥',()=>{
+  const sessionSecret=process.env.SESSION_SECRET;
+  const legacySecret=process.env.SECRET;
+  delete process.env.SESSION_SECRET;
+  process.env.SECRET='legacy-deployment-secret-that-is-long-enough';
+  const token=sign({account:{id:'13'},jwt:'token',exp:Math.floor(Date.now()/1000)+30});
+  assert.equal(verify(token).account.id,'13');
+  if(sessionSecret===undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET=sessionSecret;
+  if(legacySecret===undefined) delete process.env.SECRET; else process.env.SECRET=legacySecret;
+});
+
 test('推荐链接只接受有效的服务端签名账号',()=>{
   const token=refToken('10001');
   assert.equal(decodeRef(token),'10001');

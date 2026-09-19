@@ -15,7 +15,7 @@ Zeabur 使用仓库根目录部署时，选择 Node.js 服务并设置：
 部署环境必须配置：
 
 - `WECHAT_OA_APP_ID`：已认证公众号的 AppID；本项目默认使用 `wx6e046fecc7bfb0d5`，可由环境变量覆盖。
-- `SESSION_SECRET`：至少 32 位随机字符串，用于签名登录会话、OAuth state 和推荐链接。
+- `SESSION_SECRET`：至少 32 位随机字符串，用于签名登录会话、OAuth state 和推荐链接；旧部署若已使用 `SECRET`，服务端会兼容读取。
 - `PUBLIC_ORIGIN`：正式 HTTPS 域名，例如 `https://course.example.com`。
 - `ZION_GRAPHQL_URL`：可省略，默认使用项目 `JmAxbl1MMe4` 的正式 GraphQL 地址。
 

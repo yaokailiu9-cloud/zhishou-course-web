@@ -8,7 +8,7 @@ const SESSION_COOKIE = "zhishou_h5_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 14;
 
 function required(name) {
-  const value = process.env[name];
+  const value = process.env[name] || (name === "SESSION_SECRET" ? process.env.SECRET : "");
   if (!value) throw new Error(`CONFIG:${name}`);
   return value;
 }
