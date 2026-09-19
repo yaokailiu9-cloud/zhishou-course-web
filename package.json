@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build": "node build-vercel-public.js",
     "start": "node --env-file-if-exists=.env index.js",
     "start:h5": "node --env-file-if-exists=.env index.js",
     "wechat-login": "node server/wechat-login/index.js",

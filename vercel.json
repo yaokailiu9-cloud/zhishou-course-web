@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
   "rewrites": [
     {
       "source": "/MP_verify_GFzG9U79F1ySzmh4.txt",

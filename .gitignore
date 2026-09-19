@@ -16,3 +16,4 @@ outputs/
 design-mockups/
 empath-consultation-miniapp-code.zip
 .env*
+public/web/
