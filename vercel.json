@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/MP_verify_GFzG9U79F1ySzmh4.txt",
+      "destination": "/web/MP_verify_GFzG9U79F1ySzmh4.txt"
+    },
+    {
       "source": "/",
       "destination": "/web/index.html"
     }

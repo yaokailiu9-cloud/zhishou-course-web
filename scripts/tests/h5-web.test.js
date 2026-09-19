@@ -104,6 +104,10 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   const health=await request(server,'/healthz');
   assert.equal(health.status,200);
   assert.deepEqual(JSON.parse(health.body),{ok:true,service:'zhishou-course-web'});
+  const wechatVerify=await request(server,'/MP_verify_GFzG9U79F1ySzmh4.txt');
+  assert.equal(wechatVerify.status,200);
+  assert.match(wechatVerify.headers['content-type'],/text\/plain/);
+  assert.equal(wechatVerify.body.trim(),'GFzG9U79F1ySzmh4');
   const page=await request(server,'/web/');
   assert.equal(page.status,200);
   assert.match(page.headers['content-type'],/text\/html/);
