@@ -27,7 +27,7 @@
           <view class="play-triangle"></view>
         </view>
       </block>
-      <text wx:if="{{course.badge}}" class="detail-course-badge">{{course.badge}}</text>
+      <text wx:if="{{course.subtitle === '《答案库》系列课程' ? course.title : course.badge}}" class="detail-course-badge">{{course.subtitle === '《答案库》系列课程' ? course.title : course.badge}}</text>
       <text wx:if="{{course.durationText}}" class="hero-duration">{{course.durationText}}</text>
     </view>
 

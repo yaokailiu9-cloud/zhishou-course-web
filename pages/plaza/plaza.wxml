@@ -17,7 +17,7 @@
       <image wx:if="{{featuredCourse.coverUrl}}" class="featured-cover" src="{{featuredCourse.coverUrl}}" mode="aspectFill"></image>
       <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
       <view class="featured-mask"></view>
-      <view class="featured-badge" wx:if="{{featuredCourse.badge}}">{{featuredCourse.badge}}</view>
+      <view class="featured-badge" wx:if="{{featuredCourse.subtitle === '《答案库》系列课程' ? featuredCourse.title : featuredCourse.badge}}">{{featuredCourse.subtitle === '《答案库》系列课程' ? featuredCourse.title : featuredCourse.badge}}</view>
       <view class="featured-copy">
         <text class="featured-kicker">精选推荐</text>
         <text class="featured-title">{{featuredCourse.title}}</text>
@@ -44,7 +44,7 @@
           <image wx:if="{{item.coverUrl}}" class="card-cover" src="{{item.coverUrl}}" mode="aspectFill"></image>
           <view wx:else class="course-cover-placeholder"><text class="cover-message">封面待更新</text></view>
           <text wx:if="{{item.durationText}}" class="card-duration">{{item.durationText}}</text>
-          <view wx:if="{{item.badge}}" class="card-badge">{{item.badge}}</view>
+          <view wx:if="{{item.subtitle === '《答案库》系列课程' ? item.title : item.badge}}" class="card-badge">{{item.subtitle === '《答案库》系列课程' ? item.title : item.badge}}</view>
         </view>
         <view class="card-body">
           <text class="card-title">{{item.title}}</text>

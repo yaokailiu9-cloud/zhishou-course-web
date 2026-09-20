@@ -45,7 +45,7 @@
       <navigator class="home-course-cover" url="/pages/course-detail/course-detail?id={{item.id}}" aria-label="查看{{item.title}}">
         <image wx:if="{{item.coverUrl}}" class="home-course-image" src="{{item.coverUrl}}" mode="aspectFill"/>
         <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
-        <text class="home-course-badge">{{item.badge}}</text>
+        <text class="home-course-badge">{{item.subtitle === '《答案库》系列课程' ? item.title : item.badge}}</text>
       </navigator>
       <view class="home-course-body">
         <text class="home-course-title">{{item.title}}</text>
