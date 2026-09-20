@@ -65,3 +65,29 @@ test('browser payment fails before creating orders and recorder clearly reports 
   const h=await host();await assert.rejects(h.host.requireModule('utils/payment').startConsultationPayment(),/网页支付尚未接入/);
   h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=1'});await tick();h.host.current.startRecording();assert.match(h.document.getElementById('modal').textContent,/网页录音尚未开放/);
 });
+
+test('H5 修改昵称保留稳定登录用户名，并展示保存后的昵称',async()=>{
+  const h=await host();
+  const username='wxh5_'+'a'.repeat(36);
+  let account={id:101,username,wechat_nickname:'旧昵称',account_profile_id:7,account_profile:{id:7,user_name:'旧昵称'}};
+  h.context.fetch=async(url,options)=>{
+    const {query,variables}=JSON.parse(options.body);
+    let data;
+    if(query.includes('query GetAccountProfile')) data={account_by_pk:account};
+    else if(query.includes('mutation UpdateAccountProfile')) {
+      account.account_profile={id:7,...variables.data};
+      data={update_account_profile_by_pk:account.account_profile};
+    } else {
+      assert.match(query,/mutation SaveAccountProfile/);
+      assert.equal(variables.data.username,username);
+      account={...account,...variables.data};
+      data={update_account_by_pk:account};
+    }
+    return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data})};
+  };
+  const user=await h.host.requireModule('utils/zion').saveAccountProfile({accountId:'101',userName:'新昵称'});
+  assert.equal(account.username,username);
+  assert.equal(account.account_profile.user_name,'新昵称');
+  assert.equal(user.username,'新昵称');
+  assert.equal(user.nickName,'新昵称');
+});

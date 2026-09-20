@@ -129,7 +129,8 @@ Until the real Zion user-event/action flow exists, `wechat_login_record` may be 
 ## H5 WeChat OAuth Login (2026-09-19)
 
 - 网页端使用天启无书公众号 AppID `wx6dafecca8d5fd24e` 构造 `oauth2/authorize` 地址；该 AppID 是公开标识，可由部署环境 `WECHAT_OA_APP_ID` 覆盖。
-- 微信回调的一次性 `code` 由服务端携带部署平台中的 `WECHAT_OA_APP_SECRET` 向微信换取用户资料；随后按公众号 AppID 与 openid 生成稳定 Zion 用户名，使用 Zion `authenticateWithUsername(register:true)` 创建或恢复账号，并回写 `account.wechat_*` 字段。
+- 微信回调的一次性 `code` 由服务端携带部署平台中的 `WECHAT_OA_APP_SECRET` 向微信换取用户资料；随后按公众号 AppID 与 openid 生成稳定 Zion 用户名，先用 `authenticateWithUsername(register:false)` 登录，仅在 `ACCOUNT_DOES_NOT_EXIST` 时用 `register:true` 注册，并回写 `account.wechat_*` 字段。2026-09-20 运行时确认：已有账号使用 `register:true` 会返回 `USERNAME_ALREADY_EXISTS`，不能用于恢复登录。
+- 网页微信账号的 `wxh5_` + 36 位十六进制用户名是稳定认证标识，保存个人资料时必须保留；可编辑昵称保存在 `account_profile.user_name` 和 `account.wechat_nickname`。
 - 公众号 AppSecret 只配置在本地 `.env` 或 Vercel/Zeabur 的加密环境变量中，不得进入 GitHub。Zion JWT 只放入 HttpOnly 签名会话。
 - 未配置 `WECHAT_OA_APP_SECRET` 时保留 Zion `loginWithWechat` 兼容路径；2026-09-19 运行时探测确认该 mutation 存在，但当前项目尚未设置 Zion 网页应用凭据，因此生产路径使用服务端公众号 OAuth。
 - 公众号后台网页授权域名为 `www.apply.tianqiwushu.cn`，网页回调路径为 `/api/wechat-oauth-callback`。

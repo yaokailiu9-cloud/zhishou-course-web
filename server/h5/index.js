@@ -81,7 +81,11 @@ async function zionGraphql(query, variables, jwt) {
   const data = await jsonRequest(process.env.ZION_GRAPHQL_URL || DEFAULT_ZION_GRAPHQL_URL, {
     method: "POST", headers, body: JSON.stringify({query, variables: variables || {}})
   });
-  if (data.errors && data.errors.length) throw new Error(`ZION:${data.errors[0].message || "请求失败"}`);
+  if (data.errors && data.errors.length) {
+    const error = new Error(`ZION:${data.errors[0].message || "请求失败"}`);
+    error.classification = data.errors[0].extensions?.classification;
+    throw error;
+  }
   return data.data || {};
 }
 
@@ -139,9 +143,23 @@ async function authenticateWechatProfile(profile) {
   const identity = crypto.createHash("sha256").update(`${wechatAppId()}:${profile.openid}`).digest("hex").slice(0, 36);
   const username = `wxh5_${identity}`;
   const password = `ZhS_${crypto.createHmac("sha256", required("SESSION_SECRET")).update(profile.openid).digest("base64url")}`;
-  const auth = await zionGraphql(`mutation H5WechatProfileLogin($username:String!,$password:String!){
-    authenticateWithUsername(username:$username,password:$password,register:true){account{id username}jwt{token}}
-  }`, {username, password});
+  const authenticate = register => zionGraphql(`mutation H5WechatProfileLogin($username:String!,$password:String!,$register:Boolean!){
+    authenticateWithUsername(username:$username,password:$password,register:$register){account{id username}jwt{token}}
+  }`, {username, password, register});
+  let auth;
+  try {
+    auth = await authenticate(false);
+  } catch (error) {
+    // Registration is not an upsert: existing accounts must use register:false.
+    if (error.classification !== "ACCOUNT_DOES_NOT_EXIST") throw error;
+    try {
+      auth = await authenticate(true);
+    } catch (registrationError) {
+      // Another callback may have registered this same WeChat identity meanwhile.
+      if (registrationError.classification !== "USERNAME_ALREADY_EXISTS") throw registrationError;
+      auth = await authenticate(false);
+    }
+  }
   const login = auth.authenticateWithUsername;
   if (!login || !login.account || !login.jwt || !login.jwt.token) throw new Error("AUTH:微信身份登录失败");
 

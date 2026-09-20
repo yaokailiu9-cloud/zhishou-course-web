@@ -45,7 +45,6 @@
         <text class="time-label">剩余</text>
         <text class="time-value">{{remainingText}}</text>
       </view>
-      <text class="service-price">{{servicePriceText}}</text>
       <button wx:if="{{serviceEnded && canRenew}}" class="renew-action" loading="{{renewing}}" disabled="{{renewing}}" bindtap="renewService">
         续费 ¥200/小时
       </button>

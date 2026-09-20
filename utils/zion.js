@@ -825,7 +825,8 @@ function normalizeAccount(item = {}) {
     avatarImageId: accountProfile.avatar_image && accountProfile.avatar_image.id ? String(accountProfile.avatar_image.id) : "",
     role: item.user_type || "customer",
     phone: item.fz_phone_number || "",
-    username: item.username || "",
+    username: /^wxh5_[a-f0-9]{36}$/.test(item.username || "")
+      ? (accountProfile.user_name || item.wechat_nickname || "微信用户") : (item.username || ""),
     region: accountProfile.region || accountProfile.city || "",
     locationInfo: accountProfile.location_info || null,
     address: accountProfile.address || (accountProfile.location_info && accountProfile.location_info.address) || "",
@@ -2315,7 +2316,9 @@ function saveAccountProfile(profile = {}) {
         ? "manager"
         : (profile.role || currentAccount.user_type || "customer");
       const data = {
-        username: profile.userName || "",
+        // H5 OAuth uses this stable identifier to recover the same account.
+        username: /^wxh5_[a-f0-9]{36}$/.test(currentAccount.username || "")
+          ? currentAccount.username : (profile.userName || ""),
         wechat_nickname: profile.userName || "",
         wechat_avatar_url: profile.avatarUrl || "",
         user_type: nextRole,
