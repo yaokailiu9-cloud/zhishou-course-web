@@ -294,7 +294,8 @@ Page({
           title: loginResult && loginResult.isNewAccount ? "账户已创建" : "欢迎回来",
           icon: "success"
         });
-        require("../../utils/loginReturn").resume();
+        require("../../utils/loginReturn").clear();
+        wx.switchTab({ url: "/pages/index/index" });
       })
       .catch((error) => {
         console.warn("loginWithWechatIdentity failed", error);

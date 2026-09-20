@@ -8,18 +8,43 @@ const {parseHTML}=require('linkedom');
 const ROOT=path.join(__dirname,'../..');
 const read=name=>fs.readFileSync(path.join(ROOT,name),'utf8');
 const tick=()=>new Promise(resolve=>setTimeout(resolve,15));
-async function host(){
+async function host(options={}){
   const {document,Event}=parseHTML(read('web/index.html'));
   Object.defineProperty(document,'currentScript',{value:{src:'http://localhost/web/replica/runtime.js?v=test'}});
   document.querySelectorAll('dialog').forEach(d=>{d.showModal=()=>{d.open=true};d.close=()=>{d.open=false}});
   const errors=[];
   const context={document,Event,console:{log(){},warn(){},error:(...args)=>errors.push(args)},URL,URLSearchParams,AbortController,setTimeout,clearTimeout,setInterval:()=>1,clearInterval(){},queueMicrotask,innerWidth:390,innerHeight:844,devicePixelRatio:1,requestAnimationFrame:fn=>queueMicrotask(fn),navigator:{userAgent:'test browser'},location:{pathname:'/web/',search:'',hash:'',origin:'http://localhost',href:'http://localhost/web/'},history:{pushState(){},replaceState(){},back(){}},addEventListener(){},scrollTo(){},scrollY:0,
     fetch:async url=>({ok:true,status:200,headers:[],json:async()=>({ok:true,data:{loggedIn:false}}),text:async()=>JSON.stringify({data:{course:[],advisor:[],course_by_pk:null,fz_invoke_action_flow:{result:{ok:true,data:{classes:[],items:[]}}}}})})};
+  Object.assign(context.location,options.location);
+  Object.assign(context.navigator,options.navigator);
+  if(options.fetch)context.fetch=options.fetch;
+  const replacements=[];
+  context.history.replaceState=(_state,_title,url)=>replacements.push(url);
   context.window=context;vm.createContext(context);
   vm.runInContext(read('web/replica/source.js'),context);
   vm.runInContext(read('web/replica/runtime.js'),context);
-  await tick();return{context,document,Event,host:context.MiniHost,errors};
+  await tick();return{context,document,Event,host:context.MiniHost,errors,replacements};
 }
+test('从我的链接进入时落到首页，仍可主动切换我的且课程分享链接可直达',async()=>{
+  for(const hash of ['', '#mine', '#/pages/profile/profile']){
+    const h=await host({location:{hash}});
+    assert.equal(h.host.current.route,'pages/index/index');
+    assert.equal(h.replacements.at(-1),'/web/#/pages/index/index');
+    h.document.querySelector('[data-route="pages/profile/profile"]').onclick();
+    await tick();assert.equal(h.host.current.route,'pages/profile/profile');
+  }
+  const h=await host({location:{hash:'#/pages/public-class-detail/public-class-detail?id=12'}});
+  assert.equal(h.host.current.route,'pages/public-class-detail/public-class-detail');
+  assert.equal(h.host.current.options.id,'12');
+});
+test('微信登录请求指定首页为回调落点并保留推荐人',async()=>{
+  const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=test-ref',hash:'#mine'}});
+  h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();
+  h.host.current.loginByWechat();
+  const url=new URL(h.context.location.href,'http://localhost');
+  assert.equal(url.searchParams.get('return'),'/web/#/pages/index/index');
+  assert.equal(url.searchParams.get('ref'),'test-ref');
+});
 test('all 24 pages are bundled from the exact current mini-program sources',()=>{
   const manifest=JSON.parse(read('web/replica-manifest.json'));
   assert.equal(manifest.pages.length,24);

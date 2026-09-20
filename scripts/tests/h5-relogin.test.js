@@ -68,7 +68,7 @@ test('首次登录 → 退出 → 再次微信授权恢复同一账号，JWT 仍
   async function login(code) {
     const result = await request(server, '/api/wechat-oauth-callback?' + new URLSearchParams({state, code}));
     assert.equal(result.status, 302);
-    assert.equal(result.headers.location, returnTo);
+    assert.equal(result.headers.location, '/web/#/pages/index/index');
     assert.match(result.headers['set-cookie'][0], /HttpOnly/);
     const cookie = result.headers['set-cookie'][0].split(';')[0];
     const session = await request(server, '/api/h5?action=session', {cookie});

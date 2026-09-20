@@ -182,7 +182,7 @@
   function webLogin(){
     if(!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'微信登录',content:'请将当前网页链接在微信中打开，再点击微信登录。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:location.href})}});return}
     const ref=new URLSearchParams(location.search).get('ref')||'';
-    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(location.pathname+location.search+location.hash);
+    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent('/web/#/'+HOME);
   }
   async function share(page){const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');const ref=new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);try{if(navigator.share)await navigator.share({title:info.title||'知守',url:url.href});else await wx.setClipboardData({data:url.href})}catch(error){if(error.name!=='AbortError')wx.showToast({title:'分享未完成，请复制地址栏链接'})}}
   const wx={
@@ -225,7 +225,9 @@
     for(const item of source.config.tabBar.list){const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');$('#tabbar').append(button)}
     $('#back-button').onclick=back;
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};
-    const initial=location.hash.slice(1);navigate(aliases[initial]||initial||HOME,'replace',true);
+    const initial=location.hash.slice(1);
+    const target=aliases[initial]||initial||HOME;
+    navigate(parseRoute(target).route==='pages/profile/profile'?HOME:target,'replace');
     const error=new URLSearchParams(location.search).get('loginError');if(error)wx.showToast({title:error});
   }
   window.MiniHost={start,parseRoute,value,requireModule,get current(){return current},wx};

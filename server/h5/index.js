@@ -358,7 +358,7 @@ async function handleOauthCallback(req, res) {
       await invoke(login.jwt, "LOCK_REFERRER", {referrerId:state.referrerId});
     }
     setSession(res, {jwt:login.jwt, account:login.account, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
-    return redirect(res, safeReturn(state.returnTo));
+    return redirect(res, '/web/#/pages/index/index');
   } catch (error) {
     return redirect(res, `/web/?loginError=${encodeURIComponent(friendly(error))}`);
   }
