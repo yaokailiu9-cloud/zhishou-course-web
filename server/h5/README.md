@@ -17,8 +17,8 @@ Vercel 发布时执行根目录 `build-vercel-public.js`，把同一份 `web/` �
 部署环境必须配置：
 
 - `WECHAT_OA_APP_ID`：已认证公众号的 AppID；本项目默认使用 `wx6dafecca8d5fd24e`，可由环境变量覆盖。
-- `WECHAT_OA_APP_SECRET`：公众号 AppSecret；在 Vercel/Zeabur 中按 Secret 类型保存，禁止提交到仓库。
-- `SESSION_SECRET`：至少 32 位随机字符串，用于签名登录会话、OAuth state 和推荐链接；旧部署若已使用 `SECRET`，服务端会兼容读取。
+- `WECHAT_OA_APP_SECRET`：公众号 AppSecret；在 Vercel/Zeabur 中按 Secret 类型保存，禁止提交到仓库。旧部署若已使用 `WECHAT_APP_SECRET`，服务端会兼容读取。
+- `SESSION_SECRET`：至少 32 位随机字符串，用于签名登录会话、OAuth state 和推荐链接；旧部署若已使用 `SECRET`，服务端会兼容读取。Zeabur 未显式设置时可使用平台自动提供的 `PASSWORD` 特殊变量。
 - `PUBLIC_ORIGIN`：正式 HTTPS 域名，例如 `https://course.example.com`。
 - `ZION_GRAPHQL_URL`：可省略，默认使用项目 `JmAxbl1MMe4` 的正式 GraphQL 地址。
 

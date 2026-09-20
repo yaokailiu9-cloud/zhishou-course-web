@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.SESSION_SECRET = 'test-secret-that-is-long-enough-for-h5-session';
-const {sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, authenticateWechatAccount} = require('../../server/h5');
+const {sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount} = require('../../server/h5');
 const {createServer, staticFile} = require('../../index');
 
 function request(server, pathname) {
@@ -35,6 +35,20 @@ test('旧部署的 SECRET 可兼容作为会话签名密钥',()=>{
   if(legacySecret===undefined) delete process.env.SECRET; else process.env.SECRET=legacySecret;
 });
 
+test('Zeabur 自动 PASSWORD 可作为未显式配置时的会话签名密钥',()=>{
+  const sessionSecret=process.env.SESSION_SECRET;
+  const legacySecret=process.env.SECRET;
+  const platformPassword=process.env.PASSWORD;
+  delete process.env.SESSION_SECRET;
+  delete process.env.SECRET;
+  process.env.PASSWORD='zeabur-service-password-that-is-long-enough';
+  const token=sign({account:{id:'14'},jwt:'token',exp:Math.floor(Date.now()/1000)+30});
+  assert.equal(verify(token).account.id,'14');
+  if(sessionSecret===undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET=sessionSecret;
+  if(legacySecret===undefined) delete process.env.SECRET; else process.env.SECRET=legacySecret;
+  if(platformPassword===undefined) delete process.env.PASSWORD; else process.env.PASSWORD=platformPassword;
+});
+
 test('推荐链接只接受有效的服务端签名账号',()=>{
   const token=refToken('10001');
   assert.equal(decodeRef(token),'10001');
@@ -62,6 +76,16 @@ test('网页授权使用天启无书公众号 AppID，并允许部署环境覆�
   process.env.WECHAT_OA_APP_ID='wx-environment-app-id';
   assert.equal(wechatAppId(),'wx-environment-app-id');
   if(previous===undefined) delete process.env.WECHAT_OA_APP_ID; else process.env.WECHAT_OA_APP_ID=previous;
+});
+
+test('公众号密钥兼容旧部署的 WECHAT_APP_SECRET 变量名',()=>{
+  const officialSecret=process.env.WECHAT_OA_APP_SECRET;
+  const legacySecret=process.env.WECHAT_APP_SECRET;
+  delete process.env.WECHAT_OA_APP_SECRET;
+  process.env.WECHAT_APP_SECRET='legacy-wechat-secret';
+  assert.equal(wechatAppSecret(),'legacy-wechat-secret');
+  if(officialSecret===undefined) delete process.env.WECHAT_OA_APP_SECRET; else process.env.WECHAT_OA_APP_SECRET=officialSecret;
+  if(legacySecret===undefined) delete process.env.WECHAT_APP_SECRET; else process.env.WECHAT_APP_SECRET=legacySecret;
 });
 
 test('微信回调 code 只交给 Zion loginWithWechat 换取业务会话',async t=>{

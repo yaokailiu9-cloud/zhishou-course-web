@@ -8,7 +8,12 @@ const SESSION_COOKIE = "zhishou_h5_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 14;
 
 function required(name) {
-  const value = process.env[name] || (name === "SESSION_SECRET" ? process.env.SECRET : "");
+  const aliases = name === "SESSION_SECRET"
+    ? ["SESSION_SECRET", "SECRET", "PASSWORD"]
+    : name === "WECHAT_OA_APP_SECRET"
+      ? ["WECHAT_OA_APP_SECRET", "WECHAT_APP_SECRET"]
+      : [name];
+  const value = aliases.map(key => String(process.env[key] || "").trim()).find(Boolean);
   if (!value) throw new Error(`CONFIG:${name}`);
   return value;
 }
@@ -82,6 +87,10 @@ async function zionGraphql(query, variables, jwt) {
 
 function wechatAppId() {
   return String(process.env.WECHAT_OA_APP_ID || DEFAULT_WECHAT_OA_APP_ID).trim();
+}
+
+function wechatAppSecret() {
+  return String(process.env.WECHAT_OA_APP_SECRET || process.env.WECHAT_APP_SECRET || "").trim();
 }
 
 async function authenticateWechatWithZion(code) {
@@ -159,7 +168,7 @@ async function authenticateWechatProfile(profile) {
 }
 
 async function authenticateWechatAccount(code) {
-  if (!String(process.env.WECHAT_OA_APP_SECRET || "").trim()) return authenticateWechatWithZion(code);
+  if (!wechatAppSecret()) return authenticateWechatWithZion(code);
   return authenticateWechatProfile(await exchangeWechatCode(code));
 }
 
@@ -337,4 +346,4 @@ async function handleOauthCallback(req, res) {
   }
 }
 
-module.exports = {handleApi, handleOauthCallback, sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, authenticateWechatAccount};
+module.exports = {handleApi, handleOauthCallback, sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount};
