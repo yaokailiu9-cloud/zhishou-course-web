@@ -75,10 +75,21 @@ test('loop rendering and conditional states preserve user input and search filte
   const h=await host();h.host.wx.navigateTo({url:'/pages/search/search?mode=courses'});await tick();
   const input=h.document.querySelector('input');assert.ok(input);input.value='家庭';input.dispatchEvent(new h.Event('input',{bubbles:true}));await tick();
   assert.equal(h.document.querySelector('input').value,'家庭');
-  h.host.wx.navigateTo({url:'/pages/index/index'});await tick();h.host.current.setData({featuredCourses:[{id:'7',title:'测试课程',badge:'付费',coverUrl:''}],loadingCourses:false,courseError:''});await tick();
-  assert.match(h.document.getElementById('page').textContent,/测试课程/);
-  const link=h.document.querySelector('navigator');assert.equal(link.getAttribute('aria-label'),'查看测试课程');
-  link.dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/course-detail/course-detail');assert.equal(h.host.current.options.id,'7');
+  const titles=['奖励的误区','倾诉的陷阱','安全感从哪来','为何知错不改','问题从哪里来','判断准确吗','有没有选择权','什么是沟通'];
+  const rows=titles.map((title,index)=>({id:String(index+7),title,subtitle:'《答案库》系列课程',badge:'付费',enabled:true,cover_image:{url:'https://example.invalid/cover.png'},course_lesson:[{id:index+1,title}]}));
+  h.context.fetch=async(_url,options)=>{const request=JSON.parse(options.body);const data=request.query.includes('query GetCourse')?{course_by_pk:rows.find(row=>row.id===String(request.variables.id))}:{course:rows};return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data})};};
+  h.host.wx.navigateTo({url:'/pages/index/index'});await tick();
+  assert.equal(h.document.querySelectorAll('.series-entry').length,1);
+  assert.doesNotMatch(h.document.getElementById('page').textContent,/奖励的误区|倾诉的陷阱/);
+  const link=h.document.querySelector('[aria-label="查看答案库系列课程"]');assert.ok(link);
+  link.dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/plaza/plaza');
+  assert.equal(h.document.querySelectorAll('.course-grid .course-card').length,8);
+  for(const row of rows){
+    h.document.querySelector('[aria-label="查看'+row.title+'"]').dispatchEvent(new h.Event('click'));await tick();
+    assert.equal(h.host.current.route,'pages/course-detail/course-detail');assert.equal(h.host.current.options.id,row.id);
+    assert.equal(h.document.querySelector('.chapter-title').textContent,row.title);
+    h.host.wx.switchTab({url:'/pages/plaza/plaza'});await tick();
+  }
 });
 test('date/selector controls emit mini-program values and protected pages do not grant staff access',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/profile-edit/profile-edit'});await tick();

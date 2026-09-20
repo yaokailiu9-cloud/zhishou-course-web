@@ -41,17 +41,16 @@
     <view wx:if="{{loadingCourses}}" class="loading-notice">正在加载课程…</view>
     <view wx:elif="{{courseError}}" class="loading-notice"><text>{{courseError}}</text><button class="retry-button" bindtap="fetchFeaturedCourses">重新加载</button></view>
     <view wx:elif="{{!featuredCourses.length}}" class="loading-notice">共修课程准备中，可先查看免费公开课。</view>
-    <view wx:for="{{featuredCourses}}" wx:key="id" class="home-course-card">
-      <navigator class="home-course-cover" url="/pages/course-detail/course-detail?id={{item.id}}" aria-label="查看{{item.title}}">
-        <image wx:if="{{item.coverUrl}}" class="home-course-image" src="{{item.coverUrl}}" mode="aspectFill"/>
-        <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
-        <text class="home-course-badge">{{item.subtitle === '《答案库》系列课程' ? item.title : item.badge}}</text>
-      </navigator>
-      <view class="home-course-body">
-        <text class="home-course-title">{{item.title}}</text>
-        <text wx:if="{{item.subtitle}}" class="home-course-subtitle">{{item.subtitle}}</text>
-        <view class="home-course-footer"><text>课程内容与目录</text><button class="course-button" bindtap="openCourse" data-id="{{item.id}}">查看课程 ↗</button></view>
+    <navigator wx:else class="home-course-card series-entry" url="/pages/plaza/plaza" open-type="switchTab" aria-label="查看答案库系列课程">
+      <view class="home-course-cover">
+        <image wx:if="{{featuredCourses[0].coverUrl}}" class="home-course-image" src="{{featuredCourses[0].coverUrl}}" mode="aspectFill"/>
+        <view wx:else class="course-cover-placeholder"><text class="cover-message">答案库</text></view>
       </view>
-    </view>
+      <view class="home-course-body">
+        <text class="series-entry-kicker">认知改变世界</text>
+        <text class="home-course-title">答案库</text>
+        <view class="series-entry-footer"><text>系列课程 · {{featuredCourses.length}} 门</text><text class="series-entry-action">查看系列课程</text></view>
+      </view>
+    </navigator>
   </view>
 </view>

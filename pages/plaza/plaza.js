@@ -53,7 +53,7 @@ Page({
   },
 
   refreshCourses() {
-    const visibleCourses = this.allCourses || [];
+    const visibleCourses = (this.allCourses || []).filter(item => item.subtitle === '《答案库》系列课程');
     const featuredCourse = visibleCourses.find((item) => item.badge) || visibleCourses[0] || null;
     this.setData({ visibleCourses, featuredCourse });
   },
@@ -62,6 +62,10 @@ Page({
     const courseId = event.currentTarget.dataset.id;
     if (!courseId) return;
     wx.navigateTo({ url: `/pages/course-detail/course-detail?id=${courseId}` });
+  },
+
+  goHome() {
+    wx.switchTab({ url: "/pages/index/index" });
   },
 
   goSearch() {

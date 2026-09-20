@@ -184,3 +184,9 @@
 .home-course-footer { display:flex; align-items:center; justify-content:space-between; gap:calc(16 * var(--rpx)); margin-top:calc(26 * var(--rpx)); padding-top:calc(24 * var(--rpx)); border-top:calc(1 * var(--rpx)) solid #e6e1da; }
 .home-course-footer > text { flex:1; color:#717878; font-size:calc(23 * var(--rpx)); line-height:1.6; }
 .course-button { flex-shrink:0; padding:calc(22 * var(--rpx)) calc(26 * var(--rpx)); min-height:calc(80 * var(--rpx)); border-radius:calc(12 * var(--rpx)); background:#002727; color:#fff; font-size:calc(25 * var(--rpx)); line-height:1.5; }
+
+.series-entry { display:block; color:inherit; }
+.series-entry-kicker { display:block; color:#80714e; font-size:calc(24 * var(--rpx)); letter-spacing:calc(3 * var(--rpx)); margin-bottom:calc(8 * var(--rpx)); }
+.series-entry .home-course-title { font-size:calc(42 * var(--rpx)); }
+.series-entry-footer { display:flex; align-items:center; justify-content:space-between; gap:calc(16 * var(--rpx)); margin-top:calc(20 * var(--rpx)); font-size:calc(24 * var(--rpx)); color:#717878; }
+.series-entry-action { color:#002727; font-weight:600; }
