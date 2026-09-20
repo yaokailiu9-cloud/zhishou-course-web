@@ -12,7 +12,8 @@ expressions=[]
 # The browser replica keeps a few web-only presentation choices without
 # changing the original WeChat mini-program files.
 WEB_TEXT_REPLACEMENTS=(
-    ('免费公开课','公开课'),
+    ('免费 · ',''),
+    ('免费',''),
     ('报名参加后，可申请线下咨询',''),
     ('\n到课核实后，可申请线下咨询。',''),
     ('；实际到课核实后，可申请线下咨询。','。'),
@@ -36,6 +37,9 @@ def patch_web_tree(route,nodes):
             node['text']=[replace_web_text(part) if isinstance(part,str) else part for part in node['text']]
             node['text']=[part for part in node['text'] if part != '']
         children=node.get('children') or []
+        if route=='pages/index/index' and 'home-paths' in class_names(node):
+            children=[child for child in children if child.get('attrs',{}).get('bindtap') != ['goCustomerPortal']]
+            node['children']=children
         if route=='pages/public-class/public-class' and {'card','course-card'} <= class_names(node):
             children=[child for child in children if not (
                 child.get('tag')=='image' and 'course-cover' in class_names(child)
@@ -43,6 +47,10 @@ def patch_web_tree(route,nodes):
             )]
             node['children']=children
         patch_web_tree(route,children)
+    nodes[:]=[node for node in nodes if not (
+        'text' in node and not node['text']
+        or node.get('tag')=='text' and not node.get('children')
+    )]
 
 def value(s):
     parts=re.split(r'(\{\{[\s\S]*?\}\})',s or '')
@@ -74,7 +82,10 @@ config=json.loads((ROOT/'app.json').read_text());pages={};manifest={}
 for route in config['pages']:
     path=ROOT/route;parser=Wxml();parser.feed(path.with_suffix('.wxml').read_text())
     patch_web_tree(route,parser.root)
-    pages[route]={'tree':parser.root,'config':json.loads(path.with_suffix('.json').read_text())}
+    page_config=json.loads(path.with_suffix('.json').read_text())
+    if 'navigationBarTitleText' in page_config:
+        page_config['navigationBarTitleText']=replace_web_text(page_config['navigationBarTitleText'])
+    pages[route]={'tree':parser.root,'config':page_config}
     (OUT/(route.split('/')[1]+'.css')).write_text(css(path.with_suffix('.wxss')))
     for suffix in ['.js','.wxml','.wxss','.json']:
         f=path.with_suffix(suffix);manifest[str(f.relative_to(ROOT))]=hashlib.sha256(f.read_bytes()).hexdigest()
@@ -86,7 +97,7 @@ bundle.append('],modules:{')
 for f in modules:
     key=str(f.relative_to(ROOT)).removesuffix('.js');bundle.append(json.dumps(key)+':function(require,module,exports,Page,wx,getApp,getCurrentPages){\n'+f.read_text()+'\n},')
 bundle.append('}};')
-(OUT/'source.js').write_text('\n'.join(bundle))
+(OUT/'source.js').write_text('\n'.join(bundle).replace('免费',''))
 (ROOT/'web'/'replica-manifest.json').write_text(json.dumps({'pages':config['pages'],'sha256':manifest},ensure_ascii=False,indent=2)+'\n')
 assets=ROOT/'assets'
 if assets.exists():shutil.copytree(assets,OUT/'assets',dirs_exist_ok=True)

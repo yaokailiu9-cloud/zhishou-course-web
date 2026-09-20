@@ -155,7 +155,7 @@ test('H5 页面不含小程序协议、咨询师或人物图片入口',async()=>
   assert.doesNotMatch(html,/<img[^>]+(?:专家|老师|人物)/);
 });
 
-test('免费公开课程支持直接报名，底部导航有可识别的当前状态',async()=>{
+test('公开课程支持直接报名，底部导航有可识别的当前状态',async()=>{
   const fs=require('node:fs/promises');
   const root=require('node:path').join(__dirname,'../..');
   const [html,js,css]=await Promise.all([
@@ -163,12 +163,13 @@ test('免费公开课程支持直接报名，底部导航有可识别的当前�
     fs.readFile(require('node:path').join(root,'web/legacy/app.js'),'utf8'),
     fs.readFile(require('node:path').join(root,'web/legacy/app.css'),'utf8')
   ]);
-  assert.match(html,/免费公开课/);
-  assert.match(html,/确认免费报名/);
+  assert.match(html,/公开课/);
+  assert.doesNotMatch(html+js,/免费/);
+  assert.match(html,/确认报名/);
   assert.match(html,/aria-current="page"/);
   assert.match(html,/class="nav-icon"/);
-  assert.match(js,/微信登录并免费报名/);
-  assert.match(js,/免费报名已提交/);
+  assert.match(js,/微信登录并报名/);
+  assert.match(js,/报名已提交/);
   assert.match(js,/function coverUrl/);
   assert.match(js,/course-poster/);
   assert.match(css,/aspect-ratio:698\/370/);

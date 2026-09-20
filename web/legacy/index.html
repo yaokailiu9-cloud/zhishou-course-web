@@ -28,10 +28,10 @@
         </div>
 
         <section class="section public-section">
-          <div class="section-head"><div><small>01 / 学习</small><h2>免费公开课</h2></div><span class="free-pill">免费</span></div>
+          <div class="section-head"><div><small>01 / 学习</small><h2>公开课</h2></div></div>
           <p class="section-intro">从一堂课开始，走进课堂，一起练习倾听与沟通。</p>
           <ol class="public-steps" aria-label="公开课参与步骤">
-            <li><b>01</b><strong>免费报名</strong><span>填写姓名与手机号</span></li>
+            <li><b>01</b><strong>报名</strong><span>填写姓名与手机号</span></li>
             <li><b>02</b><strong>联系进群</strong><span>群内查看开课地址</span></li>
             <li><b>03</b><strong>到场学习</strong><span>入场信息及时通知</span></li>
           </ol>
@@ -54,13 +54,13 @@
 
         <section class="section promise">
           <p class="eyebrow dark">权益说明</p>
-          <h2>原有免费课程与家庭教育指导权益完整保留</h2>
-          <p>二阶共修营属于额外研发的增值付费进阶项目，仅面向完成一阶共修的学员自愿报名，不影响原有免费服务与后续帮扶。</p>
+          <h2>原有课程与家庭教育指导权益完整保留</h2>
+          <p>二阶共修营属于额外研发的增值付费进阶项目，仅面向完成一阶共修的学员自愿报名，不影响原有服务与后续帮扶。</p>
         </section>
       </section>
 
       <section class="view" id="coursesView" data-view="courses">
-        <div class="page-title"><p class="eyebrow dark">知守 · 共修课堂</p><h1>免费公开课</h1><p>走进课堂，一起练习倾听与沟通；报名不收取费用。</p></div>
+        <div class="page-title"><p class="eyebrow dark">知守 · 共修课堂</p><h1>公开课</h1><p>走进课堂，一起练习倾听与沟通；报名不收取费用。</p></div>
         <label class="search"><span>⌕</span><input id="courseSearch" type="search" placeholder="搜索课程名称或主题" autocomplete="off"></label>
         <div class="course-list" id="courseList" aria-live="polite"></div>
         <section class="advanced-course-section"><div class="section-head"><div><small>进阶学习</small><h2>《答案库》系列课程</h2></div><span class="paid-pill">付费</span></div><div id="advancedCourseList"></div></section>
@@ -88,8 +88,8 @@
 
         <section class="section compact manager-section" id="managerSection" hidden>
           <div class="section-head"><div><small>管理入口</small><h2>公开课程管理</h2></div><span class="manager-pill">已授权</span></div>
-          <p class="hint">发布免费公开课，并查看本人负责课程的报名人数与名单。</p>
-          <button class="primary-button manager-create" id="managerNewCourse" type="button">发布免费公开课</button>
+          <p class="hint">发布公开课，并查看本人负责课程的报名人数与名单。</p>
+          <button class="primary-button manager-create" id="managerNewCourse" type="button">发布公开课</button>
           <div id="managerCourseList" class="plain-list"></div>
         </section>
       </section>
@@ -126,9 +126,9 @@
       <input type="hidden" name="classId">
       <label>家长姓名<input name="name" maxlength="60" required placeholder="请输入真实姓名"></label>
       <label>联系电话<input name="phone" inputmode="numeric" maxlength="11" required placeholder="请输入11位手机号"></label>
-      <p class="form-fee free-form-note" id="enrollFee" hidden>本场为免费公开课，报名不收取费用。</p>
+      <p class="form-fee free-form-note" id="enrollFee" hidden>本场为公开课，报名不收取费用。</p>
       <p class="form-note" id="enrollNote">提交后可在“我的”查看报名状态和课程通知。</p>
-      <button class="primary-button" type="submit">确认免费报名</button>
+      <button class="primary-button" type="submit">确认报名</button>
     </form>
   </dialog>
 
@@ -137,7 +137,7 @@
     <button class="close" type="button" data-close aria-label="关闭">×</button>
     <form id="managerCourseForm">
       <p class="eyebrow dark">公开课程管理</p>
-      <h2>发布免费公开课</h2>
+      <h2>发布公开课</h2>
       <label>课程名称<input name="title" maxlength="120" required placeholder="例如：读懂孩子的情绪"></label>
       <label>课程介绍<textarea name="description" maxlength="4000" placeholder="适合谁参加，本次会学习什么"></textarea></label>
       <label>开课城市<input name="city" maxlength="60" placeholder="例如：深圳"></label>
@@ -146,7 +146,7 @@
       <label>名额上限<input name="capacity" type="number" min="0" max="10000" value="100" required><small>填写 0 表示不限名额。</small></label>
       <label>进群指引<textarea name="groupGuide" maxlength="2000" required placeholder="请说明如何联系工作人员、如何受邀进群"></textarea></label>
       <label>参课须知<textarea name="notice" maxlength="2000" placeholder="如签到要求、携带物品等"></textarea></label>
-      <p class="form-note">发布后会立即显示在免费公开课卡组中，家长可直接报名。</p>
+      <p class="form-note">发布后会立即显示在公开课卡组中，家长可直接报名。</p>
       <button class="primary-button" type="submit">发布课程</button>
     </form>
   </dialog>
