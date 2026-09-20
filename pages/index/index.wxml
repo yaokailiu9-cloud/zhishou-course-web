@@ -50,7 +50,7 @@
       <view class="home-course-body">
         <text class="home-course-title">{{item.title}}</text>
         <text wx:if="{{item.subtitle}}" class="home-course-subtitle">{{item.subtitle}}</text>
-        <view class="home-course-footer"><text>课程介绍与参与说明</text><button class="course-button" bindtap="openCourse" data-id="{{item.id}}">查看课程 ↗</button></view>
+        <view class="home-course-footer"><text>课程内容与目录</text><button class="course-button" bindtap="openCourse" data-id="{{item.id}}">查看课程 ↗</button></view>
       </view>
     </view>
   </view>

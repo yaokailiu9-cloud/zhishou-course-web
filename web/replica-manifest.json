@@ -26,8 +26,8 @@
     "pages/support/support"
   ],
   "sha256": {
-    "pages/index/index.js": "8fea700bf48b9115a2b11830286c1945c7d5aaf3cea88fcd1c0d462e5ec52a38",
-    "pages/index/index.wxml": "ad98a7d92c1c6d19e88a07b0cba267b9029a9108dcb57a7468cd136b9df6d415",
+    "pages/index/index.js": "a48705b1b385a1be53930c542ac9101c6f7eb9cdb066274f58fc73cc4cc2ed7f",
+    "pages/index/index.wxml": "4941835d0d08789121e61198cd5a163abd69df4934b4c2396a7599758cccc99e",
     "pages/index/index.wxss": "54f20de69c68c1de21b963c8f0acf5fae7544c550b6c8d4e8a81b4f54e409d51",
     "pages/index/index.json": "2c728cc275cad57201431c201d07ef269461e778694f2be33c75c1af5c5794f3",
     "pages/plaza/plaza.js": "d2cf76a4ab504be0ac27066c83850656f6679135f61f1f1c903e95ac745eddb3",
@@ -35,7 +35,7 @@
     "pages/plaza/plaza.wxss": "71bddb98d22ec0e2bb5a7b16b625e6601aa21921d4d4bb7ac354a49818b51c14",
     "pages/plaza/plaza.json": "3bb9dadce615635f65ad15f3e3c93e0ab9120fe3a2b17a81990bc710f5633df8",
     "pages/course-detail/course-detail.js": "f683c21121408e2c421cb1c32d1ac24b62ab19e12157dbbe20e2f0d183f3bbbb",
-    "pages/course-detail/course-detail.wxml": "960e0583309c0b6166669bda218ac2a6b4cd4c9a77cb0e4390cc529d0dc5d19d",
+    "pages/course-detail/course-detail.wxml": "5e6332948039a1ea38f41bffa1312e6c49bfaba15c05487440e1c9aeead21abe",
     "pages/course-detail/course-detail.wxss": "0786a8f7ade5780ece295bce89d5aa1cf28c4544601ed0cfba70772c7c2fdf08",
     "pages/course-detail/course-detail.json": "a3e7dc591b4f7a8606db6b09d854d2a987dcbe6e9a4ccf417cb376d4468a1b15",
     "pages/chat/chat.js": "4ac26c8c289cad29ac8e0bf0a68446c279336b92a46454fffd6c5c18cbdca4fc",

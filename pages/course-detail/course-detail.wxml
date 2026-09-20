@@ -1,7 +1,7 @@
 <view class="detail-page">
   <view class="detail-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
     <button class="nav-back" bindtap="goBack">‹</button>
-    <text class="nav-title">课程详情</text>
+    <text class="nav-title">{{course.title || '课程详情'}}</text>
   </view>
 
   <view wx:if="{{loading || error}}" class="detail-state" style="padding-top: {{navHeight + 40}}px;"><text>{{loading ? '正在加载课程…' : error}}</text><button wx:if="{{error}}" class="retry-button" bindtap="retryCourse">重新加载</button><button class="retry-button" bindtap="goBack">返回课程列表</button></view>

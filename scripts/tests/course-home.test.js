@@ -8,10 +8,10 @@ function home(listCourses){
  });
  page.data=structuredClone(page.data);page.setData=function(patch){Object.assign(this.data,patch);};return{page,navigations};
 }
-test('首页从后端推荐付费课程，保留真实课程 ID 且不将免费旧课程改为付费',async()=>{
- const rows=[{id:'1234567890123456',title:'二阶线上共修',badge:'付费',coverUrl:''},{id:'2',title:'原有课程',badge:'热门'}];
+test('首页展示答案库题目课程及原推荐课程，保留真实课程 ID 和标签',async()=>{
+ const rows=[{id:'1234567890123456',title:'二阶线上共修',badge:'付费',coverUrl:''},{id:'2',title:'原有课程',badge:'热门'},{id:'8',title:'奖励的误区',subtitle:'《答案库》系列课程',badge:'奖励的误区',coverUrl:'https://example.invalid/cover.jpg'}];
  const {page,navigations}=home(async()=>({courses:rows}));await page.fetchFeaturedCourses();
- assert.equal(page.data.featuredCourses.length,1);assert.equal(page.data.featuredCourses[0].id,rows[0].id);assert.equal(rows[1].badge,'热门');assert.equal(page.data.featuredCourses[0].coverUrl,'');
+ assert.equal(page.data.featuredCourses.length,2);assert.equal(page.data.featuredCourses[1].title,'奖励的误区');assert.equal(page.data.featuredCourses[1].badge,'奖励的误区');assert.equal(page.data.featuredCourses[0].id,rows[0].id);assert.equal(rows[1].badge,'热门');assert.equal(page.data.featuredCourses[0].coverUrl,'');
  page.openCourse({currentTarget:{dataset:{id:rows[0].id}}});page.goSearch();
  assert.deepEqual(navigations,['/pages/course-detail/course-detail?id='+rows[0].id,'/pages/search/search?mode=courses']);
 });
