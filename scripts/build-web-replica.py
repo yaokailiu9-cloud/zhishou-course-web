@@ -13,6 +13,7 @@ expressions=[]
 # changing the original WeChat mini-program files.
 WEB_TEXT_REPLACEMENTS=(
     ('免费公开课','公开课'),
+    ('报名参加后，可申请线下咨询',''),
     ('\n到课核实后，可申请线下咨询。',''),
     ('；实际到课核实后，可申请线下咨询。','。'),
     ('到课核实后，可申请线下咨询。',''),

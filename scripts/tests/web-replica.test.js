@@ -43,6 +43,8 @@ test('网页公开课去掉免费前缀、课程头图和线下咨询提示，�
   assert.doesNotMatch(page.textContent,/免费公开课|到课核实后，可申请线下咨询/);
   assert.equal(page.querySelectorAll('.course-card .course-cover,.course-card .course-cover-fallback').length,0);
   assert.match(page.textContent,/公开课/);
+  h.host.wx.navigateTo({url:'/pages/profile/profile'});await tick();
+  assert.doesNotMatch(h.document.getElementById('page').textContent,/报名参加后，可申请线下咨询/);
 });
 test('loop rendering and conditional states preserve user input and search filtering',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/search/search?mode=courses'});await tick();
