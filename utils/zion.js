@@ -569,6 +569,7 @@ function normalizeServiceProvider(item = {}) {
     bio: item.bio || "",
     specialties,
     serviceStatus: item.service_status || "PENDING_REVIEW",
+    serviceKind: item.service_kind || "STAFF",
     verified: !!item.verified,
     canReply: !!item.can_reply,
     canAcceptOrder: !!item.can_accept_order,
@@ -1045,6 +1046,7 @@ function listServiceProviders(filters = {}) {
         bio
         specialties_json
         service_status
+        service_kind
         verified
         can_reply
         can_accept_order
@@ -1089,6 +1091,7 @@ function getServiceProviderByAccount(accountId) {
         bio
         specialties_json
         service_status
+        service_kind
         verified
         can_reply
         can_accept_order

@@ -8,6 +8,7 @@
   <view class="view-tabs">
     <button class="view-tab {{activeView === 'workbench' ? 'active' : ''}}" data-view="workbench" bindtap="switchView">工作台</button>
     <button class="view-tab {{activeView === 'serving' ? 'active' : ''}}" data-view="serving" bindtap="switchView">服务中</button>
+    <button class="view-tab {{activeView === 'identities' ? 'active' : ''}}" data-view="identities" bindtap="switchView">身份管理</button>
   </view>
 
   <block wx:if="{{activeView === 'workbench'}}">
@@ -83,6 +84,59 @@
 
       <view wx:if="{{!servingSessions.length}}" class="empty-card">
         <text>暂无进行中的会话</text>
+      </view>
+    </view>
+  </block>
+
+  <block wx:elif="{{activeView === 'identities'}}">
+    <view class="hero-line compact">
+      <text class="hero-title">身份管理</text>
+      <text class="hero-copy">为已登录用户设置管理、代理或用户身份。每次变更都会写入后台审计记录。</text>
+    </view>
+
+    <view class="identity-search-wrap">
+      <input
+        class="identity-search"
+        value="{{identitySearch}}"
+        placeholder="搜索昵称或用户编号"
+        bindinput="onIdentitySearch"
+      />
+    </view>
+
+    <view class="identity-list">
+      <view wx:for="{{identityUsers}}" wx:key="id" class="identity-card">
+        <view class="identity-avatar">
+          <image wx:if="{{item.avatarUrl}}" class="avatar-image" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+          <text wx:else>{{item.avatarText}}</text>
+        </view>
+        <view class="identity-main">
+          <view class="identity-name-row">
+            <text class="identity-name">{{item.name}}</text>
+            <text wx:if="{{item.isSelf}}" class="identity-self">当前账号</text>
+          </view>
+          <text class="identity-account-id">用户编号 {{item.id}}</text>
+        </view>
+        <picker
+          mode="selector"
+          range="{{identityOptions}}"
+          range-key="label"
+          value="{{item.identityIndex}}"
+          data-id="{{item.id}}"
+          disabled="{{item.isSelf || changingAccountId === item.id}}"
+          bindchange="onIdentityChange"
+        >
+          <view class="identity-picker {{item.isSelf ? 'disabled' : ''}}">
+            <text>{{item.identityLabel}}</text>
+            <text wx:if="{{!item.isSelf}}" class="identity-picker-arrow">⌄</text>
+          </view>
+        </picker>
+      </view>
+
+      <view wx:if="{{identityLoading}}" class="empty-card">
+        <text>正在加载用户身份…</text>
+      </view>
+      <view wx:elif="{{!identityUsers.length}}" class="empty-card">
+        <text>没有找到匹配的用户</text>
       </view>
     </view>
   </block>

@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Invoke the installed official Zion plugin. JSON outputs stay in a local work folder."""
+"""Invoke the project-pinned Zion CLI. JSON outputs stay in a local work folder."""
 import json, os, subprocess, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN = Path('/Users/nidie/.codex/plugins/cache/zion/zion-nocode/2.1.6')
+CLI = ['npx', '-y', 'zion-mcp@2.7.8']
 def run(*args):
-    env = dict(os.environ, PLUGIN_ROOT=str(PLUGIN))
-    p = subprocess.run([str(PLUGIN/'bin/zion-mcp'), *args], cwd=ROOT, env=env, text=True, capture_output=True, timeout=180)
+    p = subprocess.run([*CLI, *args], cwd=ROOT, env=os.environ.copy(), text=True, capture_output=True, timeout=180)
     if p.returncode:
         raise RuntimeError(p.stderr or p.stdout)
     return json.loads(p.stdout)

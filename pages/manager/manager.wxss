@@ -41,6 +41,122 @@
   white-space: nowrap;
 }
 
+.identity-search-wrap {
+  margin-top: 28rpx;
+  padding: 0 26rpx;
+  background: var(--em-color-surface);
+  border: 1rpx solid var(--em-color-border);
+  border-radius: var(--em-radius-pill);
+  box-shadow: var(--em-shadow-card);
+}
+
+.identity-search {
+  width: 100%;
+  height: 76rpx;
+  color: var(--em-color-text);
+  font-size: 25rpx;
+}
+
+.identity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.identity-card {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  min-width: 0;
+  padding: 22rpx 24rpx;
+  background: var(--em-color-surface);
+  border: 1rpx solid var(--em-color-border);
+  border-radius: 24rpx;
+  box-shadow: var(--em-shadow-card);
+}
+
+.identity-avatar {
+  display: flex;
+  flex: 0 0 76rpx;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 700;
+  background: var(--em-color-primary);
+  border-radius: 50%;
+}
+
+.identity-avatar .avatar-image {
+  width: 100%;
+  height: 100%;
+}
+
+.identity-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.identity-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.identity-name {
+  overflow: hidden;
+  color: var(--em-color-text);
+  font-size: 27rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity-self {
+  flex: 0 0 auto;
+  padding: 4rpx 10rpx;
+  color: var(--em-color-primary);
+  font-size: 19rpx;
+  background: rgba(15, 118, 110, 0.08);
+  border-radius: var(--em-radius-pill);
+}
+
+.identity-account-id {
+  display: block;
+  margin-top: 7rpx;
+  color: var(--em-color-text-soft);
+  font-size: 21rpx;
+}
+
+.identity-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-width: 112rpx;
+  height: 58rpx;
+  padding: 0 18rpx;
+  color: #ffffff;
+  font-size: 23rpx;
+  font-weight: 700;
+  background: var(--em-color-primary);
+  border-radius: var(--em-radius-pill);
+}
+
+.identity-picker.disabled {
+  color: var(--em-color-text-secondary);
+  background: var(--em-color-bg-soft);
+}
+
+.identity-picker-arrow {
+  font-size: 21rpx;
+}
+
 .manager-page {
   min-height: 100vh;
   box-sizing: border-box;

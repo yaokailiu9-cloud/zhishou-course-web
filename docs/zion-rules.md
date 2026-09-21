@@ -151,6 +151,15 @@ Current business identity model（2026-09-21）:
 - `用户`：没有启用中的 `STAFF` / `AGENT` 关联记录。`account.user_type` 只作兼容展示，不可单独作为授权依据。
 - 刘曜恺的小程序账号 `account.id = 1000000000000010` 与网页账号 `account.id = 1000000000000019` 均为管理身份；网页账号关联 `service_provider.id = 14`，`service_kind = STAFF`、`service_status = ACTIVE`、`can_reply = true`、`can_accept_order = true`。
 
+Status on 2026-09-21（身份管理）:
+
+- 管理工作台新增“身份管理”，只允许启用中的 `STAFF` 且同时具备 `can_reply` / `can_accept_order` 的当前登录账号调用。
+- `LIST_ACCOUNT_IDENTITIES` 与 `SET_ACCOUNT_IDENTITY` 都在主服务动作流内重新核验当前账号；客户端传入的角色、昵称或缓存不作为授权依据。
+- 管理只能修改其他用户，不能在该页面降低自己的管理身份，避免误操作导致系统无可用管理账号。
+- 身份变更同时更新 `account.user_type` 兼容显示和 `service_provider` 真实业务身份；改成“用户”时保留历史服务人员记录但将其设为 `INACTIVE`，避免破坏已有咨询关系。
+- 新增 `identity_change_log`（身份变更记录），通过两个显式账户关系记录操作人与目标用户，并保存原身份、新身份和备注。Anonymous User 与 Logged-in User 对该表的直接查询、写入、修改、删除和统计均关闭，只有动作流服务端写入。
+- 清理未绑定的旧表：`wechat_login_record`（0 条）、`advisor_favorite`（0 条）、`recommendation`（4 条早期占位数据）、`ud_banbenshenhe_ebcabf`（1 条早期占位数据）。线下预约、记录、反馈、总结等空表仍被正式流程引用，全部保留。
+
 Status on 2026-07-04:
 
 - Created and synced `service_provider`.
@@ -159,7 +168,7 @@ Status on 2026-07-04:
   - `service_provider` one-to-many consultation sessions.
 - Added `consultation_session.service_provider_id` through the Zion relation.
 - The project is still `pre_type_system_refactor`, so status-like fields were created as `TEXT` instead of enum types.
-- Permission role/table/row configuration still must be done in Zion Settings → Permission Management; MCP cannot directly configure it.
+- 权限修改需通过当前官方 Zion CLI 的权限工具执行并在同步前回读 Anonymous User 与 Logged-in User；编辑器仍可用于人工复核。
 
 Status on 2026-07-04 later（历史记录，经理身份已在 2026-08-16 校正）:
 

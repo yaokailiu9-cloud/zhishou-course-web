@@ -1,5 +1,12 @@
 const zion = require("../../utils/zion");
 const chatContext = require("../../utils/chatContext");
+const service = require("../../utils/consultationService");
+
+const identityOptions = [
+  { value: "MANAGER", label: "管理" },
+  { value: "AGENT", label: "代理" },
+  { value: "USER", label: "用户" }
+];
 
 const emptyStats = [
   { label: "服务中", value: "0", tone: "blue" },
@@ -126,7 +133,8 @@ Page({
     pageTitle: "经理工作台",
     titleMap: {
       workbench: "经理工作台",
-      serving: "服务中"
+      serving: "服务中",
+      identities: "身份管理"
     },
     stats: emptyStats,
     servingCount: 0,
@@ -135,6 +143,11 @@ Page({
     servingSessions: [],
     activeServiceProviderId: "",
     activeManagerAccountId: "",
+    identityOptions,
+    identityUsers: [],
+    identitySearch: "",
+    identityLoading: false,
+    changingAccountId: "",
     manager: {
       name: "服务人员",
       avatar: "",
@@ -217,7 +230,9 @@ Page({
         const allowed = Boolean(
           provider
           && provider.serviceStatus === "ACTIVE"
-          && (provider.canReply || provider.canAcceptOrder)
+          && provider.serviceKind === "STAFF"
+          && provider.canReply
+          && provider.canAcceptOrder
         );
         if (!allowed) {
           wx.showToast({ title: "仅服务人员可进入", icon: "none" });
@@ -279,7 +294,9 @@ Page({
   },
 
   fetchManagerData() {
-    return this.fetchSessions();
+    return this.data.activeView === "identities"
+      ? this.loadIdentityUsers()
+      : this.fetchSessions();
   },
 
   switchView(event) {
@@ -287,14 +304,79 @@ Page({
   },
 
   switchViewByName(view) {
-    const allowed = ["workbench", "serving"];
+    const allowed = ["workbench", "serving", "identities"];
     if (!allowed.includes(view)) return;
     const nextData = {
       activeView: view,
       pageTitle: this.data.titleMap[view] || "经理工作台"
     };
     this.setData(nextData);
-    this.fetchSessions();
+    this.fetchManagerData();
+  },
+
+  decorateIdentityUser(item = {}) {
+    const index = Math.max(0, identityOptions.findIndex((option) => option.value === item.identity));
+    return {
+      ...item,
+      id: String(item.id || ""),
+      avatarText: item.name ? item.name.slice(0, 1) : "用",
+      identityIndex: index,
+      identityLabel: identityOptions[index].label
+    };
+  },
+
+  applyIdentityFilter(keyword = this.data.identitySearch) {
+    const query = String(keyword || "").trim().toLowerCase();
+    const rows = (this.allIdentityUsers || []).filter((item) => (
+      !query
+      || String(item.name || "").toLowerCase().includes(query)
+      || String(item.id || "").includes(query)
+    ));
+    this.setData({ identityUsers: rows, identitySearch: keyword });
+  },
+
+  loadIdentityUsers() {
+    this.setData({ identityLoading: true });
+    return service.call("LIST_ACCOUNT_IDENTITIES")
+      .then((result) => {
+        this.allIdentityUsers = (result.items || []).map((item) => this.decorateIdentityUser(item));
+        this.applyIdentityFilter();
+      })
+      .catch((error) => {
+        wx.showToast({ title: error.message || "身份列表加载失败", icon: "none" });
+        throw error;
+      })
+      .finally(() => this.setData({ identityLoading: false }));
+  },
+
+  onIdentitySearch(event) {
+    this.applyIdentityFilter(event.detail.value || "");
+  },
+
+  onIdentityChange(event) {
+    const dataset = event.currentTarget.dataset || {};
+    const target = (this.allIdentityUsers || []).find((item) => String(item.id) === String(dataset.id));
+    const option = identityOptions[Number(event.detail.value)];
+    if (!target || !option || target.isSelf || target.identity === option.value) return;
+    wx.showModal({
+      title: "确认修改身份",
+      content: `将“${target.name}”从${target.identityLabel}改为${option.label}？`,
+      confirmText: "确认修改",
+      success: (choice) => {
+        if (!choice.confirm) return;
+        this.setData({ changingAccountId: target.id });
+        service.call("SET_ACCOUNT_IDENTITY", {
+          targetAccountId: target.id,
+          identity: option.value,
+          note: "由管理页面调整"
+        }).then(() => {
+          wx.showToast({ title: "身份已更新", icon: "success" });
+          return this.loadIdentityUsers();
+        }).catch((error) => {
+          wx.showToast({ title: error.message || "身份修改失败", icon: "none" });
+        }).finally(() => this.setData({ changingAccountId: "" }));
+      }
+    });
   },
 
   enterChat(event) {
