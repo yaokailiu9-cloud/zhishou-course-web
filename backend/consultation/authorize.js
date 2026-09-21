@@ -33,7 +33,7 @@ function accountDisplayName(item) {
 }
 if (operation === "LIST_ACCOUNT_IDENTITIES") {
   requireManager();
-  var accounts = gql("query ListAccountIdentities { accounts: account(order_by:{id:desc},limit:100){id username wechat_nickname wechat_avatar_url user_type account_profile{user_name avatar_url avatar_image{id url}} service_provider{id service_kind service_status can_reply can_accept_order}}}", {}).accounts || [];
+  var accounts = gql("query ListAccountIdentities { accounts: account(where:{fz_deleted:{_eq:false}},order_by:{id:desc},limit:100){id username wechat_nickname wechat_avatar_url user_type account_profile{user_name avatar_url avatar_image{id url}} service_provider{id service_kind service_status can_reply can_accept_order}}}", {}).accounts || [];
   result(state, {items:accounts.map(function(item){
     var profile=item.account_profile||{}, image=profile.avatar_image||{};
     return {id:item.id,name:accountDisplayName(item),avatarUrl:image.url||profile.avatar_url||item.wechat_avatar_url||"",identity:businessIdentity(item),isSelf:String(item.id)===String(actor.accountId)};

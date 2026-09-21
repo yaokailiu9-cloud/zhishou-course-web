@@ -15,7 +15,8 @@ function fixture() {
       { id: 101, username: 'manager', wechat_nickname: '管理甲', service_provider: { id: 1, service_kind: 'STAFF', service_status: 'ACTIVE', can_reply: true, can_accept_order: true } },
       { id: 102, username: 'agent', wechat_nickname: '代理乙', service_provider: { id: 2, service_kind: 'AGENT', service_status: 'ACTIVE', can_reply: false, can_accept_order: false } },
       { id: 201, username: 'customer', wechat_nickname: '用户丙', account_profile: { user_name: '用户丙' }, service_provider: null },
-      { id: 202, username: 'old-staff', wechat_nickname: '用户丁', service_provider: { id: 3, service_kind: 'STAFF', service_status: 'INACTIVE', can_reply: false, can_accept_order: false } }
+      { id: 202, username: 'old-staff', wechat_nickname: '用户丁', fz_deleted: false, service_provider: { id: 3, service_kind: 'STAFF', service_status: 'INACTIVE', can_reply: false, can_accept_order: false } },
+      { id: 203, username: null, wechat_nickname: null, fz_deleted: true, service_provider: null }
     ],
     logs: []
   };
@@ -29,7 +30,10 @@ function run(db, actorId, operation, payload = {}) {
     if (name === 'ServiceRows') {
       return { data: { rows: actor && actor.service_provider && actor.service_provider.service_status === 'ACTIVE' ? [actor.service_provider] : [] } };
     }
-    if (name === 'ListAccountIdentities') return { accounts: db.accounts };
+    if (name === 'ListAccountIdentities') {
+      assert.match(_query, /fz_deleted:\{_eq:false\}/);
+      return { accounts: db.accounts.filter((item) => item.fz_deleted !== true) };
+    }
     if (name === 'IdentityTarget') return { account_by_pk: db.accounts.find((item) => item.id === variables.id) || null };
     if (name === 'ChangeExistingIdentity' || name === 'CreateIdentity') {
       const target = db.accounts.find((item) => item.id === variables.accountId);

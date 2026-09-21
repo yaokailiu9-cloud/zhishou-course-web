@@ -149,7 +149,7 @@ Current business identity model（2026-09-21）:
 - `管理`：存在 `service_provider.service_kind = STAFF` 且 `service_status = ACTIVE` 的关联记录；实际能力继续由 `can_reply`、`can_accept_order` 等后端字段控制。
 - `代理`：存在 `service_provider.service_kind = AGENT` 且 `service_status = ACTIVE` 的关联记录；代理身份不能因共用 `service_provider` 表而获得管理接单或回复能力。
 - `用户`：没有启用中的 `STAFF` / `AGENT` 关联记录。`account.user_type` 只作兼容展示，不可单独作为授权依据。
-- 刘曜恺的小程序账号 `account.id = 1000000000000010` 与网页账号 `account.id = 1000000000000019` 均为管理身份；网页账号关联 `service_provider.id = 14`，`service_kind = STAFF`、`service_status = ACTIVE`、`can_reply = true`、`can_accept_order = true`。
+- 正式启用账号只保留三个：刘曜恺 `account.id = 1000000000000019`（管理）、周流君騰 `account.id = 1000000000000020`（用户）、程思琦 `account.id = 1000000000000021`（管理）。刘曜恺网页账号关联 `service_provider.id = 14`，并承接原工作人员的 `advisor.id = 5` 与历史课程关系。
 
 Status on 2026-09-21（身份管理）:
 
@@ -158,6 +158,7 @@ Status on 2026-09-21（身份管理）:
 - 管理只能修改其他用户，不能在该页面降低自己的管理身份，避免误操作导致系统无可用管理账号。
 - 身份变更同时更新 `account.user_type` 兼容显示和 `service_provider` 真实业务身份；改成“用户”时保留历史服务人员记录但将其设为 `INACTIVE`，避免破坏已有咨询关系。
 - 新增 `identity_change_log`（身份变更记录），通过两个显式账户关系记录操作人与目标用户，并保存原身份、新身份和备注。Anonymous User 与 Logged-in User 对该表的直接查询、写入、修改、删除和统计均关闭，只有动作流服务端写入。
+- `LIST_ACCOUNT_IDENTITIES` 必须固定使用 `account.fz_deleted = false`；Zion 官方注销接口会保留不可登录的系统墓碑记录，管理页不得把注销账号当成可管理用户返回。
 - 清理未绑定的旧表：`wechat_login_record`（0 条）、`advisor_favorite`（0 条）、`recommendation`（4 条早期占位数据）、`ud_banbenshenhe_ebcabf`（1 条早期占位数据）。线下预约、记录、反馈、总结等空表仍被正式流程引用，全部保留。
 
 Status on 2026-07-04:
