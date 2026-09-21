@@ -78,7 +78,11 @@ function createServer() {
       return;
     }
     if (url.pathname === '/healthz') {
-      json(res, 200, {ok: true, service: 'zhishou-course-web'});
+      json(res, 200, {
+        ok: true,
+        service: 'zhishou-course-web',
+        release: '2026.09.21.1'
+      });
       return;
     }
     if (url.pathname === '/MP_verify_GFzG9U79F1ySzmh4.txt') {
