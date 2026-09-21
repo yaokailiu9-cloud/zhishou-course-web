@@ -16,9 +16,9 @@
     <view class="hero-arch"></view>
     <text class="public-class-kicker">知守 · 公开课堂</text>
     <text class="public-class-title">透过现象看本质，\n父母有道，孩子有路。</text>
-    <text class="public-class-desc">一堂免费公开课，开启学习与沟通。\n到课核实后，可申请线下咨询。</text>
+    <text class="public-class-desc">从一堂课开始学习与沟通。\n报名费用以各场次页面显示为准。</text>
     <view class="public-class-actions">
-      <button class="join-button" bindtap="goPublicClasses">免费公开课报名 <text>↗</text></button>
+      <button class="join-button" bindtap="goPublicClasses">课程报名 <text>↗</text></button>
     </view>
   </view>
 
@@ -40,7 +40,7 @@
   <view class="home-course-list">
     <view wx:if="{{loadingCourses}}" class="loading-notice">正在加载课程…</view>
     <view wx:elif="{{courseError}}" class="loading-notice"><text>{{courseError}}</text><button class="retry-button" bindtap="fetchFeaturedCourses">重新加载</button></view>
-    <view wx:elif="{{!featuredCourses.length}}" class="loading-notice">共修课程准备中，可先查看免费公开课。</view>
+    <view wx:elif="{{!featuredCourses.length}}" class="loading-notice">共修课程准备中，可先查看最新课程场次。</view>
     <navigator wx:else class="home-course-card series-entry" url="/pages/plaza/plaza" open-type="switchTab" aria-label="查看答案库系列课程">
       <view class="home-course-cover">
         <image wx:if="{{featuredCourses[0].coverUrl}}" class="home-course-image" src="{{featuredCourses[0].coverUrl}}" mode="aspectFill"/>

@@ -65,7 +65,7 @@ function requestKey(s, prefix) { return prefix + ":" + s.actor.accountId + ":" +
 function phone(v) { var s = String(v || "").trim(); if (!/^1[3-9][0-9]{9}$/.test(s)) fail("请填写有效的11位手机号"); return s; }
 function date(v, label) { var d = new Date(v); if (!v || isNaN(d.getTime())) fail(label + "无效"); return d.toISOString(); }
 function result(s, data) { s.result = {ok: true, data: data}; }
-var CLASS_FIELDS = "id title description starts_at status group_guide signup_url group_qr { id url } organizer_id cover { id url } city contact_phone notice capacity reserved_count revision registration_closes_at checkin_closes_at share_code { id url }";
+var CLASS_FIELDS = "id title description starts_at status group_guide signup_url group_qr { id url } organizer_id cover { id url } city contact_phone notice capacity reserved_count revision registration_fee registration_closes_at checkin_closes_at share_code { id url }";
 var ENROLL_FIELDS = "id created_at registrant_name phone status attendance_status group_status verified_at customer_id public_class_id verified_by_id entry_code checkin_method canceled_at public_class { " + CLASS_FIELDS + " }";
 var APPOINTMENT_FIELDS = "id created_at requested_time confirmed_at status contact_name phone concerns child_info staff_note completed_at provider_id customer_id enrollment_id provider { id display_name }";
 var RECORD_FIELDS = "id appointment_id author_id summary advice status confirmed_at updated_at";

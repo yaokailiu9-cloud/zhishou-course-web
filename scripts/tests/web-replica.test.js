@@ -59,13 +59,13 @@ test('home renders source content, real tab navigation, and all page modules wit
   for(const route of h.context.MiniSource.config.pages){h.host.wx.navigateTo({url:'/'+route});await tick();assert.equal(h.host.current.route,route==='pages/manager/manager'?'pages/profile/profile':route);assert.ok(h.document.getElementById('page').textContent.trim(),route)}
   assert.deepEqual(h.errors,[]);
 });
-test('网页公开课去掉免费前缀、课程头图和线下咨询提示，且不修改小程序源码',async()=>{
-  assert.match(read('pages/public-class/public-class.wxml'),/免费公开课/);
+test('网页公开课按场次显示后台费用，不再把所有场次写死为免费',async()=>{
+  assert.match(read('pages/public-class/public-class.wxml'),/\{\{item\.feeText\}\}/);
   assert.match(read('pages/public-class/public-class.wxml'),/course-cover/);
   const h=await host();h.host.wx.navigateTo({url:'/pages/public-class/public-class'});await tick();
-  h.host.current.setData({classes:[{id:'5',title:'公开课测试',coverUrl:'https://example.invalid/cover.jpg',timeText:'周六',placeText:'深圳',description:'课程介绍',canEnroll:true,seatsText:'尚有名额'}],loading:false,error:''});await tick();
+  h.host.current.setData({classes:[{id:'5',title:'公开课测试',coverUrl:'https://example.invalid/cover.jpg',timeText:'周六',placeText:'深圳',description:'课程介绍',canEnroll:true,seatsText:'尚有名额',feeText:'￥100.00',isPaid:true}],loading:false,error:''});await tick();
   const page=h.document.getElementById('page');
-  assert.doesNotMatch(page.textContent,/免费公开课|到课核实后，可申请线下咨询/);
+  assert.doesNotMatch(page.textContent,/免费公开课|到课核实后，可申请线下咨询/);assert.match(page.textContent,/￥100\.00/);
   assert.equal(page.querySelectorAll('.course-card .course-cover,.course-card .course-cover-fallback').length,0);
   assert.match(page.textContent,/公开课/);
   h.host.wx.navigateTo({url:'/pages/profile/profile'});await tick();

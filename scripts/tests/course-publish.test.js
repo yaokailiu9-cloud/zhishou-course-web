@@ -25,7 +25,8 @@ test('时间、人数与手机号校验失败时保留表单，显示具体原�
   [{date:'2000-01-01'},/未来/],
   [{closeDate:'2099-01-01',closeTime:'15:00'},/报名截止时间/],
   [{checkinDate:'2099-01-01',checkinTime:'13:00'},/签到截止时间/],
-  [{contactPhone:'123'},/11位/],
+ [{contactPhone:'123'},/11位/],
+  [{registrationFee:'100.001'},/报名费用/],
   [{capacity:'2'},/已报名人数/,{reserved_count:3}],
   [{date:'invalid'},/开课时间无效/]
  ]){
@@ -36,6 +37,22 @@ test('时间、人数与手机号校验失败时保留表单，显示具体原�
 test('已发布的历史课程允许修改说明，不强制改成未来日期',async()=>{
  let calls=0;const {p}=setup(async()=>{calls++;return{id:'123'};});p.classId='123';p.data.status='PUBLISHED';p.data.form.date='2000-01-01';
  await p.publish();assert.equal(calls,1);assert.equal(p.data.publishError,'');
+});
+test('新课程默认带入100元，发布时把费用交给后端保存',async()=>{
+ let payload;const {p}=setup(async(_op,value)=>{payload=value;return{id:'123'};});
+ assert.equal(p.data.form.registrationFee,'100');await p.publish();assert.equal(payload.registrationFee,'100');
+});
+test('付费课程提交时先弹出后台金额，支付未开通时不生成报名',async()=>{
+ let page,calls=0;const modals=[];
+ vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../pages/class-enroll/class-enroll.js'),'utf8'),{
+  Page:value=>page=value,
+  require:name=>name.includes('consultationService')?{call:async()=>{calls++;},error(){}}:name.includes('/auth')?{requireLogin:()=>true}:name.includes('coursePresentation')?presentation:{takeEnrollmentForm:()=>null,restore:()=>false},
+  wx:{showModal:value=>modals.push(value),redirectTo(){}},
+ });
+ page.data=structuredClone(page.data);page.setData=function(patch){for(const[k,v]of Object.entries(patch)){const keys=k.split('.');let obj=this.data;for(const key of keys.slice(0,-1))obj=obj[key];obj[keys.at(-1)]=v;}};
+ page.data.classInfo=presentation.classCard({id:1,title:'付费课',registration_fee:100,canEnroll:true});page.data.form={name:'家长',phone:'13800000000'};
+ await page.submit();assert.equal(calls,0);assert.equal(modals[0].title,'确认缴费报名');assert.match(modals[0].content,/￥100\.00/);
+ modals[0].success({confirm:true});assert.equal(modals[1].title,'支付通道待开通');assert.equal(calls,0);
 });
 test('提交过程中再次点击不覆盖输入，也不会重复写入',async()=>{
  let finish,calls=0;const {p}=setup(()=>{calls++;return new Promise(resolve=>finish=resolve);});

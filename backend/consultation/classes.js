@@ -67,9 +67,12 @@ if(op==='SAVE_CLASS') {
   if(['PUBLISHED','CLOSED','DRAFT'].indexOf(status)<0)fail('课程状态无效');
   var capacity=Number(p.capacity||0);
   if(!Number.isSafeInteger(capacity)||capacity<0||capacity>10000)fail('名额请输入0至10000的整数，0表示不限');
+  var feeText=String(p.registrationFee==null?'0':p.registrationFee).trim()||'0';
+  if(!/^(0|[1-9][0-9]{0,5})(\.[0-9]{1,2})?$/.test(feeText))fail('报名费用请填写0至999999.99元，最多两位小数');
+  var registrationFee=Number(feeText);
   if(previous&&capacity&&capacity<Number(previous.reserved_count||0))fail('名额不能少于已报名人数');
   if(previous&&Number(previous.reserved_count)>0&&status==='DRAFT')fail('已有报名的课程请结束报名，不能改回草稿');
-  var values={title:text(p.title,'课程名称',120,true),description:text(p.description,'课程说明',4000,false),group_guide:text(p.groupGuide,'进群指引',2000,status==='PUBLISHED'),signup_url:text(p.signupUrl,'报名链接',1500,false),status:status,organizer_id:s.actor.providerId,capacity:capacity,city:text(p.city,'开课城市',60,false),contact_phone:p.contactPhone?phone(p.contactPhone):null,notice:text(p.notice,'参课须知',2000,false)};
+  var values={title:text(p.title,'课程名称',120,true),description:text(p.description,'课程说明',4000,false),group_guide:text(p.groupGuide,'进群指引',2000,status==='PUBLISHED'),signup_url:text(p.signupUrl,'报名链接',1500,false),status:status,organizer_id:s.actor.providerId,capacity:capacity,registration_fee:registrationFee,city:text(p.city,'开课城市',60,false),contact_phone:p.contactPhone?phone(p.contactPhone):null,notice:text(p.notice,'参课须知',2000,false)};
   if(values.signup_url&&!/^https:\/\//.test(values.signup_url))fail('报名链接须使用https地址');
   values.starts_at=p.startsAt?date(p.startsAt,'开课时间'):null;
   values.registration_closes_at=p.registrationClosesAt?date(p.registrationClosesAt,'报名截止时间'):null;
@@ -91,6 +94,7 @@ if(op==='ENROLL') {
   if(existing&&existing.status==='REGISTERED')result(s,{enrollment:existing});
   else {
     var view=classView(c,false);if(!view.canEnroll||!c.organizer_id)fail(view.closedReason||'本场尚未开放报名');
+    if(Number(c.registration_fee||0)>0)fail('本场报名费为￥'+Number(c.registration_fee).toFixed(2)+'，需先完成缴费，支付成功后才会报名成功');
     var values={customer_id:s.actor.accountId,public_class_id:c.id,registrant_name:text(p.name,'姓名',60,true),phone:phone(p.phone),status:'REGISTERED',attendance_status:'PENDING',group_status:'PENDING',entry_code:entryCode(),canceled_at:null,verified_at:null,verified_by_id:null,checkin_method:null};
     lockClass(c,{reserved_count:Number(c.reserved_count||0)+1});
     if(existing)update('public_class_enrollment',and(eq('id',existing.id),eq('status','CANCELED','text')),values);

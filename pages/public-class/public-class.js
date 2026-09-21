@@ -15,5 +15,5 @@ Page({
  choose(e){wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id='+e.currentTarget.dataset.id});},
  goMine(){wx.navigateTo({url:'/pages/my-enrollments/my-enrollments'});},
  goCustomer(){wx.navigateTo({url:'/pages/customer/customer'});},
- onShareAppMessage(){return {title:'免费公开课 · 一起学习如何更好地沟通',path:'/pages/public-class/public-class'};}
+ onShareAppMessage(){return {title:'知守课程 · 一起学习如何更好地沟通',path:'/pages/public-class/public-class'};}
 });

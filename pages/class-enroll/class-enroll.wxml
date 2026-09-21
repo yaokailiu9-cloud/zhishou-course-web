@@ -1,9 +1,9 @@
 <view class="service-page course-page">
- <view class="service-hero"><text class="eyebrow">确认报名</text><text class="page-title">期待和你课堂见</text><text class="muted">本次公开课免费，报名信息用于课程联系。</text></view>
+ <view class="service-hero"><text class="eyebrow">确认报名</text><text class="page-title">期待和你课堂见</text><text class="muted">{{classInfo && classInfo.isPaid ? '完成缴费后才会报名成功。' : '本场免费，报名信息用于课程联系。'}}</text></view>
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh" disabled="{{busy}}">刷新课程状态</button></view><text wx:if="{{loading}}" class="muted">正在确认场次…</text>
- <block wx:if="{{classInfo}}"><view class="card enrollment-summary"><text class="panel-caption">本次报名课程</text><view class="row"><text class="card-title">{{classInfo.title}}</text><text class="pill">免费</text></view><text class="muted">{{classInfo.timeText}}</text><text class="muted">{{classInfo.placeText}}</text></view>
+ <block wx:if="{{classInfo}}"><view class="card enrollment-summary"><text class="panel-caption">本次报名课程</text><view class="row"><text class="card-title">{{classInfo.title}}</text><text class="pill">{{classInfo.feeText}}</text></view><text class="muted">{{classInfo.timeText}}</text><text class="muted">{{classInfo.placeText}}</text></view>
   <view class="card"><text class="panel-caption">01 / 报名资料</text><text class="section-title">报名人信息</text><text class="field-label">姓名 <text class="required">必填</text></text><input placeholder="请输入报名人姓名" value="{{form.name}}" data-key="name" bindinput="input" maxlength="60" disabled="{{busy}}"/><text class="field-label">手机号 <text class="required">必填</text></text><input placeholder="便于工作人员联系你进群" value="{{form.phone}}" data-key="phone" bindinput="input" type="number" maxlength="11" disabled="{{busy}}"/><text class="muted">每个账号每场课程保留一份本人报名。</text></view>
-  <view class="notice">提交后可在“我的报名”查看进群指引及入场凭证。到课情况由工作人员核实。</view>
-  <button class="primary" loading="{{busy}}" disabled="{{busy || loading || !classInfo.canEnroll}}" bindtap="submit">{{classInfo.canEnroll ? '确认免费报名' : classInfo.closedReason}}</button>
+  <view class="notice">{{classInfo.isPaid ? '点击下方按钮会先确认本场费用。支付成功后才可在“我的报名”查看入场凭证。' : '提交后可在“我的报名”查看进群指引及入场凭证。'}}</view>
+  <button class="primary" loading="{{busy}}" disabled="{{busy || loading || !classInfo.canEnroll}}" bindtap="submit">{{classInfo.canEnroll ? classInfo.isPaid ? classInfo.feeText + ' 立即缴费报名' : '确认免费报名' : classInfo.closedReason}}</button>
  </block>
 </view>
