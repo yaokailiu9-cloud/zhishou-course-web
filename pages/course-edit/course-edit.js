@@ -18,7 +18,6 @@ Page({data:{loading:true,busy:false,uploading:false,error:'',allowed:false,hasSa
   if(!f.title.trim()){this.showFormError('请填写课程名称');return;}
   for(const [d,t] of [['date','time'],['closeDate','closeTime'],['checkinDate','checkinTime']])if(Boolean(f[d])!==Boolean(f[t])){this.showFormError('请将所选日期和时间填写完整');return;}
   if(status==='PUBLISHED'&&(!f.date||!f.time)){this.showFormError('发布前请选择开课日期和时间');return;}
-  if(status==='PUBLISHED'&&!f.groupGuide.trim()){this.showFormError('请填写进群指引，例如：报名后工作人员通过手机号联系您进群');return;}
   if(!Number.isSafeInteger(Number(f.capacity||0))||Number(f.capacity)<0||Number(f.capacity)>10000){this.showFormError('名额请输入0至10000的整数，0表示不限');return;}
   const start=iso(f.date,f.time),registration=iso(f.closeDate,f.closeTime),checkin=iso(f.checkinDate,f.checkinTime);
   if(start&&!Number.isFinite(Date.parse(start))){this.showFormError('开课时间无效，请重新选择');return;}

@@ -125,3 +125,13 @@ label { font-size:calc(26 * var(--rpx)); color:#48665a; }
 
 .cover-size-hint { margin:calc(10 * var(--rpx)) 0 calc(18 * var(--rpx)); font-size:calc(22 * var(--rpx)); }
 .course-edit-cover { height:calc(282 * var(--rpx)); }
+.course-form-card { padding:calc(34 * var(--rpx)); }
+.course-form-card .field-label { margin-top:calc(28 * var(--rpx)); margin-bottom:calc(12 * var(--rpx)); }
+.course-form-input,
+.course-form-textarea { width:100%; box-sizing:border-box; border:calc(2 * var(--rpx)) solid #d8d4ca; border-radius:calc(12 * var(--rpx)); background:#fcfbf8; color:#003436; }
+.course-form-input { min-height:calc(92 * var(--rpx)); padding:0 calc(22 * var(--rpx)); }
+.course-form-textarea { height:calc(180 * var(--rpx)); min-height:calc(180 * var(--rpx)); padding:calc(20 * var(--rpx)) calc(22 * var(--rpx)); line-height:1.7; }
+.course-description-input { height:calc(210 * var(--rpx)); min-height:calc(210 * var(--rpx)); }
+.course-form-input:focus,
+.course-form-textarea:focus { border-color:#8b7850; box-shadow:0 0 0 calc(4 * var(--rpx)) rgba(139,120,80,.10); }
+.form-help { margin-top:calc(12 * var(--rpx)); font-size:calc(23 * var(--rpx)); line-height:1.65; }

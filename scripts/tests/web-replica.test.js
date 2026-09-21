@@ -91,6 +91,17 @@ test('loop rendering and conditional states preserve user input and search filte
     h.host.wx.switchTab({url:'/pages/plaza/plaza'});await tick();
   }
 });
+test('网页表单等待中文输入法组词完成后再更新页面',async()=>{
+  const h=await host();h.host.wx.navigateTo({url:'/pages/course-edit/course-edit'});await tick();
+  h.host.current.setData({allowed:true,loading:false});await tick();
+  const input=h.document.querySelector('input[name="title"]');assert.ok(input);
+  input.dispatchEvent(new h.Event('compositionstart',{bubbles:true}));
+  input.value='奖励的误区';input.dispatchEvent(new h.Event('input',{bubbles:true}));await tick();
+  assert.equal(h.host.current.data.form.title,'');
+  input.dispatchEvent(new h.Event('compositionend',{bubbles:true}));await tick();
+  assert.equal(h.host.current.data.form.title,'奖励的误区');
+  assert.equal(h.document.querySelector('input[name="title"]').value,'奖励的误区');
+});
 test('date/selector controls emit mini-program values and protected pages do not grant staff access',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/profile-edit/profile-edit'});await tick();
   const select=h.document.querySelector('select');assert.ok(select);const option=select.querySelectorAll('option')[2];option.selected=true;select.dispatchEvent(new h.Event('change',{bubbles:true}));await tick();assert.equal(h.host.current.data.gender,'男');
@@ -100,6 +111,14 @@ test('date/selector controls emit mini-program values and protected pages do not
 test('browser payment fails before creating orders and recorder clearly reports unsupported state',async()=>{
   const h=await host();await assert.rejects(h.host.requireModule('utils/payment').startConsultationPayment(),/网页支付尚未接入/);
   h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=1'});await tick();h.host.current.startRecording();assert.match(h.document.getElementById('modal').textContent,/网页录音尚未开放/);
+});
+
+test('课程详情分享把标题、说明和直达链接交给系统分享',async()=>{
+  let shared;const h=await host({navigator:{share:async value=>{shared=value}}});
+  h.host.wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id=7'});await tick();
+  h.host.current.setData({classInfo:{id:'7',title:'奖励的误区',status:'PUBLISHED',canEnroll:true,coverUrl:'https://example.invalid/cover.jpg'}});await tick();
+  h.document.querySelector('.course-footer .secondary').dispatchEvent(new h.Event('click',{bubbles:true}));await tick();
+  assert.equal(shared.title,'奖励的误区');assert.match(shared.text,/课程介绍/);assert.match(shared.url,/#\/pages\/public-class-detail\/public-class-detail\?id=7$/);
 });
 
 test('文字聊天未开通时展示简洁空状态，开通后恢复计时与输入区',async()=>{

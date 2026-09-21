@@ -1,3 +1,13 @@
 @import "../../styles/course-components.wxss";
 .cover-size-hint { margin:10rpx 0 18rpx; font-size:22rpx; }
 .course-edit-cover { height:282rpx; }
+.course-form-card { padding:34rpx; }
+.course-form-card .field-label { margin-top:28rpx; margin-bottom:12rpx; }
+.course-form-input,
+.course-form-textarea { width:100%; box-sizing:border-box; border:2rpx solid #d8d4ca; border-radius:12rpx; background:#fcfbf8; color:#003436; }
+.course-form-input { min-height:92rpx; padding:0 22rpx; }
+.course-form-textarea { height:180rpx; min-height:180rpx; padding:20rpx 22rpx; line-height:1.7; }
+.course-description-input { height:210rpx; min-height:210rpx; }
+.course-form-input:focus,
+.course-form-textarea:focus { border-color:#8b7850; box-shadow:0 0 0 4rpx rgba(139,120,80,.10); }
+.form-help { margin-top:12rpx; font-size:23rpx; line-height:1.65; }

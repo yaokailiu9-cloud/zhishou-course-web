@@ -70,7 +70,7 @@
     <view wx:if="{{isServiceProvider}}" class="manager-panel">
       <view class="manager-panel-head">
         <text class="manager-title">工作台</text>
-        <text class="manager-state">{{serviceProvider.onlineStatus === 'online' ? '在线' : '离线'}}</text>
+        <view class="manager-state"><text class="manager-state-dot"></text><text>{{serviceProvider.onlineStatus === 'online' ? '在线' : '离线'}}</text></view>
       </view>
       <view class="manager-stats">
         <view wx:for="{{managerStats}}" wx:key="label" class="manager-stat">
@@ -78,7 +78,7 @@
           <text class="manager-stat-label">{{item.label}}</text>
         </view>
       </view>
-      <button class="manager-button" data-view="workbench" bindtap="goManagerSection">进入工作台</button>
+      <button class="manager-button" data-view="workbench" bindtap="goManagerSection"><text>进入工作台</text><text class="manager-button-arrow">›</text></button>
     </view>
 
     <view wx:else class="wealth-grid">

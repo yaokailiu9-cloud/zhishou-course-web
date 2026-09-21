@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.SESSION_SECRET = 'test-secret-that-is-long-enough-for-h5-session';
-const {sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount} = require('../../server/h5');
+const {sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount, signWechatShareUrl, shareUrlForRequest} = require('../../server/h5');
 const {createServer, staticFile} = require('../../index');
 
 function request(server, pathname) {
@@ -86,6 +86,15 @@ test('公众号密钥兼容旧部署的 WECHAT_APP_SECRET 变量名',()=>{
   assert.equal(wechatAppSecret(),'legacy-wechat-secret');
   if(officialSecret===undefined) delete process.env.WECHAT_OA_APP_SECRET; else process.env.WECHAT_OA_APP_SECRET=officialSecret;
   if(legacySecret===undefined) delete process.env.WECHAT_APP_SECRET; else process.env.WECHAT_APP_SECRET=legacySecret;
+});
+
+test('微信课程卡片签名固定且只接受本站网页地址',()=>{
+  const url='https://www.apply.tianqiwushu.cn/web/?ref=x';
+  const source='jsapi_ticket=ticket&noncestr=nonce&timestamp=123&url='+url;
+  assert.equal(signWechatShareUrl('ticket',url,'nonce',123),require('node:crypto').createHash('sha1').update(source).digest('hex'));
+  const req={headers:{host:'www.apply.tianqiwushu.cn','x-forwarded-proto':'https'}};
+  assert.equal(shareUrlForRequest(req,url+'#/pages/public-class-detail/public-class-detail?id=7'),url);
+  assert.throws(()=>shareUrlForRequest(req,'https://evil.example/web/'),/分享地址无效/);
 });
 
 test('微信回调 code 只交给 Zion loginWithWechat 换取业务会话',async t=>{

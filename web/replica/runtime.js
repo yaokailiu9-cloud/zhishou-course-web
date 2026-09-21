@@ -5,7 +5,7 @@
   const root = document.getElementById('page');
   const modules = {}, definitions = {}, files = new Map(), storage = new Map();
   const app = {globalData:{}};
-  let current = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null;
+  let current = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null;
   const HOME = 'pages/index/index';
   const tabRoutes = source.config.tabBar.list.map(item => item.pagePath);
   const $ = selector => document.querySelector(selector);
@@ -82,7 +82,7 @@
       const eventMap={tap:'click',input:'input',change:'change',confirm:'keydown',submit:'submit',error:'error',load:'load',blur:'blur',focus:'focus',longpress:'contextmenu',scrolltolower:'scroll',touchstart:'touchstart',touchend:'touchend'};
       for(const [key,handler]of Object.entries(values)){
         const match=key.match(/^(bind|catch):?(.+)$/);if(!match||!eventMap[match[2]])continue;
-        el.addEventListener(eventMap[match[2]],event=>{
+        const emit=event=>{
           if(match[1]==='catch')event.stopPropagation();
           if(match[2]==='confirm'&&event.key!=='Enter')return;
           if(match[2]==='scrolltolower'&&el.scrollTop+el.clientHeight<el.scrollHeight-30)return;
@@ -90,7 +90,13 @@
           const detail={value:el.value,width:el.naturalWidth,height:el.naturalHeight};
           if(match[2]==='submit')detail.value=Object.fromEntries(new FormData(el));
           dispatch(page,handler,el,event,detail);
-        });
+        };
+        if(match[2]==='input'&&(tag==='input'||tag==='textarea')){
+          let composing=false;
+          el.addEventListener('compositionstart',()=>{composing=true});
+          el.addEventListener('compositionend',event=>{composing=false;emit(event)});
+          el.addEventListener('input',event=>{if(!composing&&!event.isComposing)emit(event)});
+        }else el.addEventListener(eventMap[match[2]],emit);
         if(match[2]==='tap'&&!['button','input','textarea','navigator'].includes(tag)){el.setAttribute('role','button');el.tabIndex=0;el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click()}})}
       }
       if(tag==='navigator'){
@@ -184,7 +190,33 @@
     const ref=new URLSearchParams(location.search).get('ref')||'';
     location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent('/web/#/'+HOME);
   }
-  async function share(page){const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');const ref=new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);try{if(navigator.share)await navigator.share({title:info.title||'知守',url:url.href});else await wx.setClipboardData({data:url.href})}catch(error){if(error.name!=='AbortError')wx.showToast({title:'分享未完成，请复制地址栏链接'})}}
+  function shareDetails(page){
+    const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');
+    const ref=new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);
+    const image=info.imageUrl?new URL(info.imageUrl,location.origin).href:'';
+    return {info,url,title:info.title||'知守',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
+  }
+  function loadWechatSdk(){
+    if(window.wx?.config)return Promise.resolve(true);if(wechatSdkLoading)return wechatSdkLoading;
+    wechatSdkLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://res.wx.qq.com/open/js/jweixin-1.6.0.js';script.onload=()=>resolve(true);script.onerror=()=>reject(new Error('微信分享组件加载失败'));document.head.append(script)}).catch(error=>{wechatSdkLoading=null;throw error});
+    return wechatSdkLoading;
+  }
+  async function prepareWechatShare(page){
+    if(!/MicroMessenger/i.test(navigator.userAgent))return false;await loadWechatSdk();
+    const details=shareDetails(page);
+    if(!wechatShareReady){
+      wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const response=await fetch('/api/h5?action=share-signature&url='+encodeURIComponent(signedUrl));const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||'微信分享配置失败');
+        await new Promise((resolve,reject)=>{window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData']});window.wx.ready(resolve);window.wx.error(reject)});return true;})().catch(error=>{wechatShareReady=null;throw error});
+    }
+    await wechatShareReady;
+    const data={title:details.title,desc:details.desc,link:details.url.href,imgUrl:details.image};
+    window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image});
+    return true;
+  }
+  async function share(page){const details=shareDetails(page);try{
+    if(/MicroMessenger/i.test(navigator.userAgent)&&await prepareWechatShare(page)){wx.showModal({title:'微信分享',content:'课程卡片已准备好，请点击右上角“…”发送给朋友或群。',showCancel:false,confirmText:'知道了'});return}
+    if(navigator.share)await navigator.share({title:details.title,text:details.desc,url:details.url.href});else await wx.setClipboardData({data:details.url.href});
+  }catch(error){if(error.name!=='AbortError')wx.showModal({title:'分享课程',content:'微信卡片暂未调起，已为你保留课程链接。可复制后发送给朋友或群。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:details.url.href})}})}}
   const wx={
     getStorageSync:key=>storage.get(key)||'',setStorageSync:(key,val)=>storage.set(key,val),removeStorageSync:key=>storage.delete(key),
     getSystemInfoSync:()=>({windowWidth:Math.min(innerWidth,430),windowHeight:innerHeight,statusBarHeight:12,platform:'web',pixelRatio:devicePixelRatio,safeArea:{bottom:innerHeight}}),

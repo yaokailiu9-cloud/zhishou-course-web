@@ -6,6 +6,7 @@ const ACTION_FLOW_ID = "9f60a0be-4628-4268-a769-661264846cf4";
 const ACTION_FLOW_VERSION = 1;
 const SESSION_COOKIE = "zhishou_h5_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 14;
+let wechatJsapiCache = {accessToken:"", accessExpiresAt:0, ticket:"", ticketExpiresAt:0};
 
 function required(name) {
   const aliases = name === "SESSION_SECRET"
@@ -95,6 +96,50 @@ function wechatAppId() {
 
 function wechatAppSecret() {
   return String(process.env.WECHAT_OA_APP_SECRET || process.env.WECHAT_APP_SECRET || "").trim();
+}
+
+async function wechatJsapiTicket() {
+  const now = Date.now();
+  if (wechatJsapiCache.ticket && wechatJsapiCache.ticketExpiresAt > now) return wechatJsapiCache.ticket;
+  let accessToken = wechatJsapiCache.accessToken;
+  if (!accessToken || wechatJsapiCache.accessExpiresAt <= now) {
+    const tokenUrl = new URL("https://api.weixin.qq.com/cgi-bin/token");
+    tokenUrl.search = new URLSearchParams({grant_type:"client_credential", appid:wechatAppId(), secret:required("WECHAT_OA_APP_SECRET")}).toString();
+    const token = await jsonRequest(tokenUrl);
+    if (token.errcode || !token.access_token) throw new Error("AUTH:微信分享配置暂不可用");
+    accessToken = token.access_token;
+    wechatJsapiCache.accessToken = accessToken;
+    wechatJsapiCache.accessExpiresAt = now + Math.max(60, Number(token.expires_in || 7200) - 120) * 1000;
+  }
+  const ticketUrl = new URL("https://api.weixin.qq.com/cgi-bin/ticket/getticket");
+  ticketUrl.search = new URLSearchParams({access_token:accessToken, type:"jsapi"}).toString();
+  const result = await jsonRequest(ticketUrl);
+  if (result.errcode || !result.ticket) throw new Error("AUTH:微信分享配置暂不可用");
+  wechatJsapiCache.ticket = result.ticket;
+  wechatJsapiCache.ticketExpiresAt = now + Math.max(60, Number(result.expires_in || 7200) - 120) * 1000;
+  return result.ticket;
+}
+
+function signWechatShareUrl(ticket, url, nonceStr, timestamp) {
+  const source = `jsapi_ticket=${ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
+  return crypto.createHash("sha1").update(source).digest("hex");
+}
+
+function shareUrlForRequest(req, value) {
+  const protocol = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
+  const expected = new URL(process.env.PUBLIC_ORIGIN || `${protocol}://${req.headers.host || "localhost"}`);
+  const target = new URL(String(value || ""));
+  if (target.origin !== expected.origin || !target.pathname.startsWith("/web")) throw new Error("INPUT:分享地址无效");
+  target.hash = "";
+  return target.href;
+}
+
+async function wechatShareConfig(req, value) {
+  const url = shareUrlForRequest(req, value);
+  const nonceStr = crypto.randomBytes(12).toString("hex");
+  const timestamp = Math.floor(Date.now() / 1000);
+  const ticket = await wechatJsapiTicket();
+  return {appId:wechatAppId(), timestamp, nonceStr, signature:signWechatShareUrl(ticket,url,nonceStr,timestamp)};
 }
 
 async function authenticateWechatWithZion(code) {
@@ -295,6 +340,10 @@ async function handleApi(req, res) {
       const session = readSession(req);
       return json(res, 200, {ok:true, data:{loggedIn:!!session, user:session ? session.account : null}});
     }
+    if (action === "share-signature") {
+      if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
+      return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
+    }
     if (action === "graphql" || action === "logout") {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
@@ -365,4 +414,4 @@ async function handleOauthCallback(req, res) {
   }
 }
 
-module.exports = {handleApi, handleOauthCallback, sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount};
+module.exports = {handleApi, handleOauthCallback, sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount, signWechatShareUrl, shareUrlForRequest};
