@@ -80,13 +80,16 @@ test('home renders source content, real tab navigation, and all page modules wit
   for(const route of h.context.MiniSource.config.pages){h.host.wx.navigateTo({url:'/'+route});await tick();assert.equal(h.host.current.route,route==='pages/manager/manager'?'pages/profile/profile':route);assert.ok(h.document.getElementById('page').textContent.trim(),route)}
   assert.deepEqual(h.errors,[]);
 });
-test('网页公开课按场次显示后台费用，不再把所有场次写死为免费',async()=>{
+test('网页公开课显示后台费用但不向报名端展示名额，名额只保留在管理端',async()=>{
   assert.match(read('pages/public-class/public-class.wxml'),/\{\{item\.feeText\}\}/);
   assert.match(read('pages/public-class/public-class.wxml'),/course-cover/);
+  assert.doesNotMatch(read('pages/public-class/public-class.wxml'),/seatsText|剩余.*名额/);
+  assert.doesNotMatch(read('pages/public-class-detail/public-class-detail.wxml'),/课堂名额|seatsText/);
+  assert.match(read('pages/course-manage/course-manage.wxml'),/已报名.*名额/);
   const h=await host();h.host.wx.navigateTo({url:'/pages/public-class/public-class'});await tick();
-  h.host.current.setData({classes:[{id:'5',title:'公开课测试',coverUrl:'https://example.invalid/cover.jpg',timeText:'周六',placeText:'深圳',description:'课程介绍',canEnroll:true,seatsText:'尚有名额',feeText:'￥100.00',isPaid:true}],loading:false,error:''});await tick();
+  h.host.current.setData({classes:[{id:'5',title:'公开课测试',coverUrl:'https://example.invalid/cover.jpg',timeText:'周六',placeText:'深圳',description:'课程介绍',canEnroll:true,capacity:30,reserved_count:0,feeText:'￥100.00',isPaid:true}],loading:false,error:''});await tick();
   const page=h.document.getElementById('page');
-  assert.doesNotMatch(page.textContent,/免费公开课|到课核实后，可申请线下咨询/);assert.match(page.textContent,/￥100\.00/);
+  assert.doesNotMatch(page.textContent,/免费公开课|到课核实后，可申请线下咨询|课堂名额|剩余\s*30|30\s*\/\s*30/);assert.match(page.textContent,/￥100\.00|报名开放/);
   assert.equal(page.querySelectorAll('.course-card .course-cover,.course-card .course-cover-fallback').length,0);
   assert.match(page.textContent,/公开课/);
   h.host.wx.navigateTo({url:'/pages/profile/profile'});await tick();
@@ -142,14 +145,19 @@ test('课程详情分享把标题、说明和直达链接交给系统分享',asy
   assert.equal(shared.title,'奖励的误区');assert.match(shared.text,/课程介绍/);assert.match(shared.url,/#\/pages\/public-class-detail\/public-class-detail\?id=7$/);
 });
 
-test('文字聊天未开通时展示简洁空状态，开通后恢复计时与输入区',async()=>{
+test('文字聊天空状态在用户和管理端统一展示，开通后恢复计时与输入区',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();
   h.host.current.setData({hasAccess:false,serviceEnded:false,isManagerView:false,messages:[]});await tick();
   assert.equal(h.document.querySelectorAll('.chat-empty').length,1);
   assert.equal(h.document.querySelectorAll('.service-card').length,0);
   assert.equal(h.document.querySelectorAll('.chat-composer').length,0);
-  assert.match(h.document.getElementById('page').textContent,/暂时没有文字会话/);
-  h.host.current.setData({hasAccess:true,remainingText:'59:59'});await tick();
+  assert.match(h.document.getElementById('page').textContent,/暂时还没有创建相应的聊天。/);
+  assert.doesNotMatch(h.document.getElementById('page').textContent,/线下咨询|查看预约、记录与后续沟通|本服务为情感问答|不包含医疗诊断/);
+  assert.equal(h.document.querySelectorAll('.offline-consultation-entry,.chat-empty-desc,.chat-empty-action,.disclaimer').length,0);
+  h.host.current.setData({isManagerView:true,messages:[]});await tick();
+  assert.equal(h.document.querySelectorAll('.chat-empty').length,1);
+  assert.match(h.document.getElementById('page').textContent,/暂时还没有创建相应的聊天。/);
+  h.host.current.setData({hasAccess:true,remainingText:'59:59',messages:[{id:'demo',role:'assistant',content:'已创建聊天'}]});await tick();
   assert.equal(h.document.querySelectorAll('.chat-empty').length,0);
   assert.equal(h.document.querySelectorAll('.service-card').length,1);
   assert.equal(h.document.querySelectorAll('.chat-composer').length,1);

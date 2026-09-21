@@ -127,11 +127,19 @@
     const fragment=document.createDocumentFragment();current._inputCounter=0;
     children(source.pages[current.route].tree,current.data,fragment,current);
     root.replaceChildren(fragment);root.dataset.route=current.route;
+    if(current.route==='pages/chat/chat'){
+      const composer=root.querySelector('.chat-composer');
+      if(composer){
+        const input=composer.querySelector('textarea');
+        if(input){input.rows=1;input.setAttribute('aria-label','聊天消息');
+          requestAnimationFrame(()=>{if(input.isConnected)input.style.height=Math.min(144,Math.max(44,input.scrollHeight))+'px'});
+        }
+      }
+    }
     if(current.route==='pages/profile/profile'){
       const subtitle=root.querySelector('.login-subtitle');if(subtitle)subtitle.textContent='在微信内打开，通过公众号授权登录';
       const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可查看报名、咨询和学习记录；昵称和头像可在个人资料中修改。';
       const avatar=root.querySelector('.login-avatar-picker');if(avatar){avatar.disabled=true;avatar.setAttribute('aria-label','知守头像')}
-      const link=document.createElement('a');link.href='/web/legacy/#mine';link.className='web-referrals';link.textContent='我的推荐 · 专属推荐链接与学员记录 ›';root.append(link);
     }
     if(focusKey!=null){const next=root.querySelector('[data-focus-key="'+focusKey+'"]');if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
     scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el)el.scrollTop=v.top});

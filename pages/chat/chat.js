@@ -47,9 +47,9 @@ Page({
     chatTitle: "文字聊天",
     chatSubtitle: "¥200 / 60 分钟",
     serviceLabel: "未开通",
-    serviceDesc: "在上方查看线下咨询记录",
-    systemText: "新咨询请先参加公开课，到课核实后申请线下咨询。",
-    composerPlaceholder: "暂无历史聊天会话，请前往线下咨询",
+    serviceDesc: "聊天服务尚未创建",
+    systemText: "暂时还没有创建相应的聊天。",
+    composerPlaceholder: "暂时还没有创建相应的聊天",
     leftAvatarText: "林",
     leftAvatarUrl: "",
     rightAvatarText: "客",
@@ -213,8 +213,8 @@ Page({
       paidUntilText,
       remainingText,
       serviceLabel: serviceEnded ? "已结束" : (timerStarted ? "服务中" : (hasPaidSession ? "待开始" : "未开通")),
-      serviceDesc: serviceEnded ? "您的服务聊天时间已经结束" : (timerStarted ? "1 小时文字服务正在进行" : (hasPaidSession ? "等待经理回复，回复后开始计时" : "请从上方进入线下咨询")),
-      composerPlaceholder: serviceEnded ? "服务已结束" : (hasAccess ? "输入想聊的问题" : "暂无历史会话，请查看线下咨询")
+      serviceDesc: serviceEnded ? "您的服务聊天时间已经结束" : (timerStarted ? "1 小时文字服务正在进行" : (hasPaidSession ? "等待经理回复，回复后开始计时" : "聊天服务尚未创建")),
+      composerPlaceholder: serviceEnded ? "服务已结束" : (hasAccess ? "输入想聊的问题" : "暂时还没有创建相应的聊天")
     };
     this.setData(nextData);
     this.notifyServiceEnded(previousEnded, serviceEnded);
@@ -463,9 +463,9 @@ Page({
       chatTitle: isManagerView ? customerName : "文字聊天",
       chatSubtitle: isManagerView ? "服务会话" : "历史文字会话",
       serviceLabel: isManagerView ? "服务会话" : (this.data.hasAccess ? "服务中" : "未开通"),
-      serviceDesc: isManagerView ? "正在回复客户的咨询消息" : (this.data.hasAccess ? "1 小时文字服务正在进行" : "请从上方进入线下咨询"),
-      systemText: isManagerView ? "你正在以服务人员身份回复客户，消息会实时保存到后端记录。" : (wx.getStorageSync("consultationSessionId") ? "这里保留你的历史文字服务会话。新预约与跟进请查看线下咨询。" : "参加公开课并核实到课后，可申请线下咨询。请点击上方入口继续。"),
-      composerPlaceholder: isManagerView ? "回复客户" : (this.data.hasAccess ? "输入想聊的问题" : "暂无历史会话，请查看线下咨询"),
+      serviceDesc: isManagerView ? "正在回复客户的咨询消息" : (this.data.hasAccess ? "1 小时文字服务正在进行" : "聊天服务尚未创建"),
+      systemText: isManagerView ? "你正在以服务人员身份回复客户，消息会实时保存到后端记录。" : (wx.getStorageSync("consultationSessionId") ? "这里保留你的历史文字服务会话。" : "暂时还没有创建相应的聊天。"),
+      composerPlaceholder: isManagerView ? "回复客户" : (this.data.hasAccess ? "输入想聊的问题" : "暂时还没有创建相应的聊天"),
       servicePriceText: isManagerView ? "经理回复" : `¥${servicePrice.toLocaleString("en-US")} / 小时`,
       customerAvatarUrl,
       customerAvatarText,

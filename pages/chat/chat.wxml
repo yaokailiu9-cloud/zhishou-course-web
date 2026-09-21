@@ -24,14 +24,6 @@
     </view>
   </view>
 
-  <button class="offline-consultation-entry" bindtap="goOfflineConsultation">
-    <view class="offline-entry-copy">
-      <text class="offline-entry-title">线下咨询</text>
-      <text class="offline-entry-desc">查看预约、记录与后续沟通</text>
-    </view>
-    <text class="offline-entry-arrow">›</text>
-  </button>
-
   <view wx:if="{{isManagerView || hasAccess || serviceEnded || messages.length}}" class="service-card {{serviceCardCollapsed ? 'is-collapsed' : ''}}">
     <view class="service-card-handle" catchtap="toggleServiceCard">
       <view class="service-handle-arrow {{serviceCardCollapsed ? 'is-down' : 'is-up'}}"></view>
@@ -58,11 +50,9 @@
   </view>
 
   <scroll-view class="chat-scroll" scroll-y scroll-with-animation scroll-into-view="{{scrollIntoView}}">
-    <view wx:if="{{!messages.length && !hasAccess && !isManagerView}}" class="chat-empty">
+    <view wx:if="{{!messages.length}}" class="chat-empty">
       <view class="chat-empty-mark"><text>知</text></view>
-      <text class="chat-empty-title">暂时没有文字会话</text>
-      <text class="chat-empty-desc">预约或查看线下咨询，后续的文字沟通会保留在这里。</text>
-      <button class="chat-empty-action" bindtap="goOfflineConsultation">查看线下咨询</button>
+      <text class="chat-empty-title">暂时还没有创建相应的聊天。</text>
     </view>
     <view wx:else class="system-card">
       <text>{{systemText}}</text>
@@ -103,7 +93,6 @@
       <textarea auto-height maxlength="4000" class="composer-input" placeholder="{{composerPlaceholder}}" value="{{input}}" confirm-type="send" disabled="{{sending || !hasAccess || serviceEnded}}" bindinput="onInput" bindconfirm="sendMessage" />
       <button aria-label="发送消息" loading="{{sending}}" class="composer-send {{serviceEnded || !hasAccess ? 'disabled' : ''}}" disabled="{{sending || !hasAccess || serviceEnded || !input}}" bindtap="sendMessage">↑</button>
     </view>
-    <text class="disclaimer">本服务为情感问答，不包含医疗诊断。</text>
   </view>
 
   <view wx:if="{{sessionDrawerVisible}}" class="session-drawer-root">

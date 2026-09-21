@@ -5,7 +5,6 @@ function classCard(value) {
   const registrationFee=Math.max(0,Number(c.registration_fee||0));
   return {...c,registrationFee,feeText:registrationFee>0?`￥${registrationFee.toFixed(2)}`:'免费',isPaid:registrationFee>0, placeText:c.city ? c.city+' · 详细地址群内通知' : '详细地址将在课程群内通知',
     deadlineText:formatTime(c.registration_closes_at || c.starts_at),
-    seatsText:Number(c.capacity)>0 ? `剩余 ${Math.max(0,Number(c.capacity)-Number(c.reserved_count||0))} / ${c.capacity} 个名额` : '开放报名',
     coverUrl:c.cover && c.cover.url || '', shareCodeUrl:c.share_code && c.share_code.url || ''};
 }
 function isUpcomingClass(value, now) {

@@ -73,7 +73,7 @@ Sources read:
 7. Permission rules.
    - Zion permissions are RBAC + ABAC.
    - In mini programs, users are normally silently logged in; do not assume an anonymous role model.
-   - Permission configuration is editor-only. Diagnose it, but do not claim to have changed it from code.
+   - Zion Plugin 2.7.7 supports permission changes through GET_TABLE_PERMISSION and UPDATE_ROLE_TABLE_PERMISSION. Read each role first, apply changes through the official tools, sync, then verify runtime access. Earlier editor-only guidance applies to the old plugin.
    - After schema or permission changes in Zion, backend sync/deploy is required.
 
 8. Schema-edit rules.
@@ -170,6 +170,7 @@ Status on 2026-07-04:
 - Added `consultation_session.service_provider_id` through the Zion relation.
 - The project is still `pre_type_system_refactor`, so status-like fields were created as `TEXT` instead of enum types.
 - 权限修改需通过当前官方 Zion CLI 的权限工具执行并在同步前回读 Anonymous User 与 Logged-in User；编辑器仍可用于人工复核。
+- Historical note: the earlier CLI could not configure permissions. Since Zion Plugin 2.7.7, the official CLI supports role/table permissions and row-condition binding tools.
 
 Status on 2026-07-04 later（历史记录，经理身份已在 2026-08-16 校正）:
 

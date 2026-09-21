@@ -150,56 +150,21 @@ test('生产环境用公众号 AppSecret 换取资料并创建或恢复 Zion 账
   assert.deepEqual(login,{jwt:'zion-profile-jwt',account:{id:'99',name:'微信用户乙',avatarUrl:'https://example.invalid/b.png'}});
 });
 
-test('H5 页面不含小程序协议、咨询师或人物图片入口',async()=>{
+test('旧版课程网页及推荐入口已下线',async()=>{
   const fs=require('node:fs/promises');
   const root=require('node:path').join(__dirname,'../..');
-  const [html,js]=await Promise.all([
-    fs.readFile(require('node:path').join(root,'web/legacy/index.html'),'utf8'),
-    fs.readFile(require('node:path').join(root,'web/legacy/app.js'),'utf8')
+  const [runtime,css]=await Promise.all([
+    fs.readFile(require('node:path').join(root,'web/replica/runtime.js'),'utf8'),
+    fs.readFile(require('node:path').join(root,'web/replica/runtime.css'),'utf8')
   ]);
-  assert.match(html,/《答案库》系列课程/);
-  assert.doesNotMatch(html+js,/建档家长\s*[¥：:]?\s*(?:680|1680)|未建档家长|已建档家长/);
-  assert.match(html,/微信登录/);
-  assert.match(html,/我推荐的学员/);
-  assert.doesNotMatch(html,/咨询师|心理专家|open-type=|wx\./);
-  assert.doesNotMatch(html,/<img[^>]+(?:专家|老师|人物)/);
+  await assert.rejects(fs.access(require('node:path').join(root,'web/legacy/index.html')),{code:'ENOENT'});
+  assert.doesNotMatch(runtime+css,/web\/legacy|web-referrals|我的推荐\s*·\s*专属推荐链接与学员记录/);
 });
 
-test('公开课程支持直接报名，底部导航有可识别的当前状态',async()=>{
+test('课程管理仍只经后端工作人员操作',async()=>{
   const fs=require('node:fs/promises');
   const root=require('node:path').join(__dirname,'../..');
-  const [html,js,css]=await Promise.all([
-    fs.readFile(require('node:path').join(root,'web/legacy/index.html'),'utf8'),
-    fs.readFile(require('node:path').join(root,'web/legacy/app.js'),'utf8'),
-    fs.readFile(require('node:path').join(root,'web/legacy/app.css'),'utf8')
-  ]);
-  assert.match(html,/公开课/);
-  assert.doesNotMatch(html+js,/免费/);
-  assert.match(html,/确认报名/);
-  assert.match(html,/aria-current="page"/);
-  assert.match(html,/class="nav-icon"/);
-  assert.match(js,/微信登录并报名/);
-  assert.match(js,/报名已提交/);
-  assert.match(js,/function coverUrl/);
-  assert.match(js,/course-poster/);
-  assert.match(css,/aspect-ratio:698\/370/);
-  assert.match(css,/safe-area-inset-bottom/);
-  assert.match(css,/min-height:52px/);
-});
-
-test('课程管理只经后端工作人员操作并展示本人课程报名统计',async()=>{
-  const fs=require('node:fs/promises');
-  const root=require('node:path').join(__dirname,'../..');
-  const [html,js,server]=await Promise.all([
-    fs.readFile(require('node:path').join(root,'web/legacy/index.html'),'utf8'),
-    fs.readFile(require('node:path').join(root,'web/legacy/app.js'),'utf8'),
-    fs.readFile(require('node:path').join(root,'server/h5/index.js'),'utf8')
-  ]);
-  assert.match(html,/公开课程管理/);
-  assert.match(js,/查看报名名单/);
-  assert.match(js,/canManage:false/);
-  assert.match(js,/api\('roster'/);
-  assert.match(js,/api\('saveClass'/);
+  const server=await fs.readFile(require('node:path').join(root,'server/h5/index.js'),'utf8');
   assert.match(server,/invoke\(session\.jwt, "STAFF_CLASSES"/);
   assert.match(server,/invoke\(session\.jwt, "COURSE_ROSTER"/);
   assert.match(server,/invoke\(session\.jwt, "SAVE_CLASS"/);
@@ -230,7 +195,7 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   assert.match(login.headers.location,/appid=wx6dafecca8d5fd24e/);
   assert.match(login.headers.location,/scope=snsapi_userinfo/);
   const legacy=await request(server,'/web/legacy/');
-  assert.equal(legacy.status,200);
-  assert.match(legacy.body,/我推荐的学员/);
+  assert.equal(legacy.status,404);
+  assert.equal(legacy.body,'Not Found');
   assert.equal(staticFile('/web/%2e%2e/package.json'),null);
 });
