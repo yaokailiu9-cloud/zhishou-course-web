@@ -65,6 +65,14 @@ test('普通浏览器保留拍照识码入口，取消结束本次扫描',async(
   h.document.createElement=tag=>{const el=original(tag);if(tag==='input'){input=el;el.click=()=>{};}return el;};
   await h.host.wx.scanCode({fail:r=>failure=r});assert.equal(input.accept,'image/*');assert.equal(input.capture,'environment');input.oncancel();assert.equal(failure.errMsg,'cancel');
 });
+test('微信签名未配置时明确提示拍照识码，点击后仍能进入相机入口',async()=>{
+  const h=await host({navigator:{userAgent:'MicroMessenger'}});h.context.wx={config(){}};
+  h.context.fetch=async()=>({ok:false,json:async()=>({ok:false,message:'配置暂不可用'})});
+  const original=h.document.createElement.bind(h.document);let input,failure;
+  h.document.createElement=tag=>{const el=original(tag);if(tag==='input'){input=el;el.click=()=>{};}return el;};
+  await h.host.wx.scanCode({fail:r=>failure=r});assert.match(h.document.querySelector('#modal').textContent,/拍照识码/);
+  h.document.querySelector('#modal .modal-actions button:last-child').onclick();assert.equal(input.capture,'environment');input.oncancel();assert.equal(failure.errMsg,'cancel');
+});
 test('home renders source content, real tab navigation, and all page modules without JS errors',async()=>{
   const h=await host();assert.match(h.document.getElementById('page').textContent,/透过现象看本质/);
   assert.doesNotMatch(h.document.getElementById('page').textContent,/到课核实后，可申请线下咨询/);

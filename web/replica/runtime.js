@@ -198,7 +198,7 @@
   }
   function loadWechatSdk(){
     if(window.wx?.config)return Promise.resolve(true);if(wechatSdkLoading)return wechatSdkLoading;
-    wechatSdkLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://res.wx.qq.com/open/js/jweixin-1.6.0.js';script.onload=()=>resolve(true);script.onerror=()=>reject(new Error('微信分享组件加载失败'));document.head.append(script)}).catch(error=>{wechatSdkLoading=null;throw error});
+    wechatSdkLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');const timer=setTimeout(()=>reject(new Error('微信组件加载超时')),12000);script.src='https://res.wx.qq.com/open/js/jweixin-1.6.0.js';script.onload=()=>{clearTimeout(timer);resolve(true)};script.onerror=()=>{clearTimeout(timer);reject(new Error('微信组件加载失败'))};document.head.append(script)}).catch(error=>{wechatSdkLoading=null;throw error});
     return wechatSdkLoading;
   }
   async function prepareWechatShare(page){
@@ -217,6 +217,10 @@
     if(/MicroMessenger/i.test(navigator.userAgent)&&await prepareWechatShare(page)){wx.showModal({title:'微信分享',content:'课程卡片已准备好，请点击右上角“…”发送给朋友或群。',showCancel:false,confirmText:'知道了'});return}
     if(navigator.share)await navigator.share({title:details.title,text:details.desc,url:details.url.href});else await wx.setClipboardData({data:details.url.href});
   }catch(error){if(error.name!=='AbortError')wx.showModal({title:'分享课程',content:'微信卡片暂未调起，已为你保留课程链接。可复制后发送给朋友或群。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:details.url.href})}})}}
+  function scanImage(o){
+    const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';input.onchange=async()=>{try{const file=input.files[0];if(!file){complete(o,{errMsg:'cancel'},true);return}const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);const result=window.jsQR(pixels.data,pixels.width,pixels.height);bitmap.close();if(!result)throw new Error('未识别到二维码，请拍摄清晰图片后重试');complete(o,{result:result.data})}catch(error){complete(o,{errMsg:error.message},true)}};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click();
+  }
+  function offerScanImage(o){modal({title:'使用拍照识码',content:'微信扫一扫暂不可用。可以拍摄用户的个人入场二维码继续签到，请保持画面清晰。',confirmText:'拍照识码',success:r=>{if(r.confirm)scanImage(o);else complete(o,{errMsg:'cancel'},true)}})}
   const wx={
     getStorageSync:key=>storage.get(key)||'',setStorageSync:(key,val)=>storage.set(key,val),removeStorageSync:key=>storage.delete(key),
     getSystemInfoSync:()=>({windowWidth:Math.min(innerWidth,430),windowHeight:innerHeight,statusBarHeight:12,platform:'web',pixelRatio:devicePixelRatio,safeArea:{bottom:innerHeight}}),
@@ -250,10 +254,10 @@
     createCanvasContext:id=>{const commands=[];return{setFillStyle:color=>commands.push(ctx=>ctx.fillStyle=color),fillRect:(...args)=>commands.push(ctx=>ctx.fillRect(...args)),draw:(_,callback)=>requestAnimationFrame(()=>{const canvas=document.getElementById(id);if(canvas){const ctx=canvas.getContext('2d');commands.forEach(command=>command(ctx))}callback?.()})}},
     scanCode:async o=>{
       if(/MicroMessenger/i.test(navigator.userAgent)){
-        try{await prepareWechatShare(current);if(!window.wx?.scanQRCode)throw new Error('微信扫码组件不可用');window.wx.scanQRCode({needResult:1,scanType:['qrCode'],success:r=>complete(o,{result:r.resultStr}),fail:e=>complete(o,{errMsg:e.errMsg||'微信扫码失败'},true),cancel:()=>complete(o,{errMsg:'cancel'},true)});}catch(error){complete(o,{errMsg:error.message||'微信扫码暂不可用，请重试'},true)}
+        try{await prepareWechatShare(current);if(!window.wx?.scanQRCode)throw new Error('微信扫码组件不可用');window.wx.scanQRCode({needResult:1,scanType:['qrCode'],success:r=>complete(o,{result:r.resultStr}),fail:e=>{/cancel/i.test(e.errMsg||'')?complete(o,{errMsg:'cancel'},true):offerScanImage(o)},cancel:()=>complete(o,{errMsg:'cancel'},true)});}catch(error){offerScanImage(o)}
         return;
       }
-      const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';input.onchange=async()=>{try{const file=input.files[0];if(!file){complete(o,{errMsg:'cancel'},true);return}const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);const result=window.jsQR(pixels.data,pixels.width,pixels.height);bitmap.close();if(!result)throw new Error('未识别到二维码，请拍摄清晰图片后重试');complete(o,{result:result.data})}catch(error){complete(o,{errMsg:error.message},true)}};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click();
+      scanImage(o);
     },
     getRecorderManager:()=>({onStop(){},offStop(){},onError(fn){this.error=fn},offError(){},start(){this.error?.({errMsg:'网页录音编码尚未接入，请使用文字记录'})},stop(){}})
   };
