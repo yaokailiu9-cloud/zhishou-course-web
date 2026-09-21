@@ -6,6 +6,16 @@ const labels = {QUEUED:'排队中',AUDIO_PROCESSING:'正在转写与总结',PEND
 function call(operation, payload = {}) {
   const token = wx.getStorageSync('zionJwt');
   if (!['LIST_CLASSES','GET_CLASS'].includes(operation) && !auth.isLoggedIn()) return Promise.reject(new Error('请先微信登录'));
+  // The H5 server verifies the signed invitation and retains it across WeChat login.
+  if (wx.isH5 && operation === 'ENROLL') return new Promise((resolve,reject) => wx.request({
+    url:'/api/h5?action=enroll', method:'POST', timeout:30000, header:{'content-type':'application/json'},
+    data:{classId:payload.classId,name:payload.name,phone:payload.phone,ref:wx.getReferralToken ? wx.getReferralToken() : ''},
+    success(r){
+      if(wx.getStorageSync('zionJwt')!==token){reject(new Error('登录身份已变化，请重试'));return;}
+      if(r.statusCode===200&&r.data&&r.data.ok)resolve(r.data.data);
+      else {if(r.statusCode===401)auth.expire(token);reject(new Error(readableError(r.data&&r.data.message)));}
+    },fail:()=>reject(new Error('网络连接失败，请检查网络后重试'))
+  }));
   return new Promise((resolve,reject) => wx.request({
     url: ZION_GRAPHQL_URL, method:'POST', timeout:30000,
     header: {'content-type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {})},

@@ -5,7 +5,7 @@
   const root = document.getElementById('page');
   const modules = {}, definitions = {}, files = new Map(), storage = new Map();
   const app = {globalData:{}};
-  let current = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null;
+  let current = null, renderedPage = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null;
   const HOME = 'pages/index/index';
   const tabRoutes = source.config.tabBar.list.map(item => item.pagePath);
   const $ = selector => document.querySelector(selector);
@@ -124,9 +124,13 @@
     renderPending=false;if(!current)return;
     const focused=document.activeElement,focusKey=focused?.dataset.focusKey,start=focused?.selectionStart,end=focused?.selectionEnd;
     const scrollers=[...root.querySelectorAll('scroll-view')].map(el=>({id:el.id,top:el.scrollTop}));
+    const canvases=renderedPage===current?new Map([...root.querySelectorAll('canvas[id]')].map(el=>[el.id,el])):new Map();
     const fragment=document.createDocumentFragment();current._inputCounter=0;
     children(source.pages[current.route].tree,current.data,fragment,current);
+    // setData rerenders the DOM; keep already drawn ticket/referral QR bitmaps.
+    for(const placeholder of fragment.querySelectorAll('canvas[id]')){const drawn=canvases.get(placeholder.id);if(drawn){drawn.className=placeholder.className;drawn.setAttribute('style',placeholder.getAttribute('style')||'');placeholder.replaceWith(drawn);}}
     root.replaceChildren(fragment);root.dataset.route=current.route;
+    renderedPage=current;
     if(current.route==='pages/chat/chat'){
       const composer=root.querySelector('.chat-composer');
       if(composer){
@@ -180,7 +184,7 @@
     page.setCustomNav=function(){this.setData({statusBarHeight:12,navHeight:76,navPaddingRight:0})};
     stack.push(page);showPage(page);
     if(!fromHistory){const hash='#/'+route+(Object.keys(options).length?'?'+new URLSearchParams(options):'');history[mode==='replace'?'replaceState':'pushState']({route},'',location.pathname+location.search+hash)}
-    lifecycle(page,'onLoad',options);lifecycle(page,'onShow');queueMicrotask(()=>lifecycle(page,'onReady'));
+    lifecycle(page,'onLoad',options);lifecycle(page,'onShow').then(()=>{if(page===current&&[HOME,'pages/plaza/plaza','pages/public-class/public-class'].includes(page.route))prepareWechatShare(page).catch(()=>false);});queueMicrotask(()=>lifecycle(page,'onReady'));
   }
   function back(){if(stack.length>1){if(unloadMessage){wx.showModal({title:'尚未保存',content:unloadMessage,success:r=>{if(r.confirm){unloadMessage='';history.back()}}});return}history.back()}else navigate('/'+HOME,'tab')}
   window.addEventListener('popstate',()=>{unloadMessage='';const {route,options}=parseRoute(location.hash);const previous=stack[stack.length-2];if(previous&&previous.route===route&&JSON.stringify(previous.options)===JSON.stringify(options)){lifecycle(current,'onUnload');stack.pop();showPage(previous);lifecycle(previous,'onShow')}else navigate(location.hash,'replace',true)});
@@ -198,9 +202,18 @@
     const ref=new URLSearchParams(location.search).get('ref')||'';
     location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent('/web/#/'+HOME);
   }
+  let referralContext = null;
+  async function getReferralContext(classId){
+    const identity=session;
+    const response=await fetch('/api/h5?action=referral-context&ref='+encodeURIComponent(new URLSearchParams(location.search).get('ref')||'')+'&classId='+encodeURIComponent(classId||''));
+    const body=await response.json();
+    if(identity!==session)throw new Error('登录身份已变化，请重试');
+    if(!response.ok||!body.ok)throw new Error(body.message||'推荐信息加载失败，请刷新重试');
+    referralContext={...body.data,identity};return body.data;
+  }
   function shareDetails(page){
     const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');
-    const ref=new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);
+    const ref=(referralContext?.identity===session&&referralContext?.referralToken)||new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);
     const image=info.imageUrl?new URL(info.imageUrl,location.origin).href:'';
     return {info,url,title:info.title||'知守',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
   }
@@ -221,7 +234,9 @@
     window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image});
     return true;
   }
-  async function share(page){const details=shareDetails(page);try{
+  async function share(page){
+    try{await getReferralContext();}catch(_){if(session){wx.showToast({title:'推荐信息加载失败，请重试分享'});return;}}
+    const details=shareDetails(page);try{
     if(/MicroMessenger/i.test(navigator.userAgent)&&await prepareWechatShare(page)){wx.showModal({title:'微信分享',content:'课程卡片已准备好，请点击右上角“…”发送给朋友或群。',showCancel:false,confirmText:'知道了'});return}
     if(navigator.share)await navigator.share({title:details.title,text:details.desc,url:details.url.href});else await wx.setClipboardData({data:details.url.href});
   }catch(error){if(error.name!=='AbortError')wx.showModal({title:'分享课程',content:'微信卡片暂未调起，已为你保留课程链接。可复制后发送给朋友或群。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:details.url.href})}})}}
@@ -247,6 +262,9 @@
     enableAlertBeforeUnload:o=>unloadMessage=o.message||'修改尚未保存，确定离开？',disableAlertBeforeUnload:()=>unloadMessage='',
     login:o=>{complete(o,{errMsg:'网页请通过公众号授权登录'},true);webLogin()},
     isH5:true,
+    getReferralContext,
+    prepareCourseShare:page=>prepareWechatShare(page).catch(()=>false),
+    getReferralToken:()=>new URLSearchParams(location.search).get('ref')||'',
     canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,
     requestPayment:o=>{
       if(!/MicroMessenger/i.test(navigator.userAgent)||!window.WeixinJSBridge){complete(o,{errMsg:'请在微信中打开课程网页后缴费'},true);return;}
@@ -261,7 +279,7 @@
       const isZion=o.url==='https://zion-app.functorz.com/zero/JmAxbl1MMe4/api/graphql-v2';
       const method=o.method||'GET';const headers=isZion?{'content-type':'application/json'}:(o.header||{});
       const data=isZion?{...o.data,anonymous:!o.header?.Authorization}:o.data;
-      fetch(isZion?'/api/h5?action=graphql':o.url,{method,headers,credentials:isZion||/^\/api\/h5\?action=course-pay(?:-status)?$/.test(o.url)?'same-origin':'omit',signal:controller.signal,body:method==='GET'?undefined:data instanceof ArrayBuffer?data:JSON.stringify(data)}).then(async response=>{const text=await response.text();let data;try{data=JSON.parse(text)}catch(_){data=text}complete(o,{statusCode:response.status,data,header:Object.fromEntries(response.headers)})}).catch(error=>complete(o,{errMsg:error.message},true)).finally(()=>clearTimeout(timeout));
+      fetch(isZion?'/api/h5?action=graphql':o.url,{method,headers,credentials:isZion||/^\/api\/h5\?/.test(o.url)?'same-origin':'omit',signal:controller.signal,body:method==='GET'?undefined:data instanceof ArrayBuffer?data:JSON.stringify(data)}).then(async response=>{const text=await response.text();let data;try{data=JSON.parse(text)}catch(_){data=text}complete(o,{statusCode:response.status,data,header:Object.fromEntries(response.headers)})}).catch(error=>complete(o,{errMsg:error.message},true)).finally(()=>clearTimeout(timeout));
       return{abort:()=>controller.abort()};
     },
     createVideoContext:id=>({play:()=>document.getElementById(id)?.play(),pause:()=>document.getElementById(id)?.pause(),stop:()=>{const video=document.getElementById(id);if(video){video.pause();video.currentTime=0}}}),
@@ -278,6 +296,7 @@
   // Copy only a non-secret session marker into the compatibility storage. JWT stays HttpOnly.
   async function start(){
     try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(body.ok&&body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){/* Public browsing remains available. */}
+    if(session)try{await getReferralContext();}catch(_){/* Retry explicitly when sharing; public browsing remains available. */}
     for(const item of source.config.tabBar.list){const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');$('#tabbar').append(button)}
     $('#back-button').onclick=back;
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};

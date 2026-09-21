@@ -1,0 +1,4 @@
+@import "../../styles/course-components.wxss";
+.referral-code{width:256px;height:256px;max-width:100%;margin:24rpx auto;display:block;}
+.referral-course{border-top:1rpx solid #e6e9e6;padding:20rpx 0;gap:12rpx;}
+.referral-source{display:block;color:#235b4b;margin:16rpx 0;font-weight:600;}

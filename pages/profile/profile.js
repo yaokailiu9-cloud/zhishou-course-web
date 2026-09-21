@@ -22,6 +22,7 @@ Page({
     navHeight: 104,
     isLoggedIn: false,
     canCheckin: false,
+    canInvite: false,
     userInfo: {},
     defaultPortrait: userPortrait,
     avatarText: "客",
@@ -109,6 +110,7 @@ Page({
       this.setData({
         isLoggedIn: false,
         canCheckin: false,
+        canInvite: false,
         userInfo: {},
         avatarText: "客",
         isServiceProvider: false,
@@ -127,7 +129,14 @@ Page({
     this.refreshCustomerSummary(storedUser.id);
     this.loadManagerAccess(storedUser);
     this.loadCheckinAccess();
+    this.loadReferralAccess();
   },
+
+  async loadReferralAccess() {
+    const identity=viewSession.capture();this.setData({canInvite:false});
+    try{const r=await require('../../utils/referral').context();if(viewSession.current(identity))this.setData({canInvite:!!r.canInvite});}catch(_){/* Keep privileged entry hidden on failure. */}
+  },
+  goReferrals(){wx.navigateTo({url:'/pages/referrals/referrals'});},
 
   async loadCheckinAccess() {
     const identity = viewSession.capture();

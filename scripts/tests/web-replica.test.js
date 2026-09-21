@@ -157,6 +157,32 @@ test('课程详情分享把标题、说明和直达链接交给系统分享',asy
   assert.equal(shared.title,'奖励的误区');assert.match(shared.text,/课程介绍/);assert.match(shared.url,/#\/pages\/public-class-detail\/public-class-detail\?id=7$/);
 });
 
+test('代理分享使用自己的签名码，免费报名把收到的推荐码送到同源会话接口',async()=>{
+  let shared,canInvite=true;
+  const h=await host({location:{search:'?ref=incoming-other-agent'},navigator:{share:async value=>{shared=value}},fetch:async url=>({ok:true,status:200,headers:[],json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:'18',name:'代理'}}:{canInvite,referralToken:canInvite?'own-signed-token':''}}),text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data:{classes:[]}}}}})})});
+  h.host.wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id=7'});await tick();
+  h.host.current.setData({classInfo:{id:'7',title:'公开课',canEnroll:true}});await tick();
+  h.document.querySelector('.course-footer .secondary').dispatchEvent(new h.Event('click',{bubbles:true}));await tick();
+  assert.equal(new URL(shared.url).searchParams.get('ref'),'own-signed-token');
+  let request;h.context.fetch=async(url,options)=>{request={url,options};return{ok:true,status:200,headers:[],text:async()=>JSON.stringify({ok:true,data:{enrollment:{id:77}}})};};
+  const enrollment=await h.host.requireModule('utils/consultationService').call('ENROLL',{classId:7,name:'报名人',phone:'13800000000',referrerId:999});
+  assert.equal(enrollment.enrollment.id,77);assert.equal(request.url,'/api/h5?action=enroll');assert.equal(request.options.credentials,'same-origin');
+  const input=JSON.parse(request.options.body);assert.equal(input.ref,'incoming-other-agent');assert.equal(input.referrerId,undefined);
+});
+
+test('推荐客户页实际显示推荐人、报名课程和到课状态，普通用户没有管理切换',async()=>{
+  const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:18});
+  h.host.wx.createCanvasContext=()=>({setFillStyle(){},fillRect(){},draw(_,cb){cb();}});
+  h.host.wx.getReferralContext=async()=>({canInvite:true,isManager:false,shareUrl:'https://example.test/web/?ref=signed#/pages/plaza/plaza'});
+  h.host.requireModule('utils/consultationService').call=async()=>({total:1,items:[{id:1,customerName:'家长甲',referrerName:'代理乙',enrollments:[{id:2,name:'报名人甲',courseTitle:'亲子课堂',status:'REGISTERED',attendanceStatus:'ATTENDED'}]}]});
+  h.host.wx.navigateTo({url:'/pages/referrals/referrals'});await tick();await tick();
+  const text=h.document.querySelector('#page').textContent;
+  for(const value of ['家长甲','推荐人：代理乙','亲子课堂','已到课','报名人甲'])assert.ok(text.includes(value),value);
+  assert.ok(!text.includes('全部推荐客户'));assert.equal(h.host.current.data.allowed,true);
+  const canvas=h.document.getElementById('referral-code');assert.ok(canvas);
+  h.host.current.setData({loading:true});await tick();assert.equal(h.document.getElementById('referral-code'),canvas,'刷新名单不清空已绘制二维码');
+});
+
 test('文字聊天空状态在用户和管理端统一展示，开通后恢复计时与输入区',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();
   h.host.current.setData({hasAccess:false,serviceEnded:false,isManagerView:false,messages:[]});await tick();

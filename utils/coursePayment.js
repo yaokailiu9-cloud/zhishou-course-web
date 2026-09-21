@@ -3,7 +3,7 @@ function confirm(content){return new Promise(resolve=>wx.showModal({title:'确�
 async function enroll(payload,feeText){
   if(!wx.isH5||!wx.canUseCoursePayment||!wx.canUseCoursePayment())throw new Error('请在微信内打开课程网页完成缴费报名；如已在微信中，请刷新后重试');
   if(!await confirm(`本场课程报名费为 ${feeText}。完成支付并确认到账后才会报名成功。`))return null;
-  const prepared=await request('course-pay',payload);
+  const prepared=await request('course-pay',{...payload,ref:wx.getReferralToken?wx.getReferralToken():''});
   if(prepared.enrollment)return prepared;
   const order=prepared.order;
   if(!prepared.payment){if(order&&order.status==='PAID_REVIEW')throw new Error(order.message);throw new Error('订单已结束，请刷新页面后重新报名');}

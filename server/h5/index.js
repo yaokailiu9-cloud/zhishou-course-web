@@ -347,7 +347,7 @@ async function handleApi(req, res) {
       if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
       return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
     }
-    if (["graphql", "logout", "course-pay", "course-pay-status"].includes(action)) {
+    if (["graphql", "logout", "enroll", "course-pay", "course-pay-status"].includes(action)) {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
       if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
@@ -378,6 +378,18 @@ async function handleApi(req, res) {
     if (action === "logout") { clearSession(res); return json(res, 200, {ok:true}); }
     if (action === "bootstrap") return json(res, 200, {ok:true, data:await bootstrap(req)});
     if (action === "course") return json(res, 200, {ok:true, data:await invoke(readSession(req)?.jwt, "GET_CLASS", {classId:url.searchParams.get("id")})});
+    if (action === "referral-context") {
+      if (req.method !== "GET") return json(res,405,{ok:false,message:"请求方式无效"});
+      const current = readSession(req);
+      const data = await invoke(current?.jwt, "REFERRAL_OVERVIEW", {referrerId:decodeRef(url.searchParams.get("ref")) || current?.referrerId || null});
+      const token = current && data.canInvite ? refToken(current.account.id) : "";
+      const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
+      const link = new URL('/web/', origin);
+      if (token) link.searchParams.set('ref', token);
+      const classId = url.searchParams.get('classId');
+      link.hash = classId && /^[1-9][0-9]*$/.test(classId) ? '/pages/public-class-detail/public-class-detail?id='+classId : '/pages/plaza/plaza';
+      return json(res,200,{ok:true,data:{...data,referralToken:token,shareUrl:token?link.href:""}});
+    }
     const session = readSession(req);
     if (!session) return json(res, 401, {ok:false, message:"请先微信登录"});
     if (action === "staff" && req.method === "GET") return json(res, 200, {ok:true, data:await invoke(session.jwt, "STAFF_CLASSES", {})});

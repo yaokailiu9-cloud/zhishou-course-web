@@ -24,7 +24,7 @@ for (fid,nodes),detail in zip(flows,details['responses']):
  for node,file in nodes:
   assert 'id: '+node+'\n    type: CUSTOM_CODE' in detail, 'Node identity mismatch'
   code=common+'\n'+Path('backend/consultation/'+file+'.js').read_text()
-  if file=='authorize': code+='\n'+Path('backend/consultation/checkin.js').read_text()
+  if file=='authorize': code+='\n'+Path('backend/consultation/referral.js').read_text()+'\n'+Path('backend/consultation/checkin.js').read_text()
   if file=='classes': code=code.replace('// FAMILY_HANDLERS: build script inserts family.js here.',Path('backend/consultation/family.js').read_text())
   if file=='classes': code=code.replace('// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.',Path('utils/md5.js').read_text().replace('module.exports = { md5Base64 };','')+'\n'+Path('backend/consultation/course-payment.js').read_text())
   updates.append({'name':'UPDATE_ACTION_FLOW_NODE','args':{'actionFlowId':fid,'nodeId':node,'config':{'type':'CUSTOM_CODE','code':code}}})

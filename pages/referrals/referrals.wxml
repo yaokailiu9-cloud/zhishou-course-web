@@ -1,0 +1,21 @@
+<view class="service-page course-page">
+ <view class="service-hero"><text class="eyebrow">分享课程 · 推荐归属</text><text class="page-title">推荐客户</text><text class="muted">谁推荐、报名哪一场、是否到课，都在这里查看。</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重试</button></view>
+ <block wx:if="{{allowed}}">
+  <view class="card"><text class="section-title">我的推荐报名码</text><text class="body">{{courseTitle || '扫码后选择课程报名'}}</text>
+   <canvas wx:if="{{shareUrl && !qrError}}" class="referral-code" canvas-id="referral-code" style="width:256px;height:256px;"></canvas>
+   <text wx:if="{{qrError}}" class="error">{{qrError}}</text>
+   <button wx:if="{{shareUrl}}" class="primary" bindtap="copy">复制我的推荐链接</button><text wx:else class="muted">请在课程网页中打开此页面，获取专属推荐链接。</text>
+   <text class="muted">可截图发送报名码。新客户首次成功报名后才会记录归属；只打开链接或登录不会计入。已有推荐人不会被新链接覆盖。</text><button class="text-button" bindtap="courses">选择课程，生成该场报名码</button>
+  </view>
+  <view wx:if="{{isManager}}" class="course-tabs"><view class="course-tab {{scope === 'own' ? 'active' : ''}}" data-scope="own" bindtap="changeScope">我推荐的</view><view class="course-tab {{scope === 'all' ? 'active' : ''}}" data-scope="all" bindtap="changeScope">全部推荐客户</view></view>
+  <text class="section-title">{{scope === 'all' ? '全部推荐客户' : '我的推荐客户'}} · {{total}} 人</text>
+  <view wx:for="{{items}}" wx:key="id" class="card"><text class="card-title">{{item.customerName}}</text><text class="referral-source">推荐人：{{item.referrerName}}</text><text class="muted">记录时间 {{item.timeText}}</text>
+   <view wx:for="{{item.enrollments}}" wx:for-item="enrollment" wx:key="id" class="referral-course"><view class="row"><text>{{enrollment.courseTitle}}</text><text class="pill">{{enrollment.statusText}}</text></view><text class="muted">报名人：{{enrollment.name}}</text></view>
+   <text wx:if="{{!item.enrollments.length}}" class="muted">已记录推荐关系，暂无课程报名。</text><text wx:if="{{item.enrollments.length === 20}}" class="muted">展示最近 20 条报名。</text>
+  </view>
+  <view wx:if="{{!loading && !items.length}}" class="empty">暂无推荐客户。分享上方专属链接或报名码，新客户完成首次报名后会显示在这里。历史未记录的推荐来源不会自动补认。</view>
+  <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loading}}">加载更多客户</button>
+ </block>
+ <text wx:if="{{loading}}" class="muted">正在读取推荐信息…</text>
+</view>

@@ -23,6 +23,7 @@
     "pages/course-edit/course-edit",
     "pages/course-roster/course-roster",
     "pages/checkin/checkin",
+    "pages/referrals/referrals",
     "pages/course-poster/course-poster",
     "pages/support/support"
   ],

@@ -1,9 +1,10 @@
 const service=require('../../utils/consultationService');
 const auth=require('../../utils/auth');
 const {classCard}=require('../../utils/coursePresentation');
-Page({data:{loading:true,busy:false,error:'',classInfo:null,form:{name:'',phone:''}},
+Page({data:{loading:true,busy:false,error:'',classInfo:null,referralName:'',referralBound:false,form:{name:'',phone:''}},
  onLoad(q={}){this.classId=q.id||'';const form=require('../../utils/loginReturn').takeEnrollmentForm(this.classId);if(form)this.setData({form});require("../../utils/loginReturn").restore(this,"class-enroll",this.classId);},
- onShow(){this.refresh();},
+ onShow(){this.refresh();this.loadReferral();},
+ async loadReferral(){const v=require('../../utils/viewSession'),identity=v.capture();this.setData({referralName:'',referralBound:false});try{const r=await require('../../utils/referral').context();if(v.current(identity))this.setData({referralName:(r.binding||r.candidate||{}).name||'',referralBound:!!r.binding});}catch(_){}},
  async refresh(){this.setData({loading:true,error:''});try{const r=await service.call('GET_CLASS',{classId:this.classId});if(r.enrollment&&r.enrollment.status==='REGISTERED'){wx.redirectTo({url:'/pages/class-ticket/class-ticket?id='+r.enrollment.id});return;}this.setData({classInfo:classCard(r.classInfo)});}catch(e){service.error(this,e);}finally{this.setData({loading:false});}},
  input(e){const k=e.currentTarget.dataset.key;if(['name','phone'].includes(k))this.setData({['form.'+k]:e.detail.value});},
  async submit(){

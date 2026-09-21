@@ -93,6 +93,7 @@
 
     <view class="settings-section">
       <text class="settings-caption">客户服务</text>
+      <view wx:if="{{canInvite}}" class="settings-row" bindtap="goReferrals"><view class="settings-copy"><text class="settings-title">推荐客户</text><text class="settings-desc">我的推荐报名码 · 客户来源 · 报名与到课状态</text></view><text class="settings-arrow">›</text></view>
       <view wx:if="{{canCheckin}}" class="settings-row" bindtap="goCheckin">
         <view class="settings-copy"><text class="settings-title">扫码进场</text><text class="settings-desc">课程签到 · 已到与未到人数 · 签到人员安排</text></view>
         <text class="settings-arrow">›</text>
