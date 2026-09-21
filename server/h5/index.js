@@ -168,7 +168,8 @@ async function authenticateWechatProfile(profile) {
     wechat_avatar_url:String(profile.headimgurl || "").slice(0, 1500),
     wechat_openid:profile.openid,
     wechat_unionid:profile.unionid || "",
-    user_type:"customer",
+    // Business identity is maintained by the account's active service_provider
+    // relation (STAFF / AGENT / no relation). Never downgrade it on login.
     last_login_at:new Date().toISOString()
   };
   const updated = await zionGraphql(`mutation UpdateH5WechatProfile($id:bigint!,$data:account_set_input!){

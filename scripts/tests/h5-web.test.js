@@ -137,6 +137,7 @@ test('生产环境用公众号 AppSecret 换取资料并创建或恢复 Zion 账
   assert.match(calls[2].body.query,/authenticateWithUsername/);
   assert.equal(calls[3].authorization,'Bearer zion-profile-jwt');
   assert.equal(calls[3].body.variables.data.wechat_openid,'openid-001');
+  assert.equal(Object.hasOwn(calls[3].body.variables.data,'user_type'),false);
   assert.deepEqual(login,{jwt:'zion-profile-jwt',account:{id:'99',name:'微信用户乙',avatarUrl:'https://example.invalid/b.png'}});
 });
 

@@ -143,6 +143,14 @@ Required data model:
 
 - `service_provider`: service staff profile bound to `account` through a Zion relation.
 
+Current business identity model（2026-09-21）:
+
+- 已登录用户只使用三种业务身份：`管理`、`代理`、`用户`，不再增加第四种前台业务身份。
+- `管理`：存在 `service_provider.service_kind = STAFF` 且 `service_status = ACTIVE` 的关联记录；实际能力继续由 `can_reply`、`can_accept_order` 等后端字段控制。
+- `代理`：存在 `service_provider.service_kind = AGENT` 且 `service_status = ACTIVE` 的关联记录；代理身份不能因共用 `service_provider` 表而获得管理接单或回复能力。
+- `用户`：没有启用中的 `STAFF` / `AGENT` 关联记录。`account.user_type` 只作兼容展示，不可单独作为授权依据。
+- 刘曜恺的小程序账号 `account.id = 1000000000000010` 与网页账号 `account.id = 1000000000000019` 均为管理身份；网页账号关联 `service_provider.id = 14`，`service_kind = STAFF`、`service_status = ACTIVE`、`can_reply = true`、`can_accept_order = true`。
+
 Status on 2026-07-04:
 
 - Created and synced `service_provider`.
