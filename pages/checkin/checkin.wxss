@@ -1,0 +1,7 @@
+@import "../../styles/course-components.wxss";
+.checkin-result{background:#e7f3ed;border:1rpx solid #b6d8c7;}
+.checkin-result .card-title{color:#185536;}
+.checkin-help{display:block;margin:18rpx 0;line-height:1.7;}
+.checkin-staff{margin-top:32rpx;}
+.checkin-staff .row{gap:16rpx;flex-wrap:wrap;}
+.checkin-staff button{margin:12rpx 0;}

@@ -21,6 +21,8 @@ code = (
     Path("backend/consultation/common.js").read_text()
     + "\n"
     + Path("backend/consultation/authorize.js").read_text()
+    + "\n"
+    + Path("backend/consultation/checkin.js").read_text()
 )
 result = call([{
     "name": "UPDATE_ACTION_FLOW_NODE",

@@ -1,4 +1,5 @@
 const viewSession = require("../../utils/viewSession");
+const checkinService = require("../../utils/consultationService");
 const chatContext = require("../../utils/chatContext");
 const payment = require("../../utils/payment");
 const zion = require("../../utils/zion");
@@ -20,6 +21,7 @@ Page({
     statusBarHeight: 54,
     navHeight: 104,
     isLoggedIn: false,
+    canCheckin: false,
     userInfo: {},
     defaultPortrait: userPortrait,
     avatarText: "客",
@@ -106,6 +108,7 @@ Page({
     if (!storedUser || !storedUser.id || !zionJwt) {
       this.setData({
         isLoggedIn: false,
+        canCheckin: false,
         userInfo: {},
         avatarText: "客",
         isServiceProvider: false,
@@ -123,7 +126,21 @@ Page({
     this.refreshBackendUser(storedUser.id);
     this.refreshCustomerSummary(storedUser.id);
     this.loadManagerAccess(storedUser);
+    this.loadCheckinAccess();
   },
+
+  async loadCheckinAccess() {
+    const identity = viewSession.capture();
+    this.setData({ canCheckin: false });
+    try {
+      const result = await checkinService.call('CHECKIN_ACCESS');
+      if (viewSession.current(identity)) this.setData({ canCheckin: !!result.allowed });
+    } catch (_) {
+      if (viewSession.current(identity)) this.setData({ canCheckin: false });
+    }
+  },
+
+  goCheckin() { wx.navigateTo({ url: '/pages/checkin/checkin' }); },
 
   refreshBackendUser(accountId) {
     const identity=viewSession.capture();

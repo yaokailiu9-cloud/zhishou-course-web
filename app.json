@@ -22,6 +22,7 @@
     "pages/course-manage/course-manage",
     "pages/course-edit/course-edit",
     "pages/course-roster/course-roster",
+    "pages/checkin/checkin",
     "pages/course-poster/course-poster",
     "pages/support/support"
   ],

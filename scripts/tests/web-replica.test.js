@@ -45,12 +45,25 @@ test('微信登录请求指定首页为回调落点并保留推荐人',async()=>
   assert.equal(url.searchParams.get('return'),'/web/#/pages/index/index');
   assert.equal(url.searchParams.get('ref'),'test-ref');
 });
-test('all 24 pages are bundled from the exact current mini-program sources',()=>{
+test('all registered pages are bundled from the exact current mini-program sources',()=>{
   const manifest=JSON.parse(read('web/replica-manifest.json'));
-  assert.equal(manifest.pages.length,24);
+  assert.deepEqual(manifest.pages,JSON.parse(read('app.json')).pages);
   for(const [file,hash]of Object.entries(manifest.sha256))assert.equal(crypto.createHash('sha256').update(read(file)).digest('hex'),hash,file);
   for(const route of manifest.pages)assert.ok(fs.existsSync(path.join(ROOT,'web/replica',route.split('/')[1]+'.css')));
   assert.doesNotMatch(read('web/replica/base.css'),/##page|\d+rpx/);
+});
+test('微信网页扫码使用官方扫一扫并将个人码交回签到页，取消可再次扫描',async()=>{
+  const h=await host({navigator:{userAgent:'MicroMessenger'}});let ready,config,scan,out,failure;
+  h.context.wx={config:r=>{config=r;ready();},ready:fn=>{ready=fn;},error(){},scanQRCode:r=>{scan=r;}};
+  await h.host.wx.scanCode({success:r=>out=r,fail:r=>failure=r});
+  assert.ok(config.jsApiList.includes('scanQRCode'));assert.equal(scan.needResult,1);
+  scan.success({resultStr:'EMPATH-ENTRY:'+'A'.repeat(24)});assert.equal(out.result,'EMPATH-ENTRY:'+'A'.repeat(24));
+  await h.host.wx.scanCode({fail:r=>failure=r});scan.cancel();assert.equal(failure.errMsg,'cancel');
+});
+test('普通浏览器保留拍照识码入口，取消结束本次扫描',async()=>{
+  const h=await host();const original=h.document.createElement.bind(h.document);let input,failure;
+  h.document.createElement=tag=>{const el=original(tag);if(tag==='input'){input=el;el.click=()=>{};}return el;};
+  await h.host.wx.scanCode({fail:r=>failure=r});assert.equal(input.accept,'image/*');assert.equal(input.capture,'environment');input.oncancel();assert.equal(failure.errMsg,'cancel');
 });
 test('home renders source content, real tab navigation, and all page modules without JS errors',async()=>{
   const h=await host();assert.match(h.document.getElementById('page').textContent,/透过现象看本质/);

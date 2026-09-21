@@ -11,7 +11,9 @@ common=Path('backend/consultation/common.js').read_text();updates=[]
 for (fid,nodes),detail in zip(flows,details['responses']):
  for node,file in nodes:
   assert 'id: '+node+'\n    type: CUSTOM_CODE' in detail, 'Node identity mismatch'
-  updates.append({'name':'UPDATE_ACTION_FLOW_NODE','args':{'actionFlowId':fid,'nodeId':node,'config':{'type':'CUSTOM_CODE','code':common+'\n'+Path('backend/consultation/'+file+'.js').read_text()}}})
+  code=common+'\n'+Path('backend/consultation/'+file+'.js').read_text()
+  if file=='authorize': code+='\n'+Path('backend/consultation/checkin.js').read_text()
+  updates.append({'name':'UPDATE_ACTION_FLOW_NODE','args':{'actionFlowId':fid,'nodeId':node,'config':{'type':'CUSTOM_CODE','code':code}}})
 r=call(updates);(out/'code-updated.json').write_text(json.dumps(r,ensure_ascii=False,indent=2))
 validation=run('schema','validate');(out/'schema-validation.json').write_text(json.dumps(validation,ensure_ascii=False,indent=2))
 print('Updated 7 existing code nodes in target editing schema; backend not synchronized.')

@@ -206,7 +206,7 @@
     const details=shareDetails(page);
     if(!wechatShareReady){
       wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const response=await fetch('/api/h5?action=share-signature&url='+encodeURIComponent(signedUrl));const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||'微信分享配置失败');
-        await new Promise((resolve,reject)=>{window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData']});window.wx.ready(resolve);window.wx.error(reject)});return true;})().catch(error=>{wechatShareReady=null;throw error});
+        await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('微信组件配置超时')),12000);window.wx.ready(()=>{clearTimeout(timer);resolve()});window.wx.error(error=>{clearTimeout(timer);reject(error)});window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData','scanQRCode']})});return true;})().catch(error=>{wechatShareReady=null;throw error});
     }
     await wechatShareReady;
     const data={title:details.title,desc:details.desc,link:details.url.href,imgUrl:details.image};
@@ -248,7 +248,13 @@
     },
     createVideoContext:id=>({play:()=>document.getElementById(id)?.play(),pause:()=>document.getElementById(id)?.pause(),stop:()=>{const video=document.getElementById(id);if(video){video.pause();video.currentTime=0}}}),
     createCanvasContext:id=>{const commands=[];return{setFillStyle:color=>commands.push(ctx=>ctx.fillStyle=color),fillRect:(...args)=>commands.push(ctx=>ctx.fillRect(...args)),draw:(_,callback)=>requestAnimationFrame(()=>{const canvas=document.getElementById(id);if(canvas){const ctx=canvas.getContext('2d');commands.forEach(command=>command(ctx))}callback?.()})}},
-    scanCode:o=>{const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';input.onchange=async()=>{try{const file=input.files[0];if(!file)return;const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);const result=window.jsQR(pixels.data,pixels.width,pixels.height);bitmap.close();if(!result)throw new Error('未识别到二维码，请拍摄清晰图片或在名单中人工核实');complete(o,{result:result.data})}catch(error){complete(o,{errMsg:error.message},true)}};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click()},
+    scanCode:async o=>{
+      if(/MicroMessenger/i.test(navigator.userAgent)){
+        try{await prepareWechatShare(current);if(!window.wx?.scanQRCode)throw new Error('微信扫码组件不可用');window.wx.scanQRCode({needResult:1,scanType:['qrCode'],success:r=>complete(o,{result:r.resultStr}),fail:e=>complete(o,{errMsg:e.errMsg||'微信扫码失败'},true),cancel:()=>complete(o,{errMsg:'cancel'},true)});}catch(error){complete(o,{errMsg:error.message||'微信扫码暂不可用，请重试'},true)}
+        return;
+      }
+      const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';input.onchange=async()=>{try{const file=input.files[0];if(!file){complete(o,{errMsg:'cancel'},true);return}const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);const result=window.jsQR(pixels.data,pixels.width,pixels.height);bitmap.close();if(!result)throw new Error('未识别到二维码，请拍摄清晰图片后重试');complete(o,{result:result.data})}catch(error){complete(o,{errMsg:error.message},true)}};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click();
+    },
     getRecorderManager:()=>({onStop(){},offStop(){},onError(fn){this.error=fn},offError(){},start(){this.error?.({errMsg:'网页录音编码尚未接入，请使用文字记录'})},stop(){}})
   };
   // Copy only a non-secret session marker into the compatibility storage. JWT stays HttpOnly.

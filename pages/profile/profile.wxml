@@ -93,6 +93,10 @@
 
     <view class="settings-section">
       <text class="settings-caption">客户服务</text>
+      <view wx:if="{{canCheckin}}" class="settings-row" bindtap="goCheckin">
+        <view class="settings-copy"><text class="settings-title">扫码进场</text><text class="settings-desc">课程签到 · 已到与未到人数 · 签到人员安排</text></view>
+        <text class="settings-arrow">›</text>
+      </view>
       <view class="settings-row" bindtap="goCustomerPortal">
         <view class="settings-copy"><text class="settings-title">进入客户端</text><text class="settings-desc">我的报名、线下预约、孩子基础信息与执行反馈</text></view>
         <text class="settings-arrow">›</text>
