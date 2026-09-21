@@ -8,6 +8,10 @@ function classCard(value) {
     seatsText:Number(c.capacity)>0 ? `剩余 ${Math.max(0,Number(c.capacity)-Number(c.reserved_count||0))} / ${c.capacity} 个名额` : '开放报名',
     coverUrl:c.cover && c.cover.url || '', shareCodeUrl:c.share_code && c.share_code.url || ''};
 }
+function isUpcomingClass(value, now) {
+  const startsAt=new Date(value && value.starts_at).getTime();
+  return !!value && value.status==='PUBLISHED' && Number.isFinite(startsAt) && startsAt>(now == null ? Date.now() : now);
+}
 function enrollmentCard(value) {
   const e=decorate(value), active=e.status==='REGISTERED';
   const state=!active?'已取消':e.attendance_status==='ATTENDED'?'已参加':e.attendance_status==='ABSENT'?'未到课':'待参加';
@@ -31,4 +35,4 @@ function classShare(c) {
   if(cover)share.imageUrl=cover;
   return share;
 }
-module.exports={classCard,enrollmentCard,dateParts,iso,classShare};
+module.exports={classCard,isUpcomingClass,enrollmentCard,dateParts,iso,classShare};

@@ -1,5 +1,5 @@
 const service=require('../../utils/consultationService');
-const {classCard}=require('../../utils/coursePresentation');
+const {classCard,isUpcomingClass}=require('../../utils/coursePresentation');
 Page({
  data:{loading:false,error:'',classes:[],search:'',nextCursor:null},
  onLoad(query={}){if(query.id){this.redirected=true;wx.redirectTo({url:'/pages/public-class-detail/public-class-detail?id='+encodeURIComponent(query.id)});}},
@@ -9,7 +9,7 @@ Page({
  loadMore(){return this.load(true);},
  async load(more){if(more && this.appliedSearch!==this.data.search)more=false;
   if(this.data.loading){if(!more)this.pendingSearch=true;return;}this.setData({loading:true,error:''});
-  try{const search=this.data.search;const r=await service.call('LIST_CLASSES',{search:search,cursor:more?this.data.nextCursor:null});this.appliedSearch=search;this.setData({classes:(more?this.data.classes:[]).concat((r.classes||[]).map(classCard)),nextCursor:r.nextCursor});}
+  try{const search=this.data.search;const r=await service.call('LIST_CLASSES',{search:search,cursor:more?this.data.nextCursor:null});this.appliedSearch=search;this.setData({classes:(more?this.data.classes:[]).concat((r.classes||[]).filter(isUpcomingClass).map(classCard)),nextCursor:r.nextCursor});}
   catch(e){service.error(this,e);}finally{this.setData({loading:false});if(this.pendingSearch){this.pendingSearch=false;this.refresh();}}
  },
  choose(e){wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id='+e.currentTarget.dataset.id});},

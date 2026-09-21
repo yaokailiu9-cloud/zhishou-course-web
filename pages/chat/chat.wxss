@@ -426,7 +426,7 @@
 .chat-footer {
   flex-shrink: 0;
   z-index: 20;
-  padding-top: 12rpx;
+  padding-top: 6rpx;
   background:
     linear-gradient(180deg, rgba(251, 249, 248, 0) 0%, rgba(251, 249, 248, 0.92) 18%, rgba(251, 249, 248, 0.98) 100%);
 }
@@ -434,13 +434,13 @@
 .chat-composer {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  min-height: 96rpx;
-  padding: 12rpx 14rpx 12rpx 18rpx;
+  gap: 10rpx;
+  min-height: 0;
+  padding: 8rpx 10rpx 8rpx 16rpx;
   background: rgba(255, 255, 255, 0.98);
   border: 1rpx solid var(--em-color-border);
-  border-radius: 30rpx;
-  box-shadow: 0 12rpx 34rpx rgba(0, 39, 39, 0.08);
+  border-radius: 26rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 39, 39, 0.07);
 }
 
 .composer-input {
@@ -780,7 +780,7 @@
 
 .nav-back { width:44px; height:44px; flex-basis:44px; }
 .composer-send { width:44px; height:44px; flex-basis:44px; }
-.composer-input { height:auto; min-height:44px; max-height:160px; padding:16rpx; line-height:1.6; font-size:28rpx; }
+.composer-input { box-sizing:border-box; height:auto; min-height:44px; max-height:120px; padding:9rpx 18rpx; line-height:1.35; font-size:28rpx; }
 .send-error { padding:16rpx; color:#8b3e31; background:#fff1eb; font-size:26rpx; line-height:1.5; }
 .send-recovery { display:flex; gap:16rpx; }
 .send-recovery button { min-height:44px; padding:16rpx; color:#194e43; font-size:26rpx; }

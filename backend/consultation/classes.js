@@ -41,7 +41,7 @@ function filterSearch(scope, columns) {
 }
 if(op==='LIST_CLASSES'||op==='STAFF_CLASSES') {
   if(op==='STAFF_CLASSES')staff(s,'canAccept');
-  var scope=op==='STAFF_CLASSES'?eq('organizer_id',s.actor.providerId):eq('status','PUBLISHED','text');
+  var scope=op==='STAFF_CLASSES'?eq('organizer_id',s.actor.providerId):and(eq('status','PUBLISHED','text'),compare('_gt','starts_at',new Date().toISOString(),'timestamptz'));
   var page=paged('public_class',filterSearch(scope,['title','city']),CLASS_FIELDS);
   result(s,{classes:page.items.map(function(c){return classView(c,op==='STAFF_CLASSES');}),nextCursor:page.nextCursor});
 }

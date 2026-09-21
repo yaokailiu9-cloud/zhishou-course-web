@@ -426,7 +426,7 @@
 .chat-footer {
   flex-shrink: 0;
   z-index: 20;
-  padding-top: calc(12 * var(--rpx));
+  padding-top: calc(6 * var(--rpx));
   background:
     linear-gradient(180deg, rgba(251, 249, 248, 0) 0%, rgba(251, 249, 248, 0.92) 18%, rgba(251, 249, 248, 0.98) 100%);
 }
@@ -434,13 +434,13 @@
 .chat-composer {
   display: flex;
   align-items: center;
-  gap: calc(12 * var(--rpx));
-  min-height: calc(96 * var(--rpx));
-  padding: calc(12 * var(--rpx)) calc(14 * var(--rpx)) calc(12 * var(--rpx)) calc(18 * var(--rpx));
+  gap: calc(10 * var(--rpx));
+  min-height: 0;
+  padding: calc(8 * var(--rpx)) calc(10 * var(--rpx)) calc(8 * var(--rpx)) calc(16 * var(--rpx));
   background: rgba(255, 255, 255, 0.98);
   border: calc(1 * var(--rpx)) solid var(--em-color-border);
-  border-radius: calc(30 * var(--rpx));
-  box-shadow: 0 calc(12 * var(--rpx)) calc(34 * var(--rpx)) rgba(0, 39, 39, 0.08);
+  border-radius: calc(26 * var(--rpx));
+  box-shadow: 0 calc(8 * var(--rpx)) calc(24 * var(--rpx)) rgba(0, 39, 39, 0.07);
 }
 
 .composer-input {
@@ -780,7 +780,7 @@
 
 .nav-back { width:44px; height:44px; flex-basis:44px; }
 .composer-send { width:44px; height:44px; flex-basis:44px; }
-.composer-input { height:auto; min-height:44px; max-height:160px; padding:calc(16 * var(--rpx)); line-height:1.6; font-size:calc(28 * var(--rpx)); }
+.composer-input { box-sizing:border-box; height:auto; min-height:44px; max-height:120px; padding:calc(9 * var(--rpx)) calc(18 * var(--rpx)); line-height:1.35; font-size:calc(28 * var(--rpx)); }
 .send-error { padding:calc(16 * var(--rpx)); color:#8b3e31; background:#fff1eb; font-size:calc(26 * var(--rpx)); line-height:1.5; }
 .send-recovery { display:flex; gap:calc(16 * var(--rpx)); }
 .send-recovery button { min-height:44px; padding:calc(16 * var(--rpx)); color:#194e43; font-size:calc(26 * var(--rpx)); }
