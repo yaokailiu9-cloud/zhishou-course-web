@@ -8,6 +8,6 @@
   <button wx:if="{{canInvite}}" class="secondary" bindtap="referralCode">我的推荐报名码 · 查看推荐客户</button>
   <view class="card detail-reading"><text class="panel-caption">01 / 课程内容</text><text class="section-title">这堂课，我们一起学习</text><text class="body">{{classInfo.description || '课程详细介绍正在准备，请以工作人员的课程说明为准。'}}</text></view>
   <view class="card detail-reading"><text class="panel-caption">02 / 课堂安排</text><text class="section-title">参加须知</text><text class="body">{{classInfo.notice || '报名后请留意工作人员联系，进群查看开课地址及参课安排。'}}</text><view class="progress-line"><text>1 {{classInfo.isPaid ? '完成缴费' : '提交报名'}}</text><text>2 报名成功</text><text>3 联系进群</text></view><text wx:if="{{classInfo.isPaid}}" class="muted">需支付本场报名费后才会生成成功报名和入场凭证。</text><text wx:else class="muted">提交报名后会生成入场凭证。</text></view>
-  <view class="course-footer"><button class="secondary" open-type="share">微信分享</button><button class="primary" disabled="{{!classInfo.canEnroll && (!enrollment || enrollment.status !== 'REGISTERED')}}" bindtap="enroll">{{enrollment && enrollment.status === 'REGISTERED' ? '查看我的报名' : classInfo.isPaid ? classInfo.feeText + ' 缴费报名' : '免费报名'}}</button></view>
+  <view class="course-footer"><button class="secondary" open-type="share">分享报名码</button><button class="primary" disabled="{{!classInfo.canEnroll && (!enrollment || enrollment.status !== 'REGISTERED')}}" bindtap="enroll">{{enrollment && enrollment.status === 'REGISTERED' ? '查看我的报名' : classInfo.isPaid ? classInfo.feeText + ' 缴费报名' : '免费报名'}}</button></view>
  </block>
 </view>

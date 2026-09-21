@@ -45,6 +45,24 @@ test('微信登录请求指定首页为回调落点并保留推荐人',async()=>
   assert.equal(url.searchParams.get('return'),'/web/#/pages/index/index');
   assert.equal(url.searchParams.get('ref'),'test-ref');
 });
+
+test('扫码来源先保存再登录，刷新无 ref 仍强制登录并回到原课程',async()=>{
+  const returnTo='/web/#/pages/public-class-detail/public-class-detail?id=7';let calls=[];
+  const fetch=async(url,options={})=>{calls.push({url,options});return {ok:true,status:200,headers:[],json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:false,invitation:{returnTo}}:String(url).includes('capture-referral')?{invitation:{returnTo}}:{candidate:{name:'推荐人甲'}}})};};
+  const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=signed-invitation',hash:'#/pages/public-class-detail/public-class-detail?id=7'},fetch});
+  assert.equal(calls[0].url,'/api/h5?action=capture-referral');assert.equal(JSON.parse(calls[0].options.body).returnTo,returnTo);assert.equal(calls[0].options.credentials,'same-origin');
+  assert.equal(h.host.current.route,'pages/invite-login/invite-login');assert.ok(h.document.querySelector('#page').textContent.includes('推荐人甲'));
+  h.host.wx.switchTab({url:'/pages/plaza/plaza'});await tick();assert.equal(h.host.current.route,'pages/invite-login/invite-login');
+  h.host.current.login();let url=new URL(h.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);
+  const refreshed=await host({navigator:{userAgent:'MicroMessenger'},fetch});assert.equal(refreshed.host.current.route,'pages/invite-login/invite-login');refreshed.host.current.login();url=new URL(refreshed.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);assert.equal(url.searchParams.get('ref'),'');
+});
+
+test('邀请保存失败时不能继续报名；已有登录遇到有效推荐码不强制重新授权',async()=>{
+  for(const fail of [true,false]){
+    const h=await host({location:{search:'?ref=signed',hash:'#/pages/public-class-detail/public-class-detail?id=7'},fetch:async(url)=>({ok:!fail||!String(url).includes('capture-referral'),status:fail?500:200,headers:[],json:async()=>({ok:!fail||!String(url).includes('capture-referral'),data:String(url).includes('action=session')?{loggedIn:true,user:{id:'18',name:'家长'},invitation:{returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=7'}}:{invitation:{returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=7'}}}),text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data:{classInfo:{id:7,status:'PUBLISHED'}}}}}})})});
+    assert.equal(h.host.current.route,fail?'pages/invite-login/invite-login':'pages/public-class-detail/public-class-detail');assert.equal(h.host.wx.getStorageSync('userInfo').id,'18');
+  }
+});
 test('all registered pages are bundled from the exact current mini-program sources',()=>{
   const manifest=JSON.parse(read('web/replica-manifest.json'));
   assert.deepEqual(manifest.pages,JSON.parse(read('app.json')).pages);
@@ -149,17 +167,20 @@ test('支付API携带同源会话，不把微信签名当成支付成功凭证',
   assert.equal(response.order.status,'PENDING');assert.equal(fetched.options.credentials,'same-origin');assert.equal(fetched.url,'/api/h5?action=course-pay-status');
 });
 
-test('课程详情分享把标题、说明和直达链接交给系统分享',async()=>{
-  let shared;const h=await host({navigator:{share:async value=>{shared=value}}});
+test('课程详情分享生成图片二维码，不调用系统发送长链接',async()=>{
+  let shared;const h=await host({navigator:{share:async()=>{assert.fail('不能发送裸链接');}}});
+  h.host.requireModule('utils/referralPoster').poster=(_canvas,value)=>{shared=value;return 'data:image/png;base64,dGVzdA==';};
   h.host.wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id=7'});await tick();
   h.host.current.setData({classInfo:{id:'7',title:'奖励的误区',status:'PUBLISHED',canEnroll:true,coverUrl:'https://example.invalid/cover.jpg'}});await tick();
   h.document.querySelector('.course-footer .secondary').dispatchEvent(new h.Event('click',{bubbles:true}));await tick();
-  assert.equal(shared.title,'奖励的误区');assert.match(shared.text,/课程介绍/);assert.match(shared.url,/#\/pages\/public-class-detail\/public-class-detail\?id=7$/);
+  assert.equal(shared.title,'奖励的误区');assert.match(shared.url,/#\/pages\/public-class-detail\/public-class-detail\?id=7$/);
+  assert.equal(h.document.querySelector('#image-preview').open,true);assert.match(h.document.querySelector('#image-preview img').src,/^data:image\/png/);assert.ok(!h.document.querySelector('#image-preview').textContent.includes('http'));
 });
 
 test('代理分享使用自己的签名码，免费报名把收到的推荐码送到同源会话接口',async()=>{
   let shared,canInvite=true;
   const h=await host({location:{search:'?ref=incoming-other-agent'},navigator:{share:async value=>{shared=value}},fetch:async url=>({ok:true,status:200,headers:[],json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:'18',name:'代理'}}:{canInvite,referralToken:canInvite?'own-signed-token':''}}),text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data:{classes:[]}}}}})})});
+  h.host.requireModule('utils/referralPoster').poster=(_canvas,value)=>{shared=value;return 'data:image/png;base64,dGVzdA==';};
   h.host.wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id=7'});await tick();
   h.host.current.setData({classInfo:{id:'7',title:'公开课',canEnroll:true}});await tick();
   h.document.querySelector('.course-footer .secondary').dispatchEvent(new h.Event('click',{bubbles:true}));await tick();

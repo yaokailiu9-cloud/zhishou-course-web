@@ -24,6 +24,7 @@
     "pages/course-roster/course-roster",
     "pages/checkin/checkin",
     "pages/referrals/referrals",
+    "pages/invite-login/invite-login",
     "pages/course-poster/course-poster",
     "pages/support/support"
   ],

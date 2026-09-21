@@ -6,6 +6,8 @@ const ACTION_FLOW_ID = "9f60a0be-4628-4268-a769-661264846cf4";
 const ACTION_FLOW_VERSION = 1;
 const SESSION_COOKIE = "zhishou_h5_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 14;
+const INVITATION_COOKIE = 'zhishou_invitation';
+const INVITATION_SECONDS = 60 * 60 * 24 * 30;
 let wechatJsapiCache = {accessToken:"", accessExpiresAt:0, ticket:"", ticketExpiresAt:0};
 
 function required(name) {
@@ -60,11 +62,43 @@ function readSession(req) {
 
 function setSession(res, session) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${encodeURIComponent(sign(session))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_SECONDS}${secure}`);
+  appendCookie(res, `${SESSION_COOKIE}=${encodeURIComponent(sign(session))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.max(0,session.exp-Math.floor(Date.now()/1000))}${secure}`);
 }
 
 function clearSession(res) {
-  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  appendCookie(res, `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  appendCookie(res, `${INVITATION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+}
+
+function appendCookie(res, cookie) {
+  const previous = res.getHeader('Set-Cookie');
+  res.setHeader('Set-Cookie', [...(Array.isArray(previous)?previous:previous?[previous]:[]), cookie]);
+}
+
+// Only public course routes may be restored from an invitation, never external URLs.
+function invitationReturn(value) {
+  const route=String(value||'');
+  return /^\/web\/#\/pages\/(?:public-class-detail\/public-class-detail|class-enroll\/class-enroll)\?id=[1-9][0-9]*$/.test(route)
+    || /^\/web\/#\/pages\/(?:plaza\/plaza|public-class\/public-class)$/.test(route) ? route : '/web/#/pages/plaza/plaza';
+}
+
+function readInvitation(req, session=readSession(req)) {
+  const token=parseCookies(req)[INVITATION_COOKIE];
+  const invitation=token?verify(token):null;
+  if(invitation?.kind==='invitation' && /^[1-9][0-9]*$/.test(String(invitation.referrerId||''))
+    && (!invitation.accountId || !session || String(invitation.accountId)===String(session.account.id))) return invitation;
+  return session?.referrerId ? {referrerId:session.referrerId,returnTo:invitationReturn(session.referralReturn)} : null;
+}
+
+function setInvitation(res, invitation) {
+  const value={...invitation,kind:'invitation',returnTo:invitationReturn(invitation.returnTo),exp:Math.floor(Date.now()/1000)+INVITATION_SECONDS};
+  const secure=process.env.NODE_ENV==='production'?'; Secure':'';
+  appendCookie(res,`${INVITATION_COOKIE}=${encodeURIComponent(sign(value))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${INVITATION_SECONDS}${secure}`);
+  return value;
+}
+
+function invitationRef(req, session, token) {
+  return decodeRef(token) || readInvitation(req,session)?.referrerId || null;
 }
 
 async function jsonRequest(url, options = {}) {
@@ -341,19 +375,31 @@ async function handleApi(req, res) {
     // Browser replica uses the existing user session; never an administrator token.
     if (action === "session") {
       const session = readSession(req);
-      return json(res, 200, {ok:true, data:{loggedIn:!!session, user:session ? session.account : null}});
+      const invitation=readInvitation(req,session);
+      return json(res, 200, {ok:true, data:{loggedIn:!!session, user:session ? session.account : null, invitation:invitation?{returnTo:invitationReturn(invitation.returnTo)}:null}});
     }
     if (action === "share-signature") {
       if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
       return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
     }
-    if (["graphql", "logout", "enroll", "course-pay", "course-pay-status"].includes(action)) {
+    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status"].includes(action)) {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
       if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
       if (!String(req.headers["content-type"] || "").startsWith("application/json") || (origin && origin !== new URL(expected).origin)) {
         return json(res, 403, {ok:false,message:"请求来源无效"});
       }
+    }
+    if(action==='capture-referral') {
+      const input=await body(req), current=readSession(req), referrerId=decodeRef(input.ref);
+      if(!referrerId)return json(res,400,{ok:false,message:'推荐二维码已失效，请联系分享人重新生成'});
+      if(String(referrerId)===String(current?.account?.id))return json(res,200,{ok:true,data:{invitation:null}});
+      const previous=readInvitation(req,current), safeTarget=invitationReturn(input.returnTo);
+      // Refreshing the login gate must not replace the original course with the plaza.
+      const returnTo=safeTarget===input.returnTo?safeTarget:String(previous?.referrerId)===referrerId?invitationReturn(previous.returnTo):safeTarget;
+      const invitation=setInvitation(res,{referrerId,returnTo,accountId:current?.account?.id||previous?.accountId||null});
+      if(current)setSession(res,{...current,referrerId,referralReturn:invitation.returnTo});
+      return json(res,200,{ok:true,data:{invitation:{returnTo:invitation.returnTo}}});
     }
     if (action === "graphql") {
       const input = await body(req);
@@ -367,7 +413,12 @@ async function handleApi(req, res) {
       }
     }
     if (action === "login") {
-      const state = sign({kind:"oauth", referrerId:decodeRef(url.searchParams.get("ref")), returnTo:safeReturn(url.searchParams.get("return")), exp:Math.floor(Date.now()/1000)+600});
+      const current=readSession(req), invitation=readInvitation(req,current);
+      const referrerId=invitationRef(req,current,url.searchParams.get('ref'));
+      const returnTo=referrerId?invitationReturn(invitation?.returnTo||url.searchParams.get('return')):'/web/#/pages/index/index';
+      const invitationAccountId=current?.account?.id||invitation?.accountId||null;
+      if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:invitationAccountId});
+      const state = sign({kind:"oauth", referrerId, returnTo, invitationAccountId, exp:Math.floor(Date.now()/1000)+600});
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
       const callback = `${origin.replace(/\/$/, "")}/api/wechat-oauth-callback`;
       const auth = "https://open.weixin.qq.com/connect/oauth2/authorize"
@@ -381,14 +432,15 @@ async function handleApi(req, res) {
     if (action === "referral-context") {
       if (req.method !== "GET") return json(res,405,{ok:false,message:"请求方式无效"});
       const current = readSession(req);
-      const data = await invoke(current?.jwt, "REFERRAL_OVERVIEW", {referrerId:decodeRef(url.searchParams.get("ref")) || current?.referrerId || null});
+      const forwardedReferrer=invitationRef(req,current,url.searchParams.get("ref"));
+      const data = await invoke(current?.jwt, "REFERRAL_OVERVIEW", {referrerId:forwardedReferrer});
       const token = current && data.canInvite ? refToken(current.account.id) : "";
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
       const link = new URL('/web/', origin);
       if (token) link.searchParams.set('ref', token);
       const classId = url.searchParams.get('classId');
       link.hash = classId && /^[1-9][0-9]*$/.test(classId) ? '/pages/public-class-detail/public-class-detail?id='+classId : '/pages/plaza/plaza';
-      return json(res,200,{ok:true,data:{...data,referralToken:token,shareUrl:token?link.href:""}});
+      return json(res,200,{ok:true,data:{...data,referralToken:token,forwardToken:forwardedReferrer?refToken(forwardedReferrer):'',shareUrl:token?link.href:""}});
     }
     const session = readSession(req);
     if (!session) return json(res, 401, {ok:false, message:"请先微信登录"});
@@ -397,9 +449,9 @@ async function handleApi(req, res) {
     if (req.method !== "POST" && action !== "referrals") return json(res, 405, {ok:false, message:"请求方式无效"});
     if (action === "referrals") return json(res, 200, {ok:true, data:await invoke(session.jwt, "MY_REFERRALS", {})});
     const input = await body(req);
-    if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,referrerId:decodeRef(input.ref)||session.referrerId||null})});
+    if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,referrerId:invitationRef(req,session,input.ref)})});
     if (action === "course-pay-status") return json(res,200,{ok:true,data:await require('./course-payment').status(invoke,session.jwt,input.orderId)});
-    if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone,referrerId:decodeRef(input.ref) || session.referrerId || null})});
+    if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone,referrerId:invitationRef(req,session,input.ref)})});
     if (action === "cancel") return json(res, 200, {ok:true, data:await invoke(session.jwt, "CANCEL_ENROLLMENT", {enrollmentId:input.enrollmentId})});
     if (action === "saveClass") return json(res, 200, {ok:true, data:await invoke(session.jwt, "SAVE_CLASS", {
       status:"PUBLISHED", title:input.title, description:input.description, city:input.city,
@@ -422,9 +474,13 @@ async function handleOauthCallback(req, res) {
     if (!code) throw new Error("AUTH:未获得微信授权");
     const login = await authenticateWechatAccount(code);
     // Keep the invitation through login; Zion binds ownership only after enrollment.
-    const referrerId = state.referrerId && String(state.referrerId) !== String(login.account.id) ? state.referrerId : null;
-    setSession(res, {jwt:login.jwt, account:login.account, referrerId, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
-    return redirect(res, "/web/#/pages/index/index");
+    const sameAccount=!state.invitationAccountId||String(state.invitationAccountId)===String(login.account.id);
+    const referrerId = sameAccount && state.referrerId && String(state.referrerId) !== String(login.account.id) ? state.referrerId : null;
+    const returnTo=referrerId?invitationReturn(state.returnTo):'/web/#/pages/index/index';
+    setSession(res, {jwt:login.jwt, account:login.account, referrerId, referralReturn:returnTo, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
+    if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:login.account.id});
+    else appendCookie(res,`${INVITATION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+    return redirect(res, returnTo);
   } catch (error) {
     return redirect(res, `/web/?loginError=${encodeURIComponent(friendly(error))}`);
   }

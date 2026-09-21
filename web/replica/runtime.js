@@ -7,6 +7,8 @@
   const app = {globalData:{}};
   let current = null, renderedPage = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null;
   const HOME = 'pages/index/index';
+  const INVITE_LOGIN = 'pages/invite-login/invite-login';
+  let invitation=null,invitationError='';
   const tabRoutes = source.config.tabBar.list.map(item => item.pagePath);
   const $ = selector => document.querySelector(selector);
   const clone = value => JSON.parse(JSON.stringify(value));
@@ -168,7 +170,8 @@
   }
   function parseRoute(url){const raw=String(url||'').replace(/^#?\/?/,'');const [path,query]=raw.split('?');return{route:source.pages[path]?path:HOME,options:Object.fromEntries(new URLSearchParams(query))}}
   function navigate(url,mode='push',fromHistory=false){
-    const {route,options}=parseRoute(url);
+    let {route,options}=parseRoute(url);
+    if(invitationError||(invitation&&!storage.get('zionJwt'))){route=INVITE_LOGIN;options={};}
     if(!fromHistory&&unloadMessage){wx.showModal({title:'尚未保存',content:unloadMessage,success:r=>{if(r.confirm){unloadMessage='';navigate(url,mode)}}});return}
     if(current){current._scroll=window.scrollY;lifecycle(current,'onHide')}
     if(mode==='tab'||mode==='replace'){for(const old of (mode==='tab'?stack:stack.slice(-1)))lifecycle(old,'onUnload');stack=mode==='tab'?[]:stack.slice(0,-1)}
@@ -178,7 +181,7 @@
     if(route==='pages/profile/profile'){
       page.loginByWechat=webLogin;
       const originalLogout=page.logout;
-      page.logout=async function(){try{const r=await fetch('/api/h5?action=logout',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});if(!r.ok)throw new Error();session=null;originalLogout.call(this)}catch(_){wx.showToast({title:'退出未完成，请重试'})}};
+      page.logout=async function(){try{const r=await fetch('/api/h5?action=logout',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});if(!r.ok)throw new Error();session=null;invitation=null;invitationError='';referralContext=null;const clean=new URL(location.href);clean.searchParams.delete('ref');history.replaceState({},'',clean.pathname+clean.search+clean.hash);originalLogout.call(this)}catch(_){wx.showToast({title:'退出未完成，请重试'})}};
     }
     if(route==='pages/consultation-detail/consultation-detail')page.startRecording=()=>wx.showModal({title:'网页录音尚未开放',content:'本次已复刻录音与总结入口。网页录音编码尚待接入，目前可以使用文字沟通总结及手动记录。',showCancel:false});
     page.setCustomNav=function(){this.setData({statusBarHeight:12,navHeight:76,navPaddingRight:0})};
@@ -198,9 +201,11 @@
     const ok=document.createElement('button');ok.textContent=options.confirmText||'确定';ok.onclick=()=>finish(true);actions.append(ok);dialog.oncancel=event=>{event.preventDefault();finish(false)};dialog.showModal();
   }
   function webLogin(){
+    if(invitationError){wx.showToast({title:invitationError});return;}
+    if(invitation&&!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'请在微信中登录',content:'请用微信扫一扫，或长按识别分享人发来的报名二维码。推荐信息已保留。',showCancel:false});return;}
     if(!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'微信登录',content:'请将当前网页链接在微信中打开，再点击微信登录。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:location.href})}});return}
     const ref=new URLSearchParams(location.search).get('ref')||'';
-    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent('/web/#/'+HOME);
+    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(invitation?.returnTo||'/web/#/'+HOME);
   }
   let referralContext = null;
   async function getReferralContext(classId){
@@ -213,7 +218,7 @@
   }
   function shareDetails(page){
     const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');
-    const ref=(referralContext?.identity===session&&referralContext?.referralToken)||new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);
+    const ref=(referralContext?.identity===session&&(referralContext?.referralToken||referralContext?.forwardToken))||new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);
     const image=info.imageUrl?new URL(info.imageUrl,location.origin).href:'';
     return {info,url,title:info.title||'知守',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
   }
@@ -234,12 +239,21 @@
     window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image});
     return true;
   }
+  function showReferralPoster({url,title,name=''}){
+    const image=requireModule('utils/referralPoster').poster(document.createElement('canvas'),{url,title,name});
+    const dialog=$('#image-preview');if(dialog.open)dialog.close();
+    dialog.classList.add('is-referral-poster');
+    dialog.querySelector('img').src=image;dialog.querySelector('img').alt='课程报名二维码';
+    let tip=dialog.querySelector('p');if(!tip){tip=document.createElement('p');dialog.insertBefore(tip,dialog.querySelector('img'));}
+    tip.textContent='长按保存这张图片，发送给微信好友或群。'+(/[?&]ref=/.test(url)?'对方扫码登录后，推荐信息会继续保留。':'对方扫码后可查看课程并报名。');
+    dialog.querySelector('button').onclick=()=>dialog.close();dialog.showModal();
+    return image;
+  }
   async function share(page){
     try{await getReferralContext();}catch(_){if(session){wx.showToast({title:'推荐信息加载失败，请重试分享'});return;}}
-    const details=shareDetails(page);try{
-    if(/MicroMessenger/i.test(navigator.userAgent)&&await prepareWechatShare(page)){wx.showModal({title:'微信分享',content:'课程卡片已准备好，请点击右上角“…”发送给朋友或群。',showCancel:false,confirmText:'知道了'});return}
-    if(navigator.share)await navigator.share({title:details.title,text:details.desc,url:details.url.href});else await wx.setClipboardData({data:details.url.href});
-  }catch(error){if(error.name!=='AbortError')wx.showModal({title:'分享课程',content:'微信卡片暂未调起，已为你保留课程链接。可复制后发送给朋友或群。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:details.url.href})}})}}
+    const details=shareDetails(page);try{showReferralPoster({url:details.url.href,title:details.title,name:referralContext?.canInvite?session?.user?.name:''});}
+    catch(_){wx.showToast({title:'报名二维码生成失败，请重试'});}
+  }
   function scanImage(o){
     const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';input.onchange=async()=>{try{const file=input.files[0];if(!file){complete(o,{errMsg:'cancel'},true);return}const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);const result=window.jsQR(pixels.data,pixels.width,pixels.height);bitmap.close();if(!result)throw new Error('未识别到二维码，请拍摄清晰图片后重试');complete(o,{result:result.data})}catch(error){complete(o,{errMsg:error.message},true)}};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click();
   }
@@ -258,11 +272,14 @@
     showActionSheet:o=>{const dialog=$('#modal');if(dialog.open)dialog.close();dialog.querySelector('h2').textContent='请选择';dialog.querySelector('p').textContent='';const actions=dialog.querySelector('.modal-actions');actions.replaceChildren();(o.itemList||[]).forEach((text,i)=>{const b=document.createElement('button');b.textContent=text;b.onclick=()=>{dialog.close();complete(o,{tapIndex:i})};actions.append(b)});dialog.oncancel=()=>complete(o,{errMsg:'cancel'},true);dialog.showModal()},
     setClipboardData:async o=>{try{await navigator.clipboard.writeText(o.data);complete(o,{});wx.showToast({title:'已复制'})}catch(_){wx.showModal({title:'复制链接',content:o.data,showCancel:false});complete(o,{errMsg:'无法自动复制'},true)}},
     makePhoneCall:o=>{if(/^[+\d -]+$/.test(o.phoneNumber))location.href='tel:'+o.phoneNumber},
-    previewImage:o=>{const dialog=$('#image-preview');dialog.querySelector('img').src=safeUrl(o.current||(o.urls||[])[0]);dialog.querySelector('button').onclick=()=>dialog.close();dialog.showModal()},
+    previewImage:o=>{const dialog=$('#image-preview');dialog.classList.remove('is-referral-poster');const tip=dialog.querySelector('p');if(tip)tip.remove();dialog.querySelector('img').src=safeUrl(o.current||(o.urls||[])[0]);dialog.querySelector('button').onclick=()=>dialog.close();dialog.showModal()},
     enableAlertBeforeUnload:o=>unloadMessage=o.message||'修改尚未保存，确定离开？',disableAlertBeforeUnload:()=>unloadMessage='',
     login:o=>{complete(o,{errMsg:'网页请通过公众号授权登录'},true);webLogin()},
     isH5:true,
     getReferralContext,
+    showReferralPoster,
+    getInvitationError:()=>invitationError,
+    retryInvitation:()=>location.reload(),
     prepareCourseShare:page=>prepareWechatShare(page).catch(()=>false),
     getReferralToken:()=>new URLSearchParams(location.search).get('ref')||'',
     canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,
@@ -295,13 +312,18 @@
   };
   // Copy only a non-secret session marker into the compatibility storage. JWT stays HttpOnly.
   async function start(){
-    try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(body.ok&&body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){/* Public browsing remains available. */}
+    const incomingRef=new URLSearchParams(location.search).get('ref');
+    if(incomingRef){
+      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:'/web/'+(location.hash||'#/pages/plaza/plaza')})});const body=await response.json();if(!response.ok||!body.ok)throw new Error(body.message||'推荐信息暂未保存，请重新加载');invitation=body.data.invitation;}
+      catch(e){invitationError=e.message||'推荐信息暂未保存，请重新加载';}
+    }
+    try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载，推荐来源不会被清除';}
     if(session)try{await getReferralContext();}catch(_){/* Retry explicitly when sharing; public browsing remains available. */}
     for(const item of source.config.tabBar.list){const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');$('#tabbar').append(button)}
     $('#back-button').onclick=back;
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};
     const initial=location.hash.slice(1);
-    const target=aliases[initial]||initial||HOME;
+    const target=aliases[initial]||(parseRoute(initial).route===INVITE_LOGIN&&session?invitation?.returnTo?.split('#')[1]||HOME:initial)||HOME;
     navigate(parseRoute(target).route==='pages/profile/profile'?HOME:target,'replace');
     const error=new URLSearchParams(location.search).get('loginError');if(error)wx.showToast({title:error});
   }

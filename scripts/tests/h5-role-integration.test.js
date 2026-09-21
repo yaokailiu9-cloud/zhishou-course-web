@@ -54,6 +54,7 @@ test('网页按后台身份请求推荐列表，报名使用已签名推荐人�
     assert.equal(decodeRef(context.body.data.referralToken),'18');
     const link=new URL(context.body.data.shareUrl);assert.equal(decodeRef(link.searchParams.get('ref')),'18');assert.equal(link.hash,'#/pages/public-class-detail/public-class-detail?id=7');
     const nonAgent=await call('customer-jwt','referral-context&ref='+encodeURIComponent(refToken('17')));
+    assert.equal(decodeRef(nonAgent.body.data.forwardToken),'17');
     assert.equal(nonAgent.body.data.referralToken,'');assert.equal(nonAgent.body.data.shareUrl,'');assert.equal(calls.at(-1).payload.referrerId,'17');
     await call('customer-jwt','referral-context&ref=forged&referrerId=999');assert.equal(calls.at(-1).payload.referrerId,null);
     await call('customer-jwt','referral-context',undefined,'17');assert.equal(calls.at(-1).payload.referrerId,'17');
