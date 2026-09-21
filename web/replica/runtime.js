@@ -246,7 +246,13 @@
     previewImage:o=>{const dialog=$('#image-preview');dialog.querySelector('img').src=safeUrl(o.current||(o.urls||[])[0]);dialog.querySelector('button').onclick=()=>dialog.close();dialog.showModal()},
     enableAlertBeforeUnload:o=>unloadMessage=o.message||'修改尚未保存，确定离开？',disableAlertBeforeUnload:()=>unloadMessage='',
     login:o=>{complete(o,{errMsg:'网页请通过公众号授权登录'},true);webLogin()},
-    requestPayment:o=>{complete(o,{errMsg:'网页支付尚未接入，请联系工作人员'},true);wx.showToast({title:'网页支付尚未接入，请联系工作人员'})},
+    isH5:true,
+    canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,
+    requestPayment:o=>{
+      if(!/MicroMessenger/i.test(navigator.userAgent)||!window.WeixinJSBridge){complete(o,{errMsg:'请在微信中打开课程网页后缴费'},true);return;}
+      if(!/^prepay_id=\w{10,128}$/.test(o.package||'')||o.signType!=='MD5'||!/^[A-F0-9]{32}$/.test(o.paySign||'')){complete(o,{errMsg:'微信支付参数无效'},true);return;}
+      window.WeixinJSBridge.invoke('getBrandWCPayRequest',{appId:o.appId,timeStamp:o.timeStamp,nonceStr:o.nonceStr,package:o.package,signType:o.signType,paySign:o.paySign},r=>complete(o,{errMsg:r.err_msg||'微信支付结果未知'},r.err_msg!=='get_brand_wcpay_request:ok'));
+    },
     chooseLocation:o=>complete(o,{errMsg:'请在网页中手动填写地区和详细地址'},true),
     chooseMedia:o=>{const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=()=>{const file=input.files[0];if(!file)return;const suffix=(file.name.match(/\.(png|jpe?g|webp|gif)$/i)||[])[1]||'jpg';const url=URL.createObjectURL(file)+'#upload.'+suffix;files.set(url,file);complete(o,{tempFiles:[{tempFilePath:url,size:file.size}]})};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click()},
     getFileSystemManager:()=>({readFile:async o=>{try{const file=files.get(o.filePath);if(!file)throw new Error('文件不可用');complete(o,{data:await file.arrayBuffer()})}catch(error){complete(o,{errMsg:error.message},true)}}}),
@@ -255,7 +261,7 @@
       const isZion=o.url==='https://zion-app.functorz.com/zero/JmAxbl1MMe4/api/graphql-v2';
       const method=o.method||'GET';const headers=isZion?{'content-type':'application/json'}:(o.header||{});
       const data=isZion?{...o.data,anonymous:!o.header?.Authorization}:o.data;
-      fetch(isZion?'/api/h5?action=graphql':o.url,{method,headers,credentials:isZion?'same-origin':'omit',signal:controller.signal,body:method==='GET'?undefined:data instanceof ArrayBuffer?data:JSON.stringify(data)}).then(async response=>{const text=await response.text();let data;try{data=JSON.parse(text)}catch(_){data=text}complete(o,{statusCode:response.status,data,header:Object.fromEntries(response.headers)})}).catch(error=>complete(o,{errMsg:error.message},true)).finally(()=>clearTimeout(timeout));
+      fetch(isZion?'/api/h5?action=graphql':o.url,{method,headers,credentials:isZion||/^\/api\/h5\?action=course-pay(?:-status)?$/.test(o.url)?'same-origin':'omit',signal:controller.signal,body:method==='GET'?undefined:data instanceof ArrayBuffer?data:JSON.stringify(data)}).then(async response=>{const text=await response.text();let data;try{data=JSON.parse(text)}catch(_){data=text}complete(o,{statusCode:response.status,data,header:Object.fromEntries(response.headers)})}).catch(error=>complete(o,{errMsg:error.message},true)).finally(()=>clearTimeout(timeout));
       return{abort:()=>controller.abort()};
     },
     createVideoContext:id=>({play:()=>document.getElementById(id)?.play(),pause:()=>document.getElementById(id)?.pause(),stop:()=>{const video=document.getElementById(id);if(video){video.pause();video.currentTime=0}}}),

@@ -825,6 +825,31 @@ function courseSections(description) {
 module.exports={courseSections};
 
 },
+"utils/coursePayment":function(require,module,exports,Page,wx,getApp,getCurrentPages){
+function request(action,data){return new Promise((resolve,reject)=>wx.request({url:'/api/h5?action='+action,method:'POST',data,timeout:60000,header:{'content-type':'application/json'},success:r=>r.statusCode===200&&r.data&&r.data.ok?resolve(r.data.data):reject(new Error(r.data&&r.data.message||'支付结果暂未确认，请稍后重试')),fail:()=>reject(new Error('网络异常，请稍后重新查询支付结果，不要重复付款'))}));}
+function confirm(content){return new Promise(resolve=>wx.showModal({title:'确认缴费报名',content,confirmText:'去缴费',success:r=>resolve(!!r.confirm),fail:()=>resolve(false)}));}
+async function enroll(payload,feeText){
+  if(!wx.isH5||!wx.canUseCoursePayment||!wx.canUseCoursePayment())throw new Error('请在微信内打开课程网页完成缴费报名；如已在微信中，请刷新后重试');
+  if(!await confirm(`本场课程报名费为 ${feeText}。完成支付并确认到账后才会报名成功。`))return null;
+  const prepared=await request('course-pay',payload);
+  if(prepared.enrollment)return prepared;
+  const order=prepared.order;
+  if(!prepared.payment){if(order&&order.status==='PAID_REVIEW')throw new Error(order.message);throw new Error('订单已结束，请刷新页面后重新报名');}
+  if('￥'+Number(order.amount).toFixed(2)!==feeText&&!await confirm(`当前待支付订单金额为 ￥${Number(order.amount).toFixed(2)}。是否继续支付？`))return null;
+  let canceled=false;
+  try{await new Promise((resolve,reject)=>wx.requestPayment({...prepared.payment,success:resolve,fail:reject}));}catch(e){canceled=/cancel/i.test(e.errMsg||e.message||'');}
+  for(let i=0;i<(canceled?1:5);i++){
+    const checked=await request('course-pay-status',{orderId:order.id});
+    if(checked.enrollment&&checked.order.status==='PAID')return checked;
+    if(checked.order.status==='PAID_REVIEW')throw new Error(checked.order.message);
+    if(checked.order.status==='CLOSED')throw new Error('订单已关闭，请重新报名');
+    if(!canceled)await new Promise(resolve=>setTimeout(resolve,2000));
+  }
+  throw new Error(canceled?'已取消支付，尚未报名；再次点击可继续缴费。':'支付结果正在确认。请稍后刷新或再次点击报名查询原订单，不要重复付款。');
+}
+module.exports={enroll,request};
+
+},
 "utils/coursePresentation":function(require,module,exports,Page,wx,getApp,getCurrentPages){
 const { decorate, formatTime } = require('./consultationService');
 
@@ -10403,11 +10428,11 @@ Page({data:{loading:true,busy:false,error:'',classInfo:null,form:{name:'',phone:
   if(!auth.requireLogin('登录后保存你的课程报名和入场凭证。',{enrollmentForm:this.data.form}))return;
   const name=this.data.form.name.trim(),phone=this.data.form.phone.trim();
   if(!name||!/^1[3-9]\d{9}$/.test(phone)){this.setData({error:'请填写姓名和有效的11位手机号。'});return;}
-  if(this.data.classInfo.isPaid){
-   wx.showModal({title:'确认缴费报名',content:`本场课程报名费为 ${this.data.classInfo.feeText}。只有完成支付后才会报名成功并生成入场凭证。`,confirmText:'去缴费',success:r=>{if(r.confirm)wx.showModal({title:'支付通道待开通',content:'课程金额已由后台读取，但当前项目尚未开通微信支付。在支付回调接好前不会生成成功报名。',showCancel:false});}});
-   return;
-  }
-  this.setData({busy:true,error:''});try{const r=await service.call('ENROLL',{classId:this.classId,name,phone});wx.redirectTo({url:'/pages/class-ticket/class-ticket?id='+r.enrollment.id+'&success=1'});}catch(e){service.error(this,e);}finally{this.setData({busy:false});}
+  this.setData({busy:true,error:''});try{
+   const payload={classId:this.classId,name,phone};
+   const r=this.data.classInfo.isPaid?await require('../../utils/coursePayment').enroll(payload,this.data.classInfo.feeText):await service.call('ENROLL',payload);
+   if(r&&r.enrollment)wx.redirectTo({url:'/pages/class-ticket/class-ticket?id='+r.enrollment.id+'&success=1'});
+  }catch(e){service.error(this,e);}finally{this.setData({busy:false});}
  }
 });
 

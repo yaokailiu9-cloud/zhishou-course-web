@@ -42,17 +42,16 @@ test('新课程默认带入100元，发布时把费用交给后端保存',async(
  let payload;const {p}=setup(async(_op,value)=>{payload=value;return{id:'123'};});
  assert.equal(p.data.form.registrationFee,'100');await p.publish();assert.equal(payload.registrationFee,'100');
 });
-test('付费课程提交时先弹出后台金额，支付未开通时不生成报名',async()=>{
- let page,calls=0;const modals=[];
+test('付费课程走独立支付流程，取消缴费不调用免费报名接口',async()=>{
+ let page,calls=0,paymentFee;
  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../pages/class-enroll/class-enroll.js'),'utf8'),{
   Page:value=>page=value,
-  require:name=>name.includes('consultationService')?{call:async()=>{calls++;},error(){}}:name.includes('/auth')?{requireLogin:()=>true}:name.includes('coursePresentation')?presentation:{takeEnrollmentForm:()=>null,restore:()=>false},
-  wx:{showModal:value=>modals.push(value),redirectTo(){}},
+  require:name=>name.includes('coursePayment')?{enroll:async(_payload,fee)=>{paymentFee=fee;return null;}}:name.includes('consultationService')?{call:async()=>{calls++;},error(){}}:name.includes('/auth')?{requireLogin:()=>true}:name.includes('coursePresentation')?presentation:{takeEnrollmentForm:()=>null,restore:()=>false},
+  wx:{redirectTo(){throw new Error('Canceled payment must not navigate');}},
  });
  page.data=structuredClone(page.data);page.setData=function(patch){for(const[k,v]of Object.entries(patch)){const keys=k.split('.');let obj=this.data;for(const key of keys.slice(0,-1))obj=obj[key];obj[keys.at(-1)]=v;}};
  page.data.classInfo=presentation.classCard({id:1,title:'付费课',registration_fee:100,canEnroll:true});page.data.form={name:'家长',phone:'13800000000'};
- await page.submit();assert.equal(calls,0);assert.equal(modals[0].title,'确认缴费报名');assert.match(modals[0].content,/￥100\.00/);
- modals[0].success({confirm:true});assert.equal(modals[1].title,'支付通道待开通');assert.equal(calls,0);
+ await page.submit();assert.equal(calls,0);assert.equal(paymentFee,'￥100.00');assert.equal(page.data.busy,false);
 });
 test('提交过程中再次点击不覆盖输入，也不会重复写入',async()=>{
  let finish,calls=0;const {p}=setup(()=>{calls++;return new Promise(resolve=>finish=resolve);});

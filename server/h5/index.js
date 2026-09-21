@@ -347,7 +347,7 @@ async function handleApi(req, res) {
       if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
       return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
     }
-    if (action === "graphql" || action === "logout") {
+    if (["graphql", "logout", "course-pay", "course-pay-status"].includes(action)) {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
       if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
@@ -385,6 +385,8 @@ async function handleApi(req, res) {
     if (req.method !== "POST" && action !== "referrals") return json(res, 405, {ok:false, message:"请求方式无效"});
     if (action === "referrals") return json(res, 200, {ok:true, data:await invoke(session.jwt, "MY_REFERRALS", {})});
     const input = await body(req);
+    if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,referrerId:decodeRef(input.ref)||session.referrerId||null})});
+    if (action === "course-pay-status") return json(res,200,{ok:true,data:await require('./course-payment').status(invoke,session.jwt,input.orderId)});
     if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone,referrerId:decodeRef(input.ref) || session.referrerId || null})});
     if (action === "cancel") return json(res, 200, {ok:true, data:await invoke(session.jwt, "CANCEL_ENROLLMENT", {enrollmentId:input.enrollmentId})});
     if (action === "saveClass") return json(res, 200, {ok:true, data:await invoke(session.jwt, "SAVE_CLASS", {
@@ -416,4 +418,5 @@ async function handleOauthCallback(req, res) {
   }
 }
 
-module.exports = {handleApi, handleOauthCallback, sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount, signWechatShareUrl, shareUrlForRequest};
+async function handlePaymentNotify(req,res){return require('./course-payment').notify(req,res,invoke);}
+module.exports = {handleApi, handleOauthCallback, handlePaymentNotify, sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount, signWechatShareUrl, shareUrlForRequest};

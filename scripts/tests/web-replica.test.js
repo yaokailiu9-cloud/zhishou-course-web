@@ -136,6 +136,18 @@ test('browser payment fails before creating orders and recorder clearly reports 
   const h=await host();await assert.rejects(h.host.requireModule('utils/payment').startConsultationPayment(),/网页支付尚未接入/);
   h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=1'});await tick();h.host.current.startRecording();assert.match(h.document.getElementById('modal').textContent,/网页录音尚未开放/);
 });
+test('课程网页只把服务端签名交给微信桥，取消不等于支付成功',async()=>{
+  const h=await host({navigator:{userAgent:'MicroMessenger'}});let passed,out,failure;
+  h.context.WeixinJSBridge={invoke:(method,args,callback)=>{passed={method,args};callback({err_msg:'get_brand_wcpay_request:cancel'});}};
+  h.host.wx.requestPayment({appId:'wx6dafecca8d5fd24e',timeStamp:'1',nonceStr:'nonce',package:'prepay_id=wx1234567890123',signType:'MD5',paySign:'A'.repeat(32),success:r=>out=r,fail:r=>failure=r});
+  assert.equal(passed.method,'getBrandWCPayRequest');assert.equal(out,undefined);assert.match(failure.errMsg,/cancel/);assert.equal(passed.args.paySign,'A'.repeat(32));
+});
+test('支付API携带同源会话，不把微信签名当成支付成功凭证',async()=>{
+  const h=await host();let fetched;
+  h.context.fetch=async(url,options)=>{fetched={url,options};return {status:200,headers:[],text:async()=>JSON.stringify({ok:true,data:{order:{status:'PENDING'}}})};};
+  const response=await h.host.requireModule('utils/coursePayment').request('course-pay-status',{orderId:1});
+  assert.equal(response.order.status,'PENDING');assert.equal(fetched.options.credentials,'same-origin');assert.equal(fetched.url,'/api/h5?action=course-pay-status');
+});
 
 test('课程详情分享把标题、说明和直达链接交给系统分享',async()=>{
   let shared;const h=await host({navigator:{share:async value=>{shared=value}}});

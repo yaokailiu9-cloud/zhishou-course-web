@@ -140,6 +140,7 @@ if(op==='CANCEL_ENROLLMENT') {
   if(e.status==='CANCELED')result(s,{id:e.id});
   else {
     if(e.attendance_status==='ATTENDED')fail('已到课的报名不能取消');
+    if(list('course_registration_order',and(eq('customer_id',s.actor.accountId),eq('public_class_id',e.public_class_id),eq('status','PAID','text')),'id',1).length)fail('已缴费报名请联系工作人员办理退款，不能直接取消');
     var c=e.public_class;
     if(!c||!c.starts_at||new Date(c.starts_at).getTime()<=Date.now())fail('课程开始后请联系工作人员处理');
     lockClass(c,{reserved_count:Math.max(0,Number(c.reserved_count||0)-1)});
@@ -201,4 +202,5 @@ if(op==='STAFF_OVERVIEW') {
   result(s,{classes:list('public_class',eq('organizer_id',s.actor.providerId),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:eq('organizer_id',s.actor.providerId)},ENROLL_FIELDS,200):[],appointments:history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
 }
 // FAMILY_HANDLERS: build script inserts family.js here.
+// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.
 context.setReturn('state',s);

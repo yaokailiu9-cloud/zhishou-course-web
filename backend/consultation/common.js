@@ -21,7 +21,7 @@ function gql(query, vars) {
   if (r.errors) fail("数据保存失败，请重试");
   return r.data || r;
 }
-var SERVICE_TABLES = ["public_class", "public_class_enrollment", "course_referral", "offline_appointment", "offline_consultation_record", "consultation_feedback", "consultation_feedback_reply", "consultation_summary_job", "service_provider", "consultation_session", "consultation_message", "fz_conversation", "fz_message", "fz_message_content"];
+var SERVICE_TABLES = ["public_class", "public_class_enrollment", "course_registration_order", "course_referral", "offline_appointment", "offline_consultation_record", "consultation_feedback", "consultation_feedback_reply", "consultation_summary_job", "service_provider", "consultation_session", "consultation_message", "fz_conversation", "fz_message", "fz_message_content"];
 function assertTable(table, write) {
   if (SERVICE_TABLES.indexOf(table) < 0 || (write && ["service_provider", "consultation_session", "consultation_message", "fz_conversation", "fz_message", "fz_message_content"].indexOf(table) >= 0)) fail("不允许访问该数据对象");
 }

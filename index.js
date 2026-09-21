@@ -1,7 +1,7 @@
 const http = require('node:http');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const {handleApi, handleOauthCallback} = require('./server/h5');
+const {handleApi, handleOauthCallback, handlePaymentNotify} = require('./server/h5');
 
 const WEB_ROOT = path.join(__dirname, 'web');
 const MIME_TYPES = {
@@ -91,6 +91,10 @@ function createServer() {
     }
     if (url.pathname === '/api/h5') {
       await handleApi(req, res);
+      return;
+    }
+    if (url.pathname === '/api/wechat-pay-notify') {
+      await handlePaymentNotify(req,res);
       return;
     }
     if (url.pathname === '/api/wechat-oauth-callback') {
