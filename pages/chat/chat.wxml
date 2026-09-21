@@ -24,9 +24,15 @@
     </view>
   </view>
 
-  <button class="offline-consultation-entry" bindtap="goOfflineConsultation">线下咨询 · 查看记录与持续沟通</button>
+  <button class="offline-consultation-entry" bindtap="goOfflineConsultation">
+    <view class="offline-entry-copy">
+      <text class="offline-entry-title">线下咨询</text>
+      <text class="offline-entry-desc">查看预约、记录与后续沟通</text>
+    </view>
+    <text class="offline-entry-arrow">›</text>
+  </button>
 
-  <view class="service-card {{serviceCardCollapsed ? 'is-collapsed' : ''}}">
+  <view wx:if="{{isManagerView || hasAccess || serviceEnded || messages.length}}" class="service-card {{serviceCardCollapsed ? 'is-collapsed' : ''}}">
     <view class="service-card-handle" catchtap="toggleServiceCard">
       <view class="service-handle-arrow {{serviceCardCollapsed ? 'is-down' : 'is-up'}}"></view>
     </view>
@@ -52,7 +58,13 @@
   </view>
 
   <scroll-view class="chat-scroll" scroll-y scroll-with-animation scroll-into-view="{{scrollIntoView}}">
-    <view class="system-card">
+    <view wx:if="{{!messages.length && !hasAccess && !isManagerView}}" class="chat-empty">
+      <view class="chat-empty-mark"><text>知</text></view>
+      <text class="chat-empty-title">暂时没有文字会话</text>
+      <text class="chat-empty-desc">预约或查看线下咨询，后续的文字沟通会保留在这里。</text>
+      <button class="chat-empty-action" bindtap="goOfflineConsultation">查看线下咨询</button>
+    </view>
+    <view wx:else class="system-card">
       <text>{{systemText}}</text>
     </view>
 
@@ -87,7 +99,7 @@
 
   <view class="chat-footer">
     <view wx:if="{{sendError}}" class="send-error"><text>{{sendError}}</text><text wx:if="{{failedMessage}}" class="failed-message" selectable>{{failedMessage}}</text><view class="send-recovery"><button bindtap="loadBackendMessages">刷新记录</button><button bindtap="copyUnsentMessage">复制原文</button></view></view>
-    <view class="chat-composer">
+    <view wx:if="{{hasAccess && !serviceEnded}}" class="chat-composer">
       <textarea auto-height maxlength="4000" class="composer-input" placeholder="{{composerPlaceholder}}" value="{{input}}" confirm-type="send" disabled="{{sending || !hasAccess || serviceEnded}}" bindinput="onInput" bindconfirm="sendMessage" />
       <button aria-label="发送消息" loading="{{sending}}" class="composer-send {{serviceEnded || !hasAccess ? 'disabled' : ''}}" disabled="{{sending || !hasAccess || serviceEnded || !input}}" bindtap="sendMessage">↑</button>
     </view>

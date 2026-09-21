@@ -102,6 +102,19 @@ test('browser payment fails before creating orders and recorder clearly reports 
   h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=1'});await tick();h.host.current.startRecording();assert.match(h.document.getElementById('modal').textContent,/网页录音尚未开放/);
 });
 
+test('文字聊天未开通时展示简洁空状态，开通后恢复计时与输入区',async()=>{
+  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();
+  h.host.current.setData({hasAccess:false,serviceEnded:false,isManagerView:false,messages:[]});await tick();
+  assert.equal(h.document.querySelectorAll('.chat-empty').length,1);
+  assert.equal(h.document.querySelectorAll('.service-card').length,0);
+  assert.equal(h.document.querySelectorAll('.chat-composer').length,0);
+  assert.match(h.document.getElementById('page').textContent,/暂时没有文字会话/);
+  h.host.current.setData({hasAccess:true,remainingText:'59:59'});await tick();
+  assert.equal(h.document.querySelectorAll('.chat-empty').length,0);
+  assert.equal(h.document.querySelectorAll('.service-card').length,1);
+  assert.equal(h.document.querySelectorAll('.chat-composer').length,1);
+});
+
 test('H5 修改昵称保留稳定登录用户名，并展示保存后的昵称',async()=>{
   const h=await host();
   const username='wxh5_'+'a'.repeat(36);
