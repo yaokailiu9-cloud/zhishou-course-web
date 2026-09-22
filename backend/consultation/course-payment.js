@@ -21,7 +21,7 @@ function payRequest(o,kind){
   var v={appid:PAY_APP,mch_id:PAY_MERCHANT,nonce_str:entryCode(),out_trade_no:o.order_no};
   if(kind==='unifiedorder'){
     var buyer=payBuyer(o.customer_id);
-    v.body=('知守-'+String(o.course_title_snapshot||'服务支付')).slice(0,120);v.total_fee=String(payCents(o.amount));v.spbill_create_ip='127.0.0.1';
+    v.body=('知手-'+String(o.course_title_snapshot||'服务支付')).slice(0,120);v.total_fee=String(payCents(o.amount));v.spbill_create_ip='127.0.0.1';
     v.notify_url='https://www.apply.tianqiwushu.cn/api/wechat-pay-notify';v.trade_type='JSAPI';v.openid=buyer.wechat_openid;
     // Stable expiry for retries of the same order. WeChat requires >= 5 minutes.
     var d=new Date(new Date(o.expires_at).getTime()+8*3600000);v.time_expire=d.toISOString().replace(/[-:T]/g,'').slice(0,14);

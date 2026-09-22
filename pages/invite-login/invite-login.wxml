@@ -1,4 +1,4 @@
 <view class="service-page course-page">
- <view class="service-hero"><text class="eyebrow">知守 · 课程邀请</text><text class="page-title">登录后继续报名</text><text class="muted">我们会保留这次邀请的推荐信息，登录后回到你扫码进入的课程。</text></view>
+ <view class="service-hero"><text class="eyebrow">知手 · 课程邀请</text><text class="page-title">登录后继续报名</text><text class="muted">我们会保留这次邀请的推荐信息，登录后回到你扫码进入的课程。</text></view>
  <view class="card"><text class="section-title">{{referrerName ? '推荐人：' + referrerName : '课程报名邀请'}}</text><text class="body">{{bound ? '已有推荐归属会继续保留，不会被新链接覆盖。' : '登录与刷新不会清除本次推荐来源，首次成功报名后确认归属。'}}</text><text wx:if="{{loading}}" class="muted">正在确认推荐信息…</text><text wx:if="{{error}}" class="error">{{error}}</text><button class="primary" bindtap="login" disabled="{{loading}}">{{error ? '重新加载邀请' : '微信登录，继续报名'}}</button><text class="muted">请在微信内打开，或用微信扫一扫 / 长按识别收到的报名二维码。</text></view>
 </view>

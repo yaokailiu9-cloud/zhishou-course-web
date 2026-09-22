@@ -76,13 +76,6 @@
         <text class="notice-desc">咨询内容会被严格保护，请避免提交敏感身份信息。</text>
       </view>
     </view>
-    <view class="notice-row">
-      <text class="notice-icon">界</text>
-      <view>
-        <text class="notice-title">服务边界</text>
-        <text class="notice-desc">本服务为情感问答，不包含医疗诊断。</text>
-      </view>
-    </view>
   </view>
 
   <view class="sticky-pay">

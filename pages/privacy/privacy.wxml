@@ -1,11 +1,11 @@
 <view class="privacy-page">
   <view class="privacy-hero">
-    <text class="privacy-kicker">知守 隐私与安全</text>
+    <text class="privacy-kicker">知手 隐私与安全</text>
     <text class="privacy-title">让敏感关系问题，只为服务本身被使用</text>
     <text class="privacy-lede">本协议依据个人信息、数据安全、网络安全及微信小程序隐私保护要求制定，并结合本项目的登录、预约、支付、咨询和经理接单流程适配。</text>
     <view class="privacy-meta">
       <text>更新日期：{{updatedAt}}</text>
-      <text>适用范围：知守咨询小程序</text>
+      <text>适用范围：知手咨询小程序</text>
     </view>
   </view>
 

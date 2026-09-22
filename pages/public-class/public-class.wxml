@@ -6,7 +6,7 @@
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新加载</button></view>
  <view wx:for="{{classes}}" wx:key="id" class="card course-card" data-id="{{item.id}}" bindtap="choose">
   <image wx:if="{{item.coverUrl}}" class="course-cover" src="{{item.coverUrl}}" mode="aspectFill"/>
-  <view wx:else class="course-cover-fallback"><text class="eyebrow">知守 · 公开课堂</text><text class="cover-word">一起学习，更懂彼此。</text></view>
+  <view wx:else class="course-cover-fallback"><text class="eyebrow">知手 · 公开课堂</text><text class="cover-word">一起学习，更懂彼此。</text></view>
   <view class="course-card-content"><view class="row"><text class="card-title">{{item.title}}</text><text class="pill">{{item.feeText}}</text></view><text class="course-meta">{{item.timeText}}</text><text class="course-meta">{{item.placeText}}</text><text wx:if="{{item.description}}" class="body">{{item.description}}</text><view class="course-card-bottom"><text>{{item.canEnroll ? '报名开放' : item.closedReason}}</text><text class="link">查看详情 ›</text></view></view>
  </view>
  <text wx:if="{{loading}}" class="muted">正在加载课程…</text>

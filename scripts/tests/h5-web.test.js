@@ -157,7 +157,11 @@ test('旧版课程网页及推荐入口已下线',async()=>{
     fs.readFile(require('node:path').join(root,'web/replica/runtime.js'),'utf8'),
     fs.readFile(require('node:path').join(root,'web/replica/runtime.css'),'utf8')
   ]);
-  await assert.rejects(fs.access(require('node:path').join(root,'web/legacy/index.html')),{code:'ENOENT'});
+  await Promise.all([
+    fs.access(require('node:path').join(root,'web/legacy/index.html')).then(()=>assert.fail('legacy page should be deleted'),error=>assert.equal(error.code,'ENOENT')),
+    fs.access(require('node:path').join(root,'web/app.js')).then(()=>assert.fail('old web script should be deleted'),error=>assert.equal(error.code,'ENOENT')),
+    fs.access(require('node:path').join(root,'web/app.css')).then(()=>assert.fail('old web stylesheet should be deleted'),error=>assert.equal(error.code,'ENOENT'))
+  ]);
   assert.doesNotMatch(runtime+css,/web\/legacy|web-referrals|我的推荐\s*·\s*专属推荐链接与学员记录/);
 });
 
@@ -179,7 +183,7 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   assert.deepEqual(JSON.parse(health.body),{
     ok:true,
     service:'zhishou-course-web',
-    release:'2026.09.22.1'
+    release:'2026.09.22.2'
   });
   const wechatVerify=await request(server,'/MP_verify_GFzG9U79F1ySzmh4.txt');
   assert.equal(wechatVerify.status,200);

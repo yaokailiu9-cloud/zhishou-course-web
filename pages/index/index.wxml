@@ -7,14 +7,14 @@
       </view>
       <view class="nav-copy">
         <text class="nav-title">{{userName}}</text>
-        <text class="nav-greeting">知守</text>
+        <text class="nav-greeting">知手</text>
       </view>
     </view>
   </view>
 
   <view class="public-class-entry">
     <view class="hero-arch"></view>
-    <text class="public-class-kicker">知守 · 公开课堂</text>
+    <text class="public-class-kicker">知手 · 公开课堂</text>
     <text class="public-class-title">透过现象看本质，\n父母有道，孩子有路。</text>
     <text class="public-class-desc">从一堂课开始学习与沟通。\n报名费用以各场次页面显示为准。</text>
     <view class="public-class-actions">
