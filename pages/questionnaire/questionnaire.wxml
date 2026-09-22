@@ -1,9 +1,9 @@
 <view class="service-page questionnaire-page">
- <view class="questionnaire-hero"><text class="eyebrow">知手 · 简易方案梳理</text><text class="page-title">2026问卷梳理</text><text class="muted">{{offer && offer.inviterName ? '由 ' + offer.inviterName + ' 邀请填写' : '围绕家庭当前最需要解决的问题，完成一次结构化梳理'}}</text></view>
+ <view class="questionnaire-hero"><text class="eyebrow">知守 · 简易方案梳理</text><text class="page-title">2026问卷梳理</text><text class="muted">{{offer && offer.inviterName ? '由 ' + offer.inviterName + ' 邀请填写' : '围绕家庭当前最需要解决的问题，完成一次结构化梳理'}}</text></view>
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button wx:if="{{!offer}}" bindtap="refresh">重新加载</button></view>
  <view wx:if="{{loading}}" class="card"><text class="muted">正在确认问卷与支付状态…</text></view>
  <block wx:if="{{offer && !paid}}">
-  <view class="card price-card"><view><text class="panel-caption">填写前缴费</text><text class="section-title">简易方案梳理</text><text class="body">付款确认后开放完整问卷。提交后由知手团队按填写内容进行梳理。</text></view><view class="price"><text>¥</text>9.90</view></view>
+  <view class="card price-card"><view><text class="panel-caption">填写前缴费</text><text class="section-title">简易方案梳理</text><text class="body">付款确认后开放完整问卷。提交后由知守团队按填写内容进行梳理。</text></view><view class="price"><text>¥</text>9.90</view></view>
   <view class="card"><text class="panel-caption">支付联系信息</text><text class="field-label">家长姓名 <text class="required">必填</text></text><input value="{{form.guardianName}}" data-key="guardianName" bindinput="input" maxlength="60" placeholder="请输入家长姓名" disabled="{{busy}}"/><text class="field-label">联系电话 <text class="required">必填</text></text><input value="{{form.guardianPhone}}" data-key="guardianPhone" bindinput="input" type="number" maxlength="11" placeholder="请输入11位手机号" disabled="{{busy}}"/></view>
   <button class="primary pay-button" loading="{{busy}}" disabled="{{busy}}" bindtap="pay">{{busy ? '正在确认支付…' : loggedIn ? '支付 ¥9.90，开始填写' : '微信登录并支付 ¥9.90'}}</button>
   <text class="muted privacy-tip">费用仅用于本次简易方案梳理；未确认到账不会开放或提交问卷。</text>

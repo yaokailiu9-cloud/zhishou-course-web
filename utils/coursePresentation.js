@@ -28,8 +28,8 @@ function iso(date,time) { return date&&time?`${date}T${time}:00+08:00`:null; }
 // Share only saved, visible classes; an unloaded page or draft falls back to the course list.
 function classShare(c) {
   if (!c || !c.id || !['PUBLISHED','CLOSED'].includes(c.status))
-    return {title:'知手 · 免费公开课',path:'/pages/public-class/public-class'};
-  const share={title:c.title || '知手 · 免费公开课',path:'/pages/public-class-detail/public-class-detail?id='+encodeURIComponent(String(c.id))};
+    return {title:'知守 · 免费公开课',path:'/pages/public-class/public-class'};
+  const share={title:c.title || '知守 · 免费公开课',path:'/pages/public-class-detail/public-class-detail?id='+encodeURIComponent(String(c.id))};
   const cover=c.coverUrl || (c.cover && c.cover.url);
   if(cover)share.imageUrl=cover;
   return share;

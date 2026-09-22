@@ -21,7 +21,7 @@
       ></video>
       <block wx:else>
         <image wx:if="{{course.coverUrl}}" class="hero-cover" src="{{course.coverUrl}}" mode="aspectFill"></image>
-        <view wx:else class="course-cover-placeholder"><text class="cover-label">知手 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
+        <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
         <view wx:if="{{course.coverUrl}}" class="hero-mask"></view>
         <view wx:if="{{course.chapters[0].videoUrl}}" class="play-button" bindtap="previewCourse">
           <view class="play-triangle"></view>

@@ -145,7 +145,7 @@
     if(current.route==='pages/profile/profile'){
       const subtitle=root.querySelector('.login-subtitle');if(subtitle)subtitle.textContent='在微信内打开，通过公众号授权登录';
       const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可查看报名、咨询和学习记录；昵称和头像可在个人资料中修改。';
-      const avatar=root.querySelector('.login-avatar-picker');if(avatar){avatar.disabled=true;avatar.setAttribute('aria-label','知手头像')}
+      const avatar=root.querySelector('.login-avatar-picker');if(avatar){avatar.disabled=true;avatar.setAttribute('aria-label','知守头像')}
     }
     if(focusKey!=null){const next=root.querySelector('[data-focus-key="'+focusKey+'"]');if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
     scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el)el.scrollTop=v.top});
@@ -162,8 +162,8 @@
   function showPage(page){
     current=page;const config=source.pages[page.route].config;
     $('#page-style').href='/web/replica/'+page.route.split('/')[1]+'.css?v='+buildVersion;
-    $('#page-header').hidden=config.navigationStyle==='custom';$('#page-title').textContent=config.navigationBarTitleText||'知手';
-    document.title=(config.navigationBarTitleText||'知手')+' · 知手';
+    $('#page-header').hidden=config.navigationStyle==='custom';$('#page-title').textContent=config.navigationBarTitleText||'知守';
+    document.title=(config.navigationBarTitleText||'知守')+' · 知守';
     $('#tabbar').hidden=!tabRoutes.includes(page.route);root.classList.toggle('no-tabs',!tabRoutes.includes(page.route));
     for(const button of $('#tabbar').children)button.setAttribute('aria-current',button.dataset.route===page.route?'page':'false');
     render();window.scrollTo(0,page._scroll||0);
@@ -220,7 +220,7 @@
     const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');
     const ref=(referralContext?.identity===session&&(referralContext?.referralToken||referralContext?.forwardToken))||new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);
     const image=info.imageUrl?new URL(info.imageUrl,location.origin).href:'';
-    return {info,url,title:info.title||'知手',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
+    return {info,url,title:info.title||'知守',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
   }
   function loadWechatSdk(){
     if(window.wx?.config)return Promise.resolve(true);if(wechatSdkLoading)return wechatSdkLoading;
@@ -241,7 +241,7 @@
   }
   function showReferralPoster({url,title,name='',kind='course'}){
     const questionnaire=kind==='questionnaire';
-    const image=requireModule('utils/referralPoster').poster(document.createElement('canvas'),{url,title,name,label:questionnaire?'知手 · 简易方案梳理':'知手 · 课程邀请',tip:questionnaire?'扫码后微信登录，支付 9.9 元填写问卷':'微信扫一扫 / 长按识别二维码',afterTip:questionnaire?'登录后支付并填写，推荐信息自动保留':undefined});
+    const image=requireModule('utils/referralPoster').poster(document.createElement('canvas'),{url,title,name,label:questionnaire?'知守 · 简易方案梳理':'知守 · 课程邀请',tip:questionnaire?'扫码后微信登录，支付 9.9 元填写问卷':'微信扫一扫 / 长按识别二维码',afterTip:questionnaire?'登录后支付并填写，推荐信息自动保留':undefined});
     const dialog=$('#image-preview');if(dialog.open)dialog.close();
     dialog.classList.add('is-referral-poster');
     dialog.querySelector('img').src=image;dialog.querySelector('img').alt=questionnaire?'简易方案梳理二维码':'课程报名二维码';
@@ -265,7 +265,7 @@
     getWindowInfo:()=>wx.getSystemInfoSync(),getMenuButtonBoundingClientRect:()=>({top:20,bottom:60,left:Math.min(innerWidth,430),right:Math.min(innerWidth,430),height:40,width:0}),
     getAccountInfoSync:()=>({miniProgram:{envVersion:'release',version:'web-replica-20260922'}}),
     navigateTo:o=>navigate(o.url),switchTab:o=>navigate(o.url,'tab'),redirectTo:o=>navigate(o.url,'replace'),reLaunch:o=>navigate(o.url,'tab'),navigateBack:back,
-    showTabBar:()=>{},setNavigationBarTitle:o=>{document.title=o.title+' · 知手';$('#page-title').textContent=o.title},
+    showTabBar:()=>{},setNavigationBarTitle:o=>{document.title=o.title+' · 知守';$('#page-title').textContent=o.title},
     pageScrollTo:o=>window.scrollTo({top:o.scrollTop||0,behavior:o.duration?'smooth':'instant'}),
     showToast:o=>{clearTimeout(toastTimer);$('#toast').textContent=o.title;$('#toast').hidden=false;toastTimer=setTimeout(()=>$('#toast').hidden=true,o.duration||2600)},
     showLoading:o=>{$('#loading').textContent=o.title||'正在加载…';$('#loading').hidden=false},hideLoading:()=>$('#loading').hidden=true,

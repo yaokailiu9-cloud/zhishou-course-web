@@ -1,6 +1,6 @@
 // Deterministic, self-contained PNG: the link is encoded in the QR, never printed.
 const {matrix}=require('./courseQr');
-function poster(canvas,{url,title='知手课程报名',name='',label='知手 · 课程邀请',tip='微信扫一扫 / 长按识别二维码',afterTip}) {
+function poster(canvas,{url,title='知守课程报名',name='',label='知守 · 课程邀请',tip='微信扫一扫 / 长按识别二维码',afterTip}) {
  canvas.width=750;canvas.height=1060;
  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('二维码图片生成失败，请刷新后重试');
  ctx.fillStyle='#fbf9f8';ctx.fillRect(0,0,750,1060);

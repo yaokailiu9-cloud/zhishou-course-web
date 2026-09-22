@@ -2,7 +2,7 @@
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重试</button></view><text wx:if="{{loading}}" class="muted">正在加载课程详情…</text>
  <block wx:if="{{classInfo}}">
   <image wx:if="{{classInfo.coverUrl}}" class="course-cover" src="{{classInfo.coverUrl}}" mode="aspectFill"/>
-  <view wx:else class="course-cover-fallback"><text class="eyebrow">知手 · 课程报名</text><text class="cover-word">让理解发生</text><text class="muted">在学习中找到新的沟通方式</text></view>
+  <view wx:else class="course-cover-fallback"><text class="eyebrow">知守 · 课程报名</text><text class="cover-word">让理解发生</text><text class="muted">在学习中找到新的沟通方式</text></view>
   <view class="service-hero detail-heading"><text class="pill">{{classInfo.isPaid ? classInfo.feeText + ' 报名' : '免费参加'}}</text><text class="page-title">{{classInfo.title}}</text><view class="course-facts"><view class="course-fact"><text class="fact-label">开课时间</text><text class="fact-value">{{classInfo.timeText}}</text></view><view class="course-fact"><text class="fact-label">开课地点</text><text class="fact-value">{{classInfo.placeText}}</text></view><view class="course-fact"><text class="fact-label">报名费用</text><text class="fact-value">{{classInfo.feeText}}</text></view><view class="course-fact"><text class="fact-label">报名截止</text><text class="fact-value">{{classInfo.deadlineText}}</text></view></view></view>
   <view wx:if="{{!classInfo.canEnroll}}" class="state-note">{{classInfo.closedReason}}。已报名的家长可在“我的报名”查看凭证。</view>
   <button wx:if="{{canInvite}}" class="secondary" bindtap="referralCode">我的推荐报名码 · 查看推荐客户</button>

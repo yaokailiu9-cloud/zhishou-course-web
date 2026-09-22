@@ -33,6 +33,6 @@ Page({
  },
  async more(){if(this.data.loading||!this.data.nextCursor)return;this.setData({loading:true,error:''});const identity=viewSession.capture(),requestId=this.requestId;try{await this.load(true,requestId,identity);}catch(e){if(requestId===this.requestId&&viewSession.current(identity))service.error(this,e);}finally{if(requestId===this.requestId&&viewSession.current(identity))this.setData({loading:false});}},
  changeScope(e){if(this.data.loading)return;this.setData({scope:e.currentTarget.dataset.scope==='all'&&this.data.isManager?'all':'own'});this.refresh();},
- async shareCode(){try{const r=await referral.context(this.classId);if(!r.canInvite||!r.shareUrl)throw new Error('请重新核实代理身份后生成报名码');if(wx.showReferralPoster)wx.showReferralPoster({url:r.shareUrl,title:this.data.courseTitle||'知手课程报名',name:(wx.getStorageSync('userInfo')||{}).nickName||''});else wx.showToast({title:'请截图保存报名二维码发送给朋友',icon:'none'});}catch(e){service.error(this,e);}},
+ async shareCode(){try{const r=await referral.context(this.classId);if(!r.canInvite||!r.shareUrl)throw new Error('请重新核实代理身份后生成报名码');if(wx.showReferralPoster)wx.showReferralPoster({url:r.shareUrl,title:this.data.courseTitle||'知守课程报名',name:(wx.getStorageSync('userInfo')||{}).nickName||''});else wx.showToast({title:'请截图保存报名二维码发送给朋友',icon:'none'});}catch(e){service.error(this,e);}},
  courses(){wx.switchTab({url:'/pages/plaza/plaza'});}
 });
