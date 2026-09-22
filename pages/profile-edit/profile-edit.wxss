@@ -211,5 +211,6 @@
 
 .form-error { display:block; color:#923e32; background:#fff0ea; padding:24rpx; margin:16rpx 0; font-size:28rpx; line-height:1.6; }
 .form-notice { display:block; color:#596464; font-size:28rpx; padding:16rpx; }
-.location-button { min-height:44px; padding:24rpx; color:#164d44; background:#eef3ef; font-size:28rpx; }
+.location-button { width:calc(100% - 60rpx); min-height:84rpx; margin:18rpx 30rpx; padding:18rpx 24rpx; color:#164d44; background:#eef3ef; border-radius:18rpx; font-size:27rpx; font-weight:700; }
+.picker-row { position:relative; }
 .save-button[disabled] { opacity:.6; }

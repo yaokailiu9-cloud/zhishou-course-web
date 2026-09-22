@@ -1,0 +1,12 @@
+<view class="service-page questionnaire-share-page">
+ <view class="service-hero"><text class="eyebrow">代理专属发放</text><text class="page-title">简易方案梳理</text><text class="muted">2026问卷梳理，填写前缴费，代理可以发</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新核实身份</button></view>
+ <view wx:if="{{loading}}" class="card"><text class="muted">正在生成专属二维码…</text></view>
+ <view wx:if="{{allowed}}" class="card qr-card">
+  <text class="panel-caption">我的专属问卷码</text><text class="section-title">微信扫码 · 支付 9.9 元后填写</text>
+  <canvas wx:if="{{shareUrl && !qrError}}" class="questionnaire-code" canvas-id="questionnaire-code" style="width:256px;height:256px;"></canvas>
+  <text wx:if="{{qrError}}" class="error">{{qrError}}</text>
+  <button class="primary" bindtap="openPoster" disabled="{{!shareUrl}}">打开二维码大图</button>
+  <text class="muted center">打开后可长按保存到手机，再发送给家长。二维码包含你的推荐信息，不展示或复制长链接。</text>
+ </view>
+</view>

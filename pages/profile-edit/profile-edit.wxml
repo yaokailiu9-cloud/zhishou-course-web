@@ -23,7 +23,7 @@
       <text wx:if="{{usernameError}}" class="form-error">{{usernameError}}</text>
       <view class="form-row"><text class="field-label">所在地区（选填）</text><input class="field-input" placeholder="填写省、市、区" value="{{region}}" maxlength="100" bindinput="onRegionInput" disabled="{{saving}}"/></view>
       <view class="form-row"><text class="field-label">详细地址（选填）</text><input class="field-input" placeholder="街道、门牌号" value="{{detailAddress}}" maxlength="300" bindinput="onAddressInput" disabled="{{saving}}"/></view>
-      <button class="location-button" bindtap="chooseRegion" disabled="{{saving}}">使用定位辅助填写</button>
+      <button class="location-button" bindtap="chooseRegion" disabled="{{saving}}">定位当前城市并填写</button>
       <picker disabled="{{saving}}" mode="selector" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange">
         <view class="form-row">
           <text class="field-label">性别</text>
@@ -38,9 +38,12 @@
         </view>
       </view>
       <picker disabled="{{saving}}" end="{{today}}" mode="date" value="{{birthday}}" bindchange="onBirthdayChange">
-        <view class="form-row">
+        <view class="form-row picker-row">
           <text class="field-label">生日</text>
-          <text class="field-static strong">{{birthday || '未设置'}}</text>
+          <view class="field-link">
+            <text class="field-static strong">{{birthday || '请选择'}}</text>
+            <text class="field-arrow">›</text>
+          </view>
         </view>
       </picker>
       <view class="form-row">

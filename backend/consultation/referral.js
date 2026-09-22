@@ -19,10 +19,10 @@ if (referralState.operation === 'REFERRAL_CLIENTS') {
   if (referralPayload.scope === 'all' && !referralManager()) fail('只有管理人员可以查看全部推荐客户');
   var scope = referralPayload.scope === 'all' ? {} : eq('referrer_id', referralActor.accountId);
   var total = countRows('course_referral', scope);
-  var page = pageRows('course_referral', scope, 'id locked_at source referrer { ' + REFERRAL_ACCOUNT_FIELDS + ' } referred_account { ' + REFERRAL_ACCOUNT_FIELDS + ' public_class_enrollments(order_by:{id:desc},limit:20) { id registrant_name status attendance_status public_class { id title } } }', referralPayload.cursor, 20, true);
+  var page = pageRows('course_referral', scope, 'id locked_at source referrer { ' + REFERRAL_ACCOUNT_FIELDS + ' } referred_account { ' + REFERRAL_ACCOUNT_FIELDS + ' public_class_enrollments(order_by:{id:desc},limit:20) { id registrant_name status attendance_status child_submitted_at public_class { id title product_kind } } }', referralPayload.cursor, 20, true);
   result(referralState, {total:total, nextCursor:page.nextCursor, items:page.items.map(function(row) {
     var customer = row.referred_account || {};
-    return {id:row.id, customerName:referralName(customer), referrerName:referralName(row.referrer), lockedAt:row.locked_at, enrollments:(customer.public_class_enrollments || []).map(function(e) { return {id:e.id, name:e.registrant_name || referralName(customer), courseTitle:(e.public_class || {}).title || '课程', status:e.status, attendanceStatus:e.attendance_status}; })};
+    return {id:row.id, customerName:referralName(customer), referrerName:referralName(row.referrer), lockedAt:row.locked_at, enrollments:(customer.public_class_enrollments || []).map(function(e) { return {id:e.id, name:e.registrant_name || referralName(customer), courseTitle:(e.public_class || {}).title || '课程', productKind:(e.public_class || {}).product_kind||'COURSE', submittedAt:e.child_submitted_at||null, status:e.status, attendanceStatus:e.attendance_status}; })};
   })});
 }
 context.setReturn('state', referralState);

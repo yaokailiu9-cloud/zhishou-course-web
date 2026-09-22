@@ -27,6 +27,14 @@ function intakeView(access) {
 if(op==='REFERRAL_CANDIDATE') {
   var candidate=activeReferrer(p.referrerId);result(s,{name:candidate.display_name||'推荐人'});
 }
+if(op==='GET_QUESTIONNAIRE') {
+  var products=list('public_class',and(eq('product_kind','QUESTIONNAIRE','text'),eq('status','PUBLISHED','text')),CLASS_FIELDS,2);
+  if(products.length!==1)fail('简易方案梳理暂未开放');
+  var product=products[0],own=s.actor.accountId?list('public_class_enrollment',and(eq('public_class_id',product.id),eq('customer_id',s.actor.accountId),eq('status','REGISTERED','text')),INTAKE_FIELDS,1)[0]:null;
+  var inviter=null;
+  if(!own){if(!p.referrerId)fail('请使用管理或代理发出的问卷二维码进入');inviter=activeReferrer(p.referrerId);}
+  result(s,{offer:{id:product.id,title:'简易方案梳理',subtitle:'2026问卷梳理',price:Number(product.registration_fee||0),description:product.description||'',inviterName:inviter&&inviter.display_name||''},enrollment:own?intakeView({row:own,owner:true,reviewer:false}):null,issues:CHILD_ISSUES});
+}
 if(op==='FAMILY_OVERVIEW') {
   login(s);result(s,{accountId:String(s.actor.accountId),role:s.actor.canAccept?'MANAGER':s.actor.agentId?'AGENT':'CUSTOMER',canInvite:!!s.actor.canInvite,canReview:!!s.actor.canReply,issues:CHILD_ISSUES,binding:list('course_referral',eq('referred_account_id',s.actor.accountId),'id locked_at referrer { id username wechat_nickname }',1)[0]||null,enrollments:paged('public_class_enrollment',eq('customer_id',s.actor.accountId),INTAKE_FIELDS)});
 }

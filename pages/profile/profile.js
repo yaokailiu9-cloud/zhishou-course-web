@@ -137,6 +137,7 @@ Page({
     try{const r=await require('../../utils/referral').context();if(viewSession.current(identity))this.setData({canInvite:!!r.canInvite});}catch(_){/* Keep privileged entry hidden on failure. */}
   },
   goReferrals(){wx.navigateTo({url:'/pages/referrals/referrals'});},
+  goQuestionnaireShare(){wx.navigateTo({url:'/pages/questionnaire-share/questionnaire-share'});},
 
   async loadCheckinAccess() {
     const identity = viewSession.capture();

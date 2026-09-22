@@ -79,6 +79,7 @@ function appendCookie(res, cookie) {
 function invitationReturn(value) {
   const route=String(value||'');
   return /^\/web\/#\/pages\/(?:public-class-detail\/public-class-detail|class-enroll\/class-enroll)\?id=[1-9][0-9]*$/.test(route)
+    || route==='/web/#/pages/questionnaire/questionnaire'
     || /^\/web\/#\/pages\/(?:plaza\/plaza|public-class\/public-class)$/.test(route) ? route : '/web/#/pages/plaza/plaza';
 }
 
@@ -327,7 +328,7 @@ function friendly(error) {
   const message = String(error && error.message || "");
   if (message.startsWith("CONFIG:")) return "网页微信登录尚未完成公众号参数配置";
   if (/wechat authentication web app id does not exist/i.test(message)) return "Zion 尚未配置公众号网页应用，请先填写公众号 AppID 和 AppSecret";
-  if (/微信|课程|报名|推荐|手机号|姓名|登录|截止|名额|取消|工作人员|权限|发布|名单/.test(message)) {
+  if (/微信|课程|报名|推荐|问卷|梳理|缴费|支付|手机号|姓名|登录|截止|名额|取消|工作人员|权限|发布|名单/.test(message)) {
     return message.replace(/^(?:AUTH|COURSE|INPUT|ZION):/, "").replace(/^(?:org\.graalvm\.polyglot\.)?PolyglotException:\s*Error:\s*/, "").split("\n")[0].slice(0, 120);
   }
   return "服务暂时不可用，请稍后重试";
@@ -382,7 +383,7 @@ async function handleApi(req, res) {
       if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
       return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
     }
-    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status"].includes(action)) {
+    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status", "questionnaire-pay"].includes(action)) {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
       if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
@@ -438,9 +439,14 @@ async function handleApi(req, res) {
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
       const link = new URL('/web/', origin);
       if (token) link.searchParams.set('ref', token);
-      const classId = url.searchParams.get('classId');
-      link.hash = classId && /^[1-9][0-9]*$/.test(classId) ? '/pages/public-class-detail/public-class-detail?id='+classId : '/pages/plaza/plaza';
+      const classId = url.searchParams.get('classId'),target=url.searchParams.get('target');
+      link.hash = target==='questionnaire' ? '/pages/questionnaire/questionnaire' : classId && /^[1-9][0-9]*$/.test(classId) ? '/pages/public-class-detail/public-class-detail?id='+classId : '/pages/plaza/plaza';
       return json(res,200,{ok:true,data:{...data,referralToken:token,forwardToken:forwardedReferrer?refToken(forwardedReferrer):'',shareUrl:token?link.href:""}});
+    }
+    if (action === "questionnaire-context") {
+      if (req.method !== "GET") return json(res,405,{ok:false,message:"请求方式无效"});
+      const current=readSession(req),referrerId=invitationRef(req,current,url.searchParams.get('ref'));
+      return json(res,200,{ok:true,data:await invoke(current?.jwt,'GET_QUESTIONNAIRE',{referrerId})});
     }
     const session = readSession(req);
     if (!session) return json(res, 401, {ok:false, message:"请先微信登录"});
@@ -449,6 +455,10 @@ async function handleApi(req, res) {
     if (req.method !== "POST" && action !== "referrals") return json(res, 405, {ok:false, message:"请求方式无效"});
     if (action === "referrals") return json(res, 200, {ok:true, data:await invoke(session.jwt, "MY_REFERRALS", {})});
     const input = await body(req);
+    if (action === "questionnaire-pay") {
+      const referrerId=invitationRef(req,session,input.ref),context=await invoke(session.jwt,'GET_QUESTIONNAIRE',{referrerId});
+      return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:context.offer.id,name:input.name,phone:input.phone,referrerId})});
+    }
     if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,referrerId:invitationRef(req,session,input.ref)})});
     if (action === "course-pay-status") return json(res,200,{ok:true,data:await require('./course-payment').status(invoke,session.jwt,input.orderId)});
     if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone,referrerId:invitationRef(req,session,input.ref)})});

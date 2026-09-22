@@ -208,9 +208,9 @@
     location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(invitation?.returnTo||'/web/#/'+HOME);
   }
   let referralContext = null;
-  async function getReferralContext(classId){
+  async function getReferralContext(classId,target){
     const identity=session;
-    const response=await fetch('/api/h5?action=referral-context&ref='+encodeURIComponent(new URLSearchParams(location.search).get('ref')||'')+'&classId='+encodeURIComponent(classId||''));
+    const response=await fetch('/api/h5?action=referral-context&ref='+encodeURIComponent(new URLSearchParams(location.search).get('ref')||'')+'&classId='+encodeURIComponent(classId||'')+'&target='+encodeURIComponent(target||''));
     const body=await response.json();
     if(identity!==session)throw new Error('登录身份已变化，请重试');
     if(!response.ok||!body.ok)throw new Error(body.message||'推荐信息加载失败，请刷新重试');
@@ -239,13 +239,14 @@
     window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image});
     return true;
   }
-  function showReferralPoster({url,title,name=''}){
-    const image=requireModule('utils/referralPoster').poster(document.createElement('canvas'),{url,title,name});
+  function showReferralPoster({url,title,name='',kind='course'}){
+    const questionnaire=kind==='questionnaire';
+    const image=requireModule('utils/referralPoster').poster(document.createElement('canvas'),{url,title,name,label:questionnaire?'知守 · 简易方案梳理':'知守 · 课程邀请',tip:questionnaire?'扫码后微信登录，支付 9.9 元填写问卷':'微信扫一扫 / 长按识别二维码',afterTip:questionnaire?'登录后支付并填写，推荐信息自动保留':undefined});
     const dialog=$('#image-preview');if(dialog.open)dialog.close();
     dialog.classList.add('is-referral-poster');
-    dialog.querySelector('img').src=image;dialog.querySelector('img').alt='课程报名二维码';
+    dialog.querySelector('img').src=image;dialog.querySelector('img').alt=questionnaire?'简易方案梳理二维码':'课程报名二维码';
     let tip=dialog.querySelector('p');if(!tip){tip=document.createElement('p');dialog.insertBefore(tip,dialog.querySelector('img'));}
-    tip.textContent='长按保存这张图片，发送给微信好友或群。'+(/[?&]ref=/.test(url)?'对方扫码登录后，推荐信息会继续保留。':'对方扫码后可查看课程并报名。');
+    tip.textContent='长按保存这张图片，再发送给微信好友或群。'+(questionnaire?'对方扫码登录并支付 9.9 元后填写问卷。':(/[?&]ref=/.test(url)?'对方扫码登录后，推荐信息会继续保留。':'对方扫码后可查看课程并报名。'));
     dialog.querySelector('button').onclick=()=>dialog.close();dialog.showModal();
     return image;
   }
@@ -262,7 +263,7 @@
     getStorageSync:key=>storage.get(key)||'',setStorageSync:(key,val)=>storage.set(key,val),removeStorageSync:key=>storage.delete(key),
     getSystemInfoSync:()=>({windowWidth:Math.min(innerWidth,430),windowHeight:innerHeight,statusBarHeight:12,platform:'web',pixelRatio:devicePixelRatio,safeArea:{bottom:innerHeight}}),
     getWindowInfo:()=>wx.getSystemInfoSync(),getMenuButtonBoundingClientRect:()=>({top:20,bottom:60,left:Math.min(innerWidth,430),right:Math.min(innerWidth,430),height:40,width:0}),
-    getAccountInfoSync:()=>({miniProgram:{envVersion:'release',version:'web-replica-20260918'}}),
+    getAccountInfoSync:()=>({miniProgram:{envVersion:'release',version:'web-replica-20260922'}}),
     navigateTo:o=>navigate(o.url),switchTab:o=>navigate(o.url,'tab'),redirectTo:o=>navigate(o.url,'replace'),reLaunch:o=>navigate(o.url,'tab'),navigateBack:back,
     showTabBar:()=>{},setNavigationBarTitle:o=>{document.title=o.title+' · 知守';$('#page-title').textContent=o.title},
     pageScrollTo:o=>window.scrollTo({top:o.scrollTop||0,behavior:o.duration?'smooth':'instant'}),
@@ -288,7 +289,20 @@
       if(!/^prepay_id=\w{10,128}$/.test(o.package||'')||o.signType!=='MD5'||!/^[A-F0-9]{32}$/.test(o.paySign||'')){complete(o,{errMsg:'微信支付参数无效'},true);return;}
       window.WeixinJSBridge.invoke('getBrandWCPayRequest',{appId:o.appId,timeStamp:o.timeStamp,nonceStr:o.nonceStr,package:o.package,signType:o.signType,paySign:o.paySign},r=>complete(o,{errMsg:r.err_msg||'微信支付结果未知'},r.err_msg!=='get_brand_wcpay_request:ok'));
     },
-    chooseLocation:o=>complete(o,{errMsg:'请在网页中手动填写地区和详细地址'},true),
+    chooseLocation:o=>{
+      if(!navigator.geolocation){complete(o,{errMsg:'当前浏览器不支持定位，请手动填写地区和详细地址'},true);return;}
+      navigator.geolocation.getCurrentPosition(async position=>{
+        const latitude=position.coords.latitude,longitude=position.coords.longitude;
+        try{
+          const url='https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+encodeURIComponent(latitude)+'&longitude='+encodeURIComponent(longitude)+'&localityLanguage=zh';
+          const response=await fetch(url,{credentials:'omit'});if(!response.ok)throw new Error('地址解析失败');
+          const place=await response.json(),city=place.city||place.locality||place.principalSubdivision||'';
+          const parts=[place.countryName,place.principalSubdivision,place.city,place.locality].filter((value,index,all)=>value&&all.indexOf(value)===index);
+          if(!city)throw new Error('没有识别到当前城市');
+          complete(o,{name:city,address:parts.join(' '),latitude,longitude});
+        }catch(error){complete(o,{errMsg:(error&&error.message)||'定位地址解析失败，请手动填写'},true);}
+      },error=>complete(o,{errMsg:error&&error.code===1?'定位权限未开启，请允许定位后重试':'定位未完成，请手动填写地区和详细地址'},true),{enableHighAccuracy:false,timeout:12000,maximumAge:300000});
+    },
     chooseMedia:o=>{const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=()=>{const file=input.files[0];if(!file)return;const suffix=(file.name.match(/\.(png|jpe?g|webp|gif)$/i)||[])[1]||'jpg';const url=URL.createObjectURL(file)+'#upload.'+suffix;files.set(url,file);complete(o,{tempFiles:[{tempFilePath:url,size:file.size}]})};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click()},
     getFileSystemManager:()=>({readFile:async o=>{try{const file=files.get(o.filePath);if(!file)throw new Error('文件不可用');complete(o,{data:await file.arrayBuffer()})}catch(error){complete(o,{errMsg:error.message},true)}}}),
     request:o=>{

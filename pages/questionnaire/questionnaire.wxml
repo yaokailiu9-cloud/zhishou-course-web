@@ -1,0 +1,28 @@
+<view class="service-page questionnaire-page">
+ <view class="questionnaire-hero"><text class="eyebrow">知守 · 简易方案梳理</text><text class="page-title">2026问卷梳理</text><text class="muted">{{offer && offer.inviterName ? '由 ' + offer.inviterName + ' 邀请填写' : '围绕家庭当前最需要解决的问题，完成一次结构化梳理'}}</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button wx:if="{{!offer}}" bindtap="refresh">重新加载</button></view>
+ <view wx:if="{{loading}}" class="card"><text class="muted">正在确认问卷与支付状态…</text></view>
+ <block wx:if="{{offer && !paid}}">
+  <view class="card price-card"><view><text class="panel-caption">填写前缴费</text><text class="section-title">简易方案梳理</text><text class="body">付款确认后开放完整问卷。提交后由知守团队按填写内容进行梳理。</text></view><view class="price"><text>¥</text>9.90</view></view>
+  <view class="card"><text class="panel-caption">支付联系信息</text><text class="field-label">家长姓名 <text class="required">必填</text></text><input value="{{form.guardianName}}" data-key="guardianName" bindinput="input" maxlength="60" placeholder="请输入家长姓名" disabled="{{busy}}"/><text class="field-label">联系电话 <text class="required">必填</text></text><input value="{{form.guardianPhone}}" data-key="guardianPhone" bindinput="input" type="number" maxlength="11" placeholder="请输入11位手机号" disabled="{{busy}}"/></view>
+  <button class="primary pay-button" loading="{{busy}}" disabled="{{busy}}" bindtap="pay">{{busy ? '正在确认支付…' : loggedIn ? '支付 ¥9.90，开始填写' : '微信登录并支付 ¥9.90'}}</button>
+  <text class="muted privacy-tip">费用仅用于本次简易方案梳理；未确认到账不会开放或提交问卷。</text>
+ </block>
+ <block wx:if="{{offer && paid}}">
+  <view wx:if="{{submitted}}" class="success-card"><text class="success-mark">✓</text><text class="section-title">问卷已提交</text><text class="body">我们已经收到你的资料，请等待工作人员完成梳理。</text></view>
+  <view wx:else class="card form-card">
+   <text class="panel-caption">01 / 孩子基本情况</text>
+   <text class="field-label">姓名 <text class="required">必填</text></text><input value="{{form.name}}" data-key="name" bindinput="input" maxlength="60" placeholder="请输入孩子姓名"/>
+   <text class="field-label">性别 <text class="required">必填</text></text><view class="choice-row"><view wx:for="{{['男','女','不便透露']}}" wx:key="*this" class="choice {{form.gender === item ? 'selected' : ''}}" data-value="{{item}}" bindtap="chooseGender">{{item}}</view></view>
+   <view class="two-columns"><view><text class="field-label">年龄 <text class="required">必填</text></text><input value="{{form.age}}" data-key="age" bindinput="input" type="number" maxlength="3" placeholder="如：12"/></view><view><text class="field-label">年级 <text class="required">必填</text></text><input value="{{form.grade}}" data-key="grade" bindinput="input" maxlength="60" placeholder="如：六年级"/></view></view>
+   <text class="field-label">孩子经济来源 <text class="required">必填</text></text><input value="{{form.economicSource}}" data-key="economicSource" bindinput="input" maxlength="300" placeholder="如：父母供养、零花钱等"/>
+   <text class="panel-caption section-gap">02 / 当前问题</text><text class="field-label">问题选项 <text class="required">只能选择最重要的两个</text></text>
+   <view class="issue-grid"><view wx:for="{{issues}}" wx:key="*this" class="issue {{form.issues.indexOf(item) >= 0 ? 'selected' : ''}}" data-value="{{item}}" bindtap="toggleIssue"><text>{{item}}</text><text wx:if="{{form.issues.indexOf(item) >= 0}}">✓</text></view></view>
+   <text class="field-label">问题描述（选填）</text><textarea value="{{form.description}}" data-key="description" bindinput="input" maxlength="5000" placeholder="可以具体描述最近发生的事情、持续时间和你最担心的部分"/>
+   <text class="field-label">日常表现 <text class="required">必填</text></text><textarea value="{{form.dailyBehavior}}" data-key="dailyBehavior" bindinput="input" maxlength="5000" placeholder="请描述孩子平时在家、学校、作息和情绪方面的表现"/>
+   <text class="panel-caption section-gap">03 / 家长信息</text><text class="field-label">家长姓名 <text class="required">必填</text></text><input value="{{form.guardianName}}" data-key="guardianName" bindinput="input" maxlength="60" placeholder="请输入家长姓名"/><text class="field-label">联系电话 <text class="required">必填</text></text><input value="{{form.guardianPhone}}" data-key="guardianPhone" bindinput="input" type="number" maxlength="11" placeholder="请输入11位手机号"/>
+   <view class="consent" bindtap="toggleConsent"><view class="consent-box {{form.consent ? 'checked' : ''}}">{{form.consent ? '✓' : ''}}</view><text>我确认本人为监护人，并同意将以上信息用于本次方案梳理。</text></view>
+   <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="submit">{{busy ? '正在提交…' : '提交问卷'}}</button>
+  </view>
+ </block>
+</view>

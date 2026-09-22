@@ -17,7 +17,7 @@ npm start
 
 ## 网页入口与访问方式
 
-- 网页文件：`web/index.html`、`web/app.css`、`web/app.js`
+- 网页文件：`web/index.html` 与 `web/replica/` 生成文件
 - 服务端接口：`api/h5.js`、`api/wechat-oauth-callback.js`
 - 核心服务：`server/h5/index.js`
 - 正式环境通过受保护的分享链接访问，源码仓库保持私有。

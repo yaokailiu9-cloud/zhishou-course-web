@@ -41,12 +41,13 @@ function filterSearch(scope, columns) {
 }
 if(op==='LIST_CLASSES'||op==='STAFF_CLASSES') {
   if(op==='STAFF_CLASSES')staff(s,'canAccept');
-  var scope=op==='STAFF_CLASSES'?eq('organizer_id',s.actor.providerId):and(eq('status','PUBLISHED','text'),compare('_gt','starts_at',new Date().toISOString(),'timestamptz'));
+  var scope=op==='STAFF_CLASSES'?and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE):and(eq('status','PUBLISHED','text'),compare('_gt','starts_at',new Date().toISOString(),'timestamptz'),COURSE_SCOPE);
   var page=paged('public_class',filterSearch(scope,['title','city']),CLASS_FIELDS);
   result(s,{classes:page.items.map(function(c){return classView(c,op==='STAFF_CLASSES');}),nextCursor:page.nextCursor});
 }
 if(op==='GET_CLASS') {
   var c=one('public_class',p.classId,CLASS_FIELDS),own=s.actor.accountId?list('public_class_enrollment',and(eq('public_class_id',c.id),eq('customer_id',s.actor.accountId)),ENROLL_FIELDS,1)[0]:null;
+  if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');
   if(c.status!=='PUBLISHED' && c.status!=='CLOSED' && !(s.actor.providerId&&String(c.organizer_id)===String(s.actor.providerId)))fail('本场课程暂未开放');
   result(s,{classInfo:classView(c,!!own&&own.status==='REGISTERED'),enrollment:own||null,canManage:!!s.actor.canAccept&&String(c.organizer_id)===String(s.actor.providerId)});
 }
@@ -63,6 +64,7 @@ if(op==='GENERATE_CLASS_SHARE_CODE') {
 }
 if(op==='SAVE_CLASS') {
   staff(s,'canAccept');var previous=p.id?ownedClass(p.id):null;
+  if(isQuestionnaire(previous))fail('系统问卷不能在课程管理中修改');
   var status=p.status;
   if(['PUBLISHED','CLOSED','DRAFT'].indexOf(status)<0)fail('课程状态无效');
   var capacity=Number(p.capacity||0);
@@ -72,7 +74,7 @@ if(op==='SAVE_CLASS') {
   var registrationFee=Number(feeText);
   if(previous&&capacity&&capacity<Number(previous.reserved_count||0))fail('名额不能少于已报名人数');
   if(previous&&Number(previous.reserved_count)>0&&status==='DRAFT')fail('已有报名的课程请结束报名，不能改回草稿');
-  var values={title:text(p.title,'课程名称',120,true),description:text(p.description,'课程说明',4000,false),group_guide:text(p.groupGuide,'进群指引',2000,status==='PUBLISHED'),signup_url:text(p.signupUrl,'报名链接',1500,false),status:status,organizer_id:s.actor.providerId,capacity:capacity,registration_fee:registrationFee,city:text(p.city,'开课城市',60,false),contact_phone:p.contactPhone?phone(p.contactPhone):null,notice:text(p.notice,'参课须知',2000,false)};
+  var values={title:text(p.title,'课程名称',120,true),description:text(p.description,'课程说明',4000,false),group_guide:text(p.groupGuide,'进群指引',2000,status==='PUBLISHED'),signup_url:text(p.signupUrl,'报名链接',1500,false),status:status,product_kind:'COURSE',organizer_id:s.actor.providerId,capacity:capacity,registration_fee:registrationFee,city:text(p.city,'开课城市',60,false),contact_phone:p.contactPhone?phone(p.contactPhone):null,notice:text(p.notice,'参课须知',2000,false)};
   if(values.signup_url&&!/^https:\/\//.test(values.signup_url))fail('报名链接须使用https地址');
   values.starts_at=p.startsAt?date(p.startsAt,'开课时间'):null;
   values.registration_closes_at=p.registrationClosesAt?date(p.registrationClosesAt,'报名截止时间'):null;
@@ -89,6 +91,7 @@ if(op==='SAVE_CLASS') {
 }
 if(op==='ENROLL') {
   login(s);var c=one('public_class',p.classId,CLASS_FIELDS);
+  if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');
   var key=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
   var existing=list('public_class_enrollment',key,ENROLL_FIELDS,1)[0];
   if(existing&&existing.status==='REGISTERED')result(s,{enrollment:existing});
@@ -106,7 +109,7 @@ if(op==='ENROLL') {
   }
 }
 if(op==='MY_ENROLLMENTS') {
-  login(s);var scope=eq('customer_id',s.actor.accountId);
+  login(s);var scope=and(eq('customer_id',s.actor.accountId),{public_class:COURSE_SCOPE});
   if(p.filter==='CANCELED')scope=and(scope,eq('status','CANCELED','text'));
   if(p.filter==='PENDING')scope=and(scope,eq('status','REGISTERED','text'),eq('attendance_status','PENDING','text'));
   if(p.filter==='ATTENDED')scope=and(scope,eq('status','REGISTERED','text'),eq('attendance_status','ATTENDED','text'));
@@ -191,15 +194,15 @@ if(op==='VERIFY_ENROLLMENT') {
   result(s,{id:e.id,alreadyCheckedIn:repeated,enrollment:one('public_class_enrollment',e.id,ENROLL_FIELDS)});
 }
 if(op==='MY_OVERVIEW') {
-  login(s);var enrollments=list('public_class_enrollment',eq('customer_id',s.actor.accountId),ENROLL_FIELDS,100);
-  var qualified=list('public_class_enrollment',and(eq('customer_id',s.actor.accountId),eq('status','REGISTERED','text'),eq('attendance_status','ATTENDED','text')),'id verified_at verified_by_id',100);
+  login(s);var enrollments=list('public_class_enrollment',and(eq('customer_id',s.actor.accountId),{public_class:COURSE_SCOPE}),ENROLL_FIELDS,100);
+  var qualified=list('public_class_enrollment',and(eq('customer_id',s.actor.accountId),eq('status','REGISTERED','text'),eq('attendance_status','ATTENDED','text'),{public_class:COURSE_SCOPE}),'id verified_at verified_by_id',100);
   var history=pageRows('offline_appointment',eq('customer_id',s.actor.accountId),APPOINTMENT_FIELDS,p.appointmentCursor,100,p.paginate===true);
   result(s,{enrollments:enrollments,eligible:qualified.some(function(e){return !!e.verified_at&&!!e.verified_by_id;}),appointments:history.items,nextAppointmentCursor:history.nextCursor,isStaff:!!s.actor.providerId});
 }
 if(op==='STAFF_OVERVIEW') {
   staff(s,s.actor.canAccept?'canAccept':'canReply');
   var history=pageRows('offline_appointment',eq('provider_id',s.actor.providerId),APPOINTMENT_FIELDS,p.appointmentCursor,200,p.paginate===true);
-  result(s,{classes:list('public_class',eq('organizer_id',s.actor.providerId),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:eq('organizer_id',s.actor.providerId)},ENROLL_FIELDS,200):[],appointments:history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
+  result(s,{classes:list('public_class',and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE)},ENROLL_FIELDS,200):[],appointments:history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
 }
 // FAMILY_HANDLERS: build script inserts family.js here.
 // PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.

@@ -28,7 +28,7 @@ Page({
  async load(more,requestId=this.requestId,identity=viewSession.capture()){
   const r=await service.call('REFERRAL_CLIENTS',{scope:this.data.scope,cursor:more?this.data.nextCursor:null});
   if(requestId!==this.requestId||!viewSession.current(identity))return;
-  const items=(r.items||[]).map(row=>({...row,timeText:service.formatTime(row.lockedAt),enrollments:(row.enrollments||[]).map(e=>({...e,statusText:e.status==='CANCELED'?'已取消':e.attendanceStatus==='ATTENDED'?'已到课':e.attendanceStatus==='ABSENT'?'未到课':'已报名 · 待到课'}))}));
+  const items=(r.items||[]).map(row=>({...row,timeText:service.formatTime(row.lockedAt),enrollments:(row.enrollments||[]).map(e=>({...e,statusText:e.productKind==='QUESTIONNAIRE'?(e.submittedAt?'问卷已提交':'已缴费 · 待填写'):e.status==='CANCELED'?'已取消':e.attendanceStatus==='ATTENDED'?'已到课':e.attendanceStatus==='ABSENT'?'未到课':'已报名 · 待到课'}))}));
   this.setData({items:more?this.data.items.concat(items):items,nextCursor:r.nextCursor,total:r.total});
  },
  async more(){if(this.data.loading||!this.data.nextCursor)return;this.setData({loading:true,error:''});const identity=viewSession.capture(),requestId=this.requestId;try{await this.load(true,requestId,identity);}catch(e){if(requestId===this.requestId&&viewSession.current(identity))service.error(this,e);}finally{if(requestId===this.requestId&&viewSession.current(identity))this.setData({loading:false});}},

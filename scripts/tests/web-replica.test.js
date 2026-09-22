@@ -147,8 +147,18 @@ test('网页表单等待中文输入法组词完成后再更新页面',async()=>
 test('date/selector controls emit mini-program values and protected pages do not grant staff access',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/profile-edit/profile-edit'});await tick();
   const select=h.document.querySelector('select');assert.ok(select);const option=select.querySelectorAll('option')[2];option.selected=true;select.dispatchEvent(new h.Event('change',{bubbles:true}));await tick();assert.equal(h.host.current.data.gender,'男');
+  const birthday=h.document.querySelector('input[type="date"]');assert.ok(birthday);assert.match(birthday.parentElement.textContent,/生日.*请选择/);birthday.value='2012-03-04';birthday.dispatchEvent(new h.Event('change',{bubbles:true}));await tick();assert.equal(h.host.current.data.birthday,'2012-03-04');
   h.host.wx.disableAlertBeforeUnload();h.host.wx.navigateTo({url:'/pages/course-roster/course-roster?id=1'});await tick();assert.equal(h.host.current.data.allowed,false);
   assert.equal(h.host.wx.getStorageSync('zionJwt'),'');assert.equal(h.document.querySelectorAll('[data-field="attendanceStatus"]').length,0);
+});
+test('网页定位使用浏览器授权并把城市与坐标交回资料页',async()=>{
+  let geocodeUrl,result,failure;
+  const h=await host({navigator:{geolocation:{getCurrentPosition:success=>success({coords:{latitude:22.5431,longitude:114.0579}})}},fetch:async url=>{
+    if(String(url).startsWith('https://api.bigdatacloud.net/')){geocodeUrl=String(url);return{ok:true,json:async()=>({countryName:'中国',principalSubdivision:'广东省',city:'深圳市',locality:'福田区'})};}
+    return {ok:true,status:200,headers:[],json:async()=>({ok:true,data:{loggedIn:false}}),text:async()=>JSON.stringify({data:{course:[],advisor:[],course_by_pk:null,fz_invoke_action_flow:{result:{ok:true,data:{classes:[],items:[]}}}}})};
+  }});
+  await new Promise(resolve=>h.host.wx.chooseLocation({success:value=>{result=value;resolve();},fail:error=>{failure=error;resolve();}}));
+  assert.equal(failure,undefined);assert.equal(result.name,'深圳市');assert.match(result.address,/广东省.*深圳市.*福田区/);assert.equal(result.latitude,22.5431);assert.match(geocodeUrl,/localityLanguage=zh/);
 });
 test('browser payment fails before creating orders and recorder clearly reports unsupported state',async()=>{
   const h=await host();await assert.rejects(h.host.requireModule('utils/payment').startConsultationPayment(),/网页支付尚未接入/);

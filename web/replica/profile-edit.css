@@ -211,5 +211,6 @@
 
 .form-error { display:block; color:#923e32; background:#fff0ea; padding:calc(24 * var(--rpx)); margin:calc(16 * var(--rpx)) 0; font-size:calc(28 * var(--rpx)); line-height:1.6; }
 .form-notice { display:block; color:#596464; font-size:calc(28 * var(--rpx)); padding:calc(16 * var(--rpx)); }
-.location-button { min-height:44px; padding:calc(24 * var(--rpx)); color:#164d44; background:#eef3ef; font-size:calc(28 * var(--rpx)); }
+.location-button { width:calc(100% - calc(60 * var(--rpx))); min-height:calc(84 * var(--rpx)); margin:calc(18 * var(--rpx)) calc(30 * var(--rpx)); padding:calc(18 * var(--rpx)) calc(24 * var(--rpx)); color:#164d44; background:#eef3ef; border-radius:calc(18 * var(--rpx)); font-size:calc(27 * var(--rpx)); font-weight:700; }
+.picker-row { position:relative; }
 .save-button[disabled] { opacity:.6; }

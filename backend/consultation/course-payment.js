@@ -16,12 +16,12 @@ function payBuyer(accountId){var a=gql('query PaymentBuyer($id:bigint!) { accoun
 function payOwned(value){login(s);var o=one('course_registration_order',value,ORDER_FIELDS);if(String(o.customer_id)!==String(s.actor.accountId))fail('不能访问其他用户的支付订单');return o;}
 function payReferrer(value){var r=list('service_provider',and(eq('account_id',id(value)),eq('service_status','ACTIVE','text')),'id account_id service_kind can_accept_order',1)[0];return r&&(r.service_kind==='AGENT'||r.can_accept_order===true)?r:null;}
 function payPublic(o){return {id:o.id,orderNo:o.order_no,amount:Number(o.amount),status:o.status,message:o.failure_message||''};}
-function payCents(value){var n=Number(value),c=Math.round(n*100);if(!isFinite(n)||c<1||c>99999999||Math.abs(n*100-c)>0.00001)fail('课程报名费用无效');return c;}
+function payCents(value){var n=Number(value),c=Math.round(n*100);if(!isFinite(n)||c<1||c>99999999||Math.abs(n*100-c)>0.00001)fail('支付费用无效');return c;}
 function payRequest(o,kind){
   var v={appid:PAY_APP,mch_id:PAY_MERCHANT,nonce_str:entryCode(),out_trade_no:o.order_no};
   if(kind==='unifiedorder'){
     var buyer=payBuyer(o.customer_id);
-    v.body='知守课程报名';v.total_fee=String(payCents(o.amount));v.spbill_create_ip='127.0.0.1';
+    v.body=('知守-'+String(o.course_title_snapshot||'服务支付')).slice(0,120);v.total_fee=String(payCents(o.amount));v.spbill_create_ip='127.0.0.1';
     v.notify_url='https://www.apply.tianqiwushu.cn/api/wechat-pay-notify';v.trade_type='JSAPI';v.openid=buyer.wechat_openid;
     // Stable expiry for retries of the same order. WeChat requires >= 5 minutes.
     var d=new Date(new Date(o.expires_at).getTime()+8*3600000);v.time_expire=d.toISOString().replace(/[-:T]/g,'').slice(0,14);
@@ -38,10 +38,11 @@ if(op==='PREPARE_COURSE_PAYMENT'){
     if(pending)result(s,{order:payPublic(pending),resume:true});
     else {
       var view=classView(c,false);if(!view.canEnroll||!c.organizer_id)fail(view.closedReason||'课程未开放报名');
+      var candidate=p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?payReferrer(p.referrerId):null;
+      if(c.product_kind==='QUESTIONNAIRE'&&!candidate)fail('请使用管理或代理发出的问卷二维码进入');
       var cents=payCents(c.registration_fee),deadline=new Date(c.registration_closes_at||c.starts_at).getTime();
       if(deadline-Date.now()<6*60000)fail('距离报名截止不足六分钟，请联系工作人员');
       var expires=new Date(Math.min(Date.now()+30*60000,deadline)).toISOString();
-      var candidate=p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?payReferrer(p.referrerId):null;
       var values={order_no:'ZS'+Date.now()+entryCode().slice(0,16),amount:cents/100,status:'PENDING',customer_id:s.actor.accountId,public_class_id:c.id,registrant_name:text(p.name,'姓名',60,true),phone:phone(p.phone),course_title_snapshot:c.title,payment_channel:'WECHAT_JSAPI',request_key:'WX_COURSE:'+s.actor.accountId+':'+c.id,expires_at:expires,source:JSON.stringify({referrerId:candidate?candidate.account_id:null})};
       lockClass(c,{});
       var orderId=insert('course_registration_order',values,'course_registration_order_request_key_key');if(!orderId)fail('已有待支付订单，请重试');
