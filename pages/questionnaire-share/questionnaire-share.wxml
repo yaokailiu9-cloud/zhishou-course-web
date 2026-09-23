@@ -10,13 +10,9 @@
   <text class="muted center">打开后可长按保存到手机，再发送给家长。二维码包含你的推荐信息，不展示或复制长链接。</text>
  </view>
  <block wx:if="{{allowed && isManager}}">
-  <view class="records-head"><view><text class="panel-caption">管理查看</text><text class="records-title">已提交问卷</text></view><text class="records-count">{{records.length}} 份</text></view>
-  <view wx:for="{{records}}" wx:key="id" class="record-card" data-id="{{item.id}}" bindtap="openRecord">
-   <view class="record-top"><view><text class="record-name">{{item.child_name || '未填写姓名'}}</text><text class="record-guardian">家长：{{item.guardian_name || '未填写'}}</text></view><text class="pill">{{item.statusText}}</text></view>
-   <view class="record-bottom"><text>{{item.submittedText}}</text><text class="record-link">查看填写内容 ›</text></view>
+  <view class="work-order-entry" bindtap="openWorkOrders">
+   <view class="entry-copy"><text class="panel-caption">管理处理</text><text class="records-title">问卷工单</text><text class="muted">集中查看家长资料、保存梳理草稿并发布回复</text></view>
+   <view class="entry-side"><text class="entry-count">{{recordsLoading ? '…' : pendingCount}}</text><text class="entry-label">待处理</text><text class="entry-arrow">›</text></view>
   </view>
-  <view wx:if="{{!recordsLoading && !records.length}}" class="empty">暂时没有已提交的问卷。家长提交后会显示在这里。</view>
-  <button wx:if="{{nextCursor}}" class="secondary" disabled="{{recordsLoading}}" bindtap="loadMore">{{recordsLoading ? '正在加载…' : '查看更多问卷'}}</button>
-  <text wx:if="{{recordsLoading && !records.length}}" class="muted">正在读取已提交问卷…</text>
  </block>
 </view>

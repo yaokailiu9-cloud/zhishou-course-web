@@ -1,0 +1,14 @@
+<view class="service-page work-orders-page">
+ <view class="service-hero"><text class="eyebrow">管理处理</text><text class="page-title">问卷工单</text><text class="muted">查看家长提交的资料，记录梳理过程并发布最终回复。</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新加载</button></view>
+ <view class="tabs" wx:if="{{!loading}}">
+  <view wx:for="{{tabs}}" wx:key="key" class="tab {{activeTab === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="chooseTab"><text>{{item.label}}</text><text class="tab-count">{{counts[item.key]}}</text></view>
+ </view>
+ <view wx:if="{{loading}}" class="card"><text class="muted">正在读取问卷工单…</text></view>
+ <view wx:for="{{filtered}}" wx:key="id" class="ticket" data-id="{{item.id}}" bindtap="openRecord">
+  <view class="ticket-top"><view class="ticket-person"><text class="ticket-name">{{item.child_name || '未填写姓名'}}</text><text class="ticket-parent">家长：{{item.guardian_name || '未填写'}}</text></view><text class="status status-{{item.status}}">{{item.statusText}}</text></view>
+  <view class="ticket-bottom"><text>{{item.submittedText}}</text><text class="ticket-link">{{item.status === 'CONFIRMED' ? '查看回复' : '处理工单'}} ›</text></view>
+ </view>
+ <view wx:if="{{!loading && !filtered.length}}" class="empty">{{activeTab === 'PENDING' ? '没有待处理工单。' : activeTab === 'DRAFT' ? '没有正在处理的工单。' : activeTab === 'CONFIRMED' ? '还没有已完成工单。' : '暂时没有问卷工单。'}}</view>
+ <button wx:if="{{nextCursor}}" class="secondary more" loading="{{loadingMore}}" disabled="{{loadingMore}}" bindtap="loadMore">{{loadingMore ? '正在加载…' : '加载更多工单'}}</button>
+</view>

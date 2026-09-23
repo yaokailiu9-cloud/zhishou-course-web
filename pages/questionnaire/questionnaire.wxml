@@ -9,7 +9,16 @@
   <text class="muted privacy-tip">费用仅用于本次简易方案梳理；未确认到账不会开放或提交问卷。</text>
  </block>
  <block wx:if="{{offer && paid}}">
-  <view wx:if="{{submitted}}" class="success-card"><text class="success-mark">✓</text><text class="success-title">问卷已提交</text><text class="success-body">我们已经收到你的资料，请等待工作人员完成梳理。</text></view>
+  <block wx:if="{{submitted}}">
+   <view class="success-card"><text class="success-mark">✓</text><text class="success-title">问卷已提交</text><text class="success-body">我们已经收到你的资料，处理进度和梳理回复会保存在本页面。</text></view>
+   <view class="card result-card state-{{feedbackState}}">
+    <view class="result-head"><view><text class="panel-caption">我的梳理结果</text><text class="section-title">{{feedbackTitle}}</text></view><text class="result-state">{{feedbackState === 'READY' ? '可查看' : feedbackState === 'WAITING' ? '待开放' : feedbackState === 'DRAFT' ? '处理中' : '待处理'}}</text></view>
+    <text class="result-note">{{feedbackNote}}</text>
+    <text wx:if="{{feedbackState === 'WAITING'}}" class="available-time">开放时间：{{feedbackAvailableText}}</text>
+    <text wx:if="{{feedbackState === 'READY'}}" class="feedback-content">{{feedbackContent}}</text>
+    <button wx:if="{{feedbackState !== 'READY'}}" class="secondary refresh-result" bindtap="refresh" disabled="{{loading}}">{{loading ? '正在刷新…' : '刷新处理进度'}}</button>
+   </view>
+  </block>
   <view wx:else class="card form-card">
    <text class="panel-caption">01 / 孩子基本情况</text>
    <text class="field-label">姓名 <text class="required">必填</text></text><input value="{{form.name}}" data-key="name" bindinput="input" maxlength="60" placeholder="请输入孩子姓名"/>

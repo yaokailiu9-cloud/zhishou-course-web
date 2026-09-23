@@ -6,5 +6,19 @@
   <view class="review-card"><text class="panel-caption">01 / 孩子基本情况</text><view class="review-grid"><view><text class="review-label">姓名</text><text class="review-value">{{intake.child_name || '未填写'}}</text></view><view><text class="review-label">性别</text><text class="review-value">{{intake.child_gender || '未填写'}}</text></view><view><text class="review-label">年龄</text><text class="review-value">{{intake.child_age == null ? '未填写' : intake.child_age + '岁'}}</text></view><view><text class="review-label">年级</text><text class="review-value">{{intake.child_grade || '未填写'}}</text></view></view><view class="review-row"><text class="review-label">孩子经济来源</text><text class="review-value">{{intake.child_economic_source || '未填写'}}</text></view></view>
   <view class="review-card"><text class="panel-caption">02 / 当前问题</text><view class="review-row"><text class="review-label">家长认为最重要的两个问题</text><text class="review-value emphasis">{{issuesText}}</text></view><view class="review-row"><text class="review-label">问题描述</text><text class="review-value long-text">{{intake.child_description || '未填写'}}</text></view><view class="review-row"><text class="review-label">日常表现</text><text class="review-value long-text">{{intake.child_daily_behavior || '未填写'}}</text></view></view>
   <view class="review-card"><text class="panel-caption">03 / 家长信息</text><view class="review-row"><text class="review-label">家长姓名</text><text class="review-value">{{intake.guardian_name || '未填写'}}</text></view><view class="review-row"><text class="review-label">联系电话</text><text class="review-value phone">{{intake.guardian_phone || '未填写'}}</text></view></view>
+  <view class="review-card feedback-card">
+   <text class="panel-caption">04 / 梳理回复</text>
+   <block wx:if="{{intake.feedback_status === 'CONFIRMED'}}">
+    <view class="published-head"><text class="section-title">回复已发布</text><text class="pill">已完成</text></view>
+    <text class="review-value long-text feedback-result">{{intake.feedback_content || '暂无回复正文'}}</text>
+    <text class="feedback-meta">发布时间：{{confirmedText}} · 家长可查看时间：{{availableText}}</text>
+   </block>
+   <block wx:else>
+    <text class="review-label editor-label">给家长的回复</text>
+    <textarea value="{{feedbackContent}}" bindinput="inputFeedback" maxlength="20000" disabled="{{busy}}" placeholder="结合家长填写的资料，写下问题梳理、沟通建议和下一步行动。"/>
+    <text class="editor-tip">保存草稿后仅管理人员可见；发布后不能修改，家长将在 3 小时后看到回复。</text>
+    <view class="action-row"><button class="secondary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveDraft">保存草稿</button><button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="publishFeedback">发布回复</button></view>
+   </block>
+  </view>
  </block>
 </view>
