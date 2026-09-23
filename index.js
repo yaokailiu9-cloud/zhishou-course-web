@@ -81,7 +81,7 @@ function createServer() {
       json(res, 200, {
         ok: true,
         service: 'zhishou-course-web',
-        release: '2026.09.22.3'
+        release: '2026.09.23.1'
       });
       return;
     }

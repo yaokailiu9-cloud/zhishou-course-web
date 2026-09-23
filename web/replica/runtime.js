@@ -241,12 +241,12 @@
   }
   function showReferralPoster({url,title,name='',kind='course'}){
     const questionnaire=kind==='questionnaire';
-    const image=requireModule('utils/referralPoster').poster(document.createElement('canvas'),{url,title,name,label:questionnaire?'知守 · 简易方案梳理':'知守 · 课程邀请',tip:questionnaire?'扫码后微信登录，支付 9.9 元填写问卷':'微信扫一扫 / 长按识别二维码',afterTip:questionnaire?'登录后支付并填写，推荐信息自动保留':undefined});
+    const image=requireModule('utils/referralPoster').poster(document.createElement('canvas'),{url,title,name,label:questionnaire?'知守 · 简易方案梳理':'知守 · 课程邀请',tip:questionnaire?'扫码后微信登录，支付 19.9 元填写问卷':'微信扫一扫 / 长按识别二维码',afterTip:questionnaire?'登录后支付并填写，推荐信息自动保留':undefined});
     const dialog=$('#image-preview');if(dialog.open)dialog.close();
     dialog.classList.add('is-referral-poster');
     dialog.querySelector('img').src=image;dialog.querySelector('img').alt=questionnaire?'简易方案梳理二维码':'课程报名二维码';
     let tip=dialog.querySelector('p');if(!tip){tip=document.createElement('p');dialog.insertBefore(tip,dialog.querySelector('img'));}
-    tip.textContent='长按保存这张图片，再发送给微信好友或群。'+(questionnaire?'对方扫码登录并支付 9.9 元后填写问卷。':(/[?&]ref=/.test(url)?'对方扫码登录后，推荐信息会继续保留。':'对方扫码后可查看课程并报名。'));
+    tip.textContent='长按保存这张图片，再发送给微信好友或群。'+(questionnaire?'对方扫码登录并支付 19.9 元后填写问卷。':(/[?&]ref=/.test(url)?'对方扫码登录后，推荐信息会继续保留。':'对方扫码后可查看课程并报名。'));
     dialog.querySelector('button').onclick=()=>dialog.close();dialog.showModal();
     return image;
   }

@@ -106,9 +106,9 @@ test('咨询反馈和总结可完整分页，游标不改变咨询归属及总�
 test('旧版客户端未启用分页时保留原有条数，避免同步后端后截短旧界面',()=>{const db=fixture();for(let i=0;i<240;i++)db.offline_appointment.push({id:1000+i,customer_id:201,provider_id:1});const e=engine(db);assert.equal(e.run(201,'MY_OVERVIEW').data.appointments.length,100);assert.equal(e.run(101,'STAFF_OVERVIEW').data.appointments.length,200);assert.equal(e.run(201,'MY_OVERVIEW',{paginate:true}).data.appointments.length,20);});
 
 function childForm(extra={}){return {enrollmentId:21,name:'合成孩子',gender:'女',age:12,grade:'六年级',economicSource:'父母供养',issues:['亲子沟通','学习动力'],description:'合成测试描述',dailyBehavior:'合成日常表现',guardianName:'合成家长',guardianPhone:'13800000000',consent:true,...extra};}
-test('9.9问卷只通过有效管理或代理邀请开放，且不进入课程列表',()=>{
- const db=fixture();db.service_provider.push({id:3,account_id:203,display_name:'代理丙',service_kind:'AGENT',service_status:'ACTIVE',can_reply:false,can_accept_order:false});db.public_class.push({id:15,title:'简易方案梳理',description:'2026问卷梳理',product_kind:'QUESTIONNAIRE',status:'PUBLISHED',organizer_id:1,registration_fee:9.9,starts_at:'2099-12-31T12:00:00.000Z'});db.public_class_enrollment=[];
- const e=engine(db);assert.throws(()=>e.run(null,'GET_QUESTIONNAIRE',{}),/管理或代理/);const offer=e.run(null,'GET_QUESTIONNAIRE',{referrerId:203}).data;assert.equal(offer.offer.price,9.9);assert.equal(offer.offer.inviterName,'代理丙');assert.equal(offer.enrollment,null);assert.equal(e.run(null,'LIST_CLASSES').data.classes.some(c=>c.id===15),false);assert.throws(()=>e.run(201,'ENROLL',{classId:15,name:'家长',phone:'13800000000'}),/专属问卷二维码/);
+test('19.9问卷只通过有效管理或代理邀请开放，且不进入课程列表',()=>{
+ const db=fixture();db.service_provider.push({id:3,account_id:203,display_name:'代理丙',service_kind:'AGENT',service_status:'ACTIVE',can_reply:false,can_accept_order:false});db.public_class.push({id:15,title:'简易方案梳理',description:'2026问卷梳理',product_kind:'QUESTIONNAIRE',status:'PUBLISHED',organizer_id:1,registration_fee:19.9,starts_at:'2099-12-31T12:00:00.000Z'});db.public_class_enrollment=[];
+ const e=engine(db);assert.throws(()=>e.run(null,'GET_QUESTIONNAIRE',{}),/管理或代理/);const offer=e.run(null,'GET_QUESTIONNAIRE',{referrerId:203}).data;assert.equal(offer.offer.price,19.9);assert.equal(offer.offer.inviterName,'代理丙');assert.equal(offer.enrollment,null);assert.equal(e.run(null,'LIST_CLASSES').data.classes.some(c=>c.id===15),false);assert.throws(()=>e.run(201,'ENROLL',{classId:15,name:'家长',phone:'13800000000'}),/专属问卷二维码/);
 });
 // 业务类型是后加的字段：没有回填的老课程必须继续当成课程，不能因为问卷改动从首页、课程管理和我的报名里消失。
 test('尚未标注业务类型的历史课程仍然是课程，不受问卷过滤影响',()=>{

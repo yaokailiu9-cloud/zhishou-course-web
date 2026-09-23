@@ -1,0 +1,10 @@
+<view class="service-page questionnaire-review-page">
+ <view class="service-hero"><text class="eyebrow">2026问卷梳理 · {{statusText}}</text><text class="page-title">{{title}}</text><text wx:if="{{intake}}" class="muted">提交时间：{{submittedText}}</text></view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新加载</button></view>
+ <text wx:if="{{loading}}" class="muted">正在读取问卷内容…</text>
+ <block wx:if="{{intake}}">
+  <view class="review-card"><text class="panel-caption">01 / 孩子基本情况</text><view class="review-grid"><view><text class="review-label">姓名</text><text class="review-value">{{intake.child_name || '未填写'}}</text></view><view><text class="review-label">性别</text><text class="review-value">{{intake.child_gender || '未填写'}}</text></view><view><text class="review-label">年龄</text><text class="review-value">{{intake.child_age == null ? '未填写' : intake.child_age + '岁'}}</text></view><view><text class="review-label">年级</text><text class="review-value">{{intake.child_grade || '未填写'}}</text></view></view><view class="review-row"><text class="review-label">孩子经济来源</text><text class="review-value">{{intake.child_economic_source || '未填写'}}</text></view></view>
+  <view class="review-card"><text class="panel-caption">02 / 当前问题</text><view class="review-row"><text class="review-label">家长认为最重要的两个问题</text><text class="review-value emphasis">{{issuesText}}</text></view><view class="review-row"><text class="review-label">问题描述</text><text class="review-value long-text">{{intake.child_description || '未填写'}}</text></view><view class="review-row"><text class="review-label">日常表现</text><text class="review-value long-text">{{intake.child_daily_behavior || '未填写'}}</text></view></view>
+  <view class="review-card"><text class="panel-caption">03 / 家长信息</text><view class="review-row"><text class="review-label">家长姓名</text><text class="review-value">{{intake.guardian_name || '未填写'}}</text></view><view class="review-row"><text class="review-label">联系电话</text><text class="review-value phone">{{intake.guardian_phone || '未填写'}}</text></view></view>
+ </block>
+</view>

@@ -10,6 +10,6 @@ function request(action,data={},method='GET'){
   }));
 }
 function context(){return request('questionnaire-context',{ref:wx.getReferralToken?wx.getReferralToken():''});}
-function pay(payload){return payment.enroll(payload,'￥9.90',{action:'questionnaire-pay',noun:'简易方案梳理',confirmTitle:'填写前缴费'});}
+function pay(payload){return payment.enroll(payload,'￥19.90',{action:'questionnaire-pay',noun:'简易方案梳理',confirmTitle:'填写前缴费'});}
 function submit(payload){return service.call('SUBMIT_CHILD_INTAKE',payload);}
 module.exports={context,pay,submit};

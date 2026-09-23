@@ -3,13 +3,13 @@
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button wx:if="{{!offer}}" bindtap="refresh">重新加载</button></view>
  <view wx:if="{{loading}}" class="card"><text class="muted">正在确认问卷与支付状态…</text></view>
  <block wx:if="{{offer && !paid}}">
-  <view class="card price-card"><view><text class="panel-caption">填写前缴费</text><text class="section-title">简易方案梳理</text><text class="body">付款确认后开放完整问卷。提交后由知守团队按填写内容进行梳理。</text></view><view class="price"><text>¥</text>9.90</view></view>
+  <view class="card price-card"><view><text class="panel-caption">填写前缴费</text><text class="section-title">简易方案梳理</text><text class="body">付款确认后开放完整问卷。提交后由知守团队按填写内容进行梳理。</text></view><view class="price"><text>¥</text>{{priceText}}</view></view>
   <view class="card"><text class="panel-caption">支付联系信息</text><text class="field-label">家长姓名 <text class="required">必填</text></text><input value="{{form.guardianName}}" data-key="guardianName" bindinput="input" maxlength="60" placeholder="请输入家长姓名" disabled="{{busy}}"/><text class="field-label">联系电话 <text class="required">必填</text></text><input value="{{form.guardianPhone}}" data-key="guardianPhone" bindinput="input" type="number" maxlength="11" placeholder="请输入11位手机号" disabled="{{busy}}"/></view>
-  <button class="primary pay-button" loading="{{busy}}" disabled="{{busy}}" bindtap="pay">{{busy ? '正在确认支付…' : loggedIn ? '支付 ¥9.90，开始填写' : '微信登录并支付 ¥9.90'}}</button>
+  <button class="primary pay-button" loading="{{busy}}" disabled="{{busy}}" bindtap="pay">{{busy ? '正在确认支付…' : loggedIn ? '支付 ¥' + priceText + '，开始填写' : '微信登录并支付 ¥' + priceText}}</button>
   <text class="muted privacy-tip">费用仅用于本次简易方案梳理；未确认到账不会开放或提交问卷。</text>
  </block>
  <block wx:if="{{offer && paid}}">
-  <view wx:if="{{submitted}}" class="success-card"><text class="success-mark">✓</text><text class="section-title">问卷已提交</text><text class="body">我们已经收到你的资料，请等待工作人员完成梳理。</text></view>
+  <view wx:if="{{submitted}}" class="success-card"><text class="success-mark">✓</text><text class="success-title">问卷已提交</text><text class="success-body">我们已经收到你的资料，请等待工作人员完成梳理。</text></view>
   <view wx:else class="card form-card">
    <text class="panel-caption">01 / 孩子基本情况</text>
    <text class="field-label">姓名 <text class="required">必填</text></text><input value="{{form.name}}" data-key="name" bindinput="input" maxlength="60" placeholder="请输入孩子姓名"/>
