@@ -10,15 +10,9 @@ Zeabur 使用仓库根目录部署时，选择 Node.js 服务并设置：
 - Health Check Path：`/healthz`
 - 网页入口：`/web/`
 
-`/healthz` 会返回当前正式发布标识；`release: 2026.09.24.2` 对应包含会员身份查询 API 的协作仓库版本，可用于确认正式服务是否已切换到本次构建。
+`/healthz` 会返回当前正式发布标识；`release: 2026.09.21.1` 对应包含三类身份管理与付费课程报名准备的协作仓库版本，可用于确认 Zeabur 是否已切换到本次构建。
 
 根目录 `index.js` 会同时提供网页静态资源、`/api/h5`、`/api/wechat-oauth-callback` 和健康检查。不要使用 Zeabur 默认的 `node /src/index.js`，该路径不在本项目中。
-
-## 会员身份查询 API
-
-`GET /api/member-status?id=12345` 用于查询 5 位或 6 位会员 ID。ID 存在于已核实的用户信息表或公众号学员白名单时，响应正文为纯文本 `1`；不存在时为 `0`。格式不正确时返回 HTTP 400 和 `0`，Zion 查询异常时返回 HTTP 502 和 `0`，调用方应同时判断 HTTP 状态，避免把服务异常当作非会员。
-
-接口允许跨域 GET 请求，并按来源地址限制为每分钟 60 次。查询使用 Zion 已开放的只读权限，不需要也不得在网页、服务端代码或仓库中保存管理员令牌。
 
 Vercel 发布时执行根目录 `build-vercel-public.js`，把同一份 `web/` 复制到构建产物 `public/web/`；API 继续由 `api/h5.js` 和 `api/wechat-oauth-callback.js` 提供。生成目录只用于部署，不提交到 GitHub。
 
