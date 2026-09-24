@@ -15,7 +15,7 @@ function intake(value, staffOnly) {
 }
 function released(r) {
   var confirmed=new Date(r.feedback_confirmed_at).getTime(),available=new Date(r.feedback_available_at).getTime();
-  return r.feedback_status==='CONFIRMED'&&!!r.feedback_confirmed_at&&!!r.feedback_available_at&&isFinite(confirmed)&&isFinite(available)&&available>=confirmed+10800000&&Date.now()>=available;
+  return r.feedback_status==='CONFIRMED'&&!!r.feedback_confirmed_at&&!!r.feedback_available_at&&isFinite(confirmed)&&isFinite(available)&&available>=confirmed&&Date.now()>=available;
 }
 function intakeView(access) {
   var r=access.row,v=Object.assign({},r);v.canReview=access.reviewer;v.canViewFeedback=released(r);v.serverNow=new Date().toISOString();
@@ -84,9 +84,16 @@ if(op==='SAVE_CHILD_FEEDBACK') {
   if(!r.child_submitted_at)fail('家长尚未提交资料');
   if(r.feedback_status==='CONFIRMED')fail('回复已确认完成，不能重复确认或覆盖');
   if(p.revision==null||Number(p.revision)!==Number(r.feedback_revision||0))fail('反馈已更新，请刷新后重试');
-  var confirmed=p.confirm===true,now=Date.now();
+  var confirmed=p.confirm===true,now=Date.now(),availableAt=null;
+  if(confirmed){
+    availableAt=new Date(p.availableAt).getTime();
+    if(!p.availableAt||!isFinite(availableAt))fail('请选择家长可查看回复的时间');
+    if(availableAt<now-300000)fail('家长可查看时间不能早于当前时间');
+    if(availableAt>now+31536000000)fail('家长可查看时间不能超过一年');
+    availableAt=Math.max(availableAt,now);
+  }
   var values={feedback_content:text(p.content,'梳理反馈',20000,confirmed),feedback_status:confirmed?'CONFIRMED':'DRAFT',feedback_revision:Number(r.feedback_revision||0)+1,feedback_reviewer_id:s.actor.providerId};
-  if(confirmed){values.feedback_confirmed_at=new Date(now).toISOString();values.feedback_available_at=new Date(now+10800000).toISOString();}
+  if(confirmed){values.feedback_confirmed_at=new Date(now).toISOString();values.feedback_available_at=new Date(availableAt).toISOString();}
   update('public_class_enrollment',and(eq('id',r.id),eq('feedback_revision',Number(r.feedback_revision||0)),eq('feedback_status',r.feedback_status,'text')),values);
   result(s,{intake:intakeView(intake(r.id,true))});
 }

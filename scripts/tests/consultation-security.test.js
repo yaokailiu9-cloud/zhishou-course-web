@@ -145,19 +145,21 @@ test('孩子资料只归本人和课程负责工作人员，邀请代理没有�
  assert.throws(()=>e.run(202,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:1,content:'越权',confirm:true}),/其他客户/);
  assert.throws(()=>e.run(102,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:1,content:'越权',confirm:true}),/其他客户/);
 });
-test('草稿不启动倒计时，确认完成才生成服务器3小时等待，客户等待期不读取正文',()=>{
+test('草稿不开放正文，管理可设置查看时间，客户到点后才能读取',()=>{
  const e=engine(fixture());e.run(201,'SUBMIT_CHILD_INTAKE',childForm());
  e.run(101,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:1,content:'工作人员草稿',confirm:false});let row=e.db.public_class_enrollment[0];assert.equal(row.feedback_confirmed_at,undefined);assert.equal(row.feedback_available_at,undefined);
  const beforeCalls=e.calls.length;const pending=e.run(201,'GET_CHILD_INTAKE',{enrollmentId:21}).data.intake;assert.equal(pending.feedback_content,undefined);assert.equal(pending.canViewFeedback,false);assert.equal(e.calls.slice(beforeCalls).some(c=>c.q.includes('feedback_content')),false);
  assert.throws(()=>e.run(101,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:1,content:'过期草稿'}),/已更新/);
- const before=Date.now();e.run(101,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:2,content:'工作人员完成梳理',confirm:true,feedback_available_at:'2000-01-01T00:00:00Z'});
- row=e.db.public_class_enrollment[0];assert.ok(Date.parse(row.feedback_confirmed_at)>=before);assert.equal(Date.parse(row.feedback_available_at)-Date.parse(row.feedback_confirmed_at),10800000);assert.equal(e.run(201,'GET_CHILD_INTAKE',{enrollmentId:21}).data.intake.feedback_content,undefined);
+ assert.throws(()=>e.run(101,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:2,content:'无时间',confirm:true}),/可查看回复的时间/);
+ assert.throws(()=>e.run(101,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:2,content:'过去时间',confirm:true,availableAt:'2000-01-01T00:00:00.000Z'}),/不能早于/);
+ const before=Date.now(),chosen=new Date(before+21600000).toISOString();e.run(101,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:2,content:'工作人员完成梳理',confirm:true,availableAt:chosen});
+ row=e.db.public_class_enrollment[0];assert.ok(Date.parse(row.feedback_confirmed_at)>=before);assert.equal(row.feedback_available_at,chosen);assert.equal(e.run(201,'GET_CHILD_INTAKE',{enrollmentId:21}).data.intake.feedback_content,undefined);
  assert.throws(()=>e.run(101,'SAVE_CHILD_FEEDBACK',{enrollmentId:21,revision:3,content:'覆盖',confirm:true}),/已确认/);
  // Frozen-clock boundary verifies exact release and malformed timestamp rejection.
  const script=common+'\n'+fs.readFileSync(path.join(base,'family.js'),'utf8')+'\nreleased(sample)';const at=Date.parse(row.feedback_available_at);
  const canRead=(now,sample=row)=>vm.runInNewContext(script,{s:{},p:{},op:'TEST',Date:class extends Date{static now(){return now;}},sample});
- assert.equal(canRead(at-1),false);assert.equal(canRead(at),true);assert.equal(canRead(at,{...row,feedback_available_at:row.feedback_confirmed_at}),false);
- row=e.db.public_class_enrollment[0];row.feedback_confirmed_at=new Date(Date.now()-10800001).toISOString();row.feedback_available_at=new Date(Date.now()-1).toISOString();assert.equal(e.run(201,'GET_CHILD_INTAKE',{enrollmentId:21}).data.intake.feedback_content,'工作人员完成梳理');
+ assert.equal(canRead(at-1),false);assert.equal(canRead(at),true);assert.equal(canRead(at,{...row,feedback_available_at:new Date(Date.parse(row.feedback_confirmed_at)-1).toISOString()}),false);
+ row=e.db.public_class_enrollment[0];row.feedback_confirmed_at=new Date(Date.now()-1000).toISOString();row.feedback_available_at=new Date(Date.now()-1).toISOString();assert.equal(e.run(201,'GET_CHILD_INTAKE',{enrollmentId:21}).data.intake.feedback_content,'工作人员完成梳理');
 });
 test('代理身份即使错误携带工作人员能力也不能越权',()=>{const db=fixture();db.service_provider.push({id:3,account_id:203,service_kind:'AGENT',service_status:'ACTIVE',can_reply:true,can_accept_order:true});const e=engine(db);assert.equal(e.run(203,'FAMILY_OVERVIEW').data.role,'AGENT');assert.throws(()=>e.run(203,'SET_AGENT',{accountId:201,active:true}),/工作人员/);assert.throws(()=>e.run(203,'STAFF_CHILD_INTAKES'),/工作人员/);});
 test('仅管理人员可直接绑定未归属客户，同代理重复绑定幂等，已有归属不可改绑',()=>{

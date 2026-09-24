@@ -2,7 +2,7 @@
 
 ## 当前状态（2026-09-23 正式核对）
 
-- 目标 `JmAxbl1MMe4`，当前部署 schema `B9K5XJZMvlq`；简易方案梳理商品分类、问卷入口及既有服务动作流已正式同步。
+- 目标 `JmAxbl1MMe4`，当前部署 schema `EdyVRX674M9`；简易方案梳理商品分类、问卷入口及既有服务动作流已正式同步。
 - 用户明确授权账号仅本人读写、默认角色关闭直接 AI/课程表访问。权限实测通过，工作人员身份和能力仍由后台维护。
 - 免费课程姓名/手机报名 → 进群指引 → 工作人员核实实际到课 → 咨询申请及确认 → 孩子信息 → 老师记录 → 反馈回复。内部付费课程暂缓。
 - 真实合成账号完成核心流程、并发最后一席、取消/重新报名、资料保存、查重及直接访问拒绝测试。文字和私有合成录音均生成 READY 草稿。
@@ -35,10 +35,10 @@ Sources read:
 
 ## 简易方案梳理问卷工单（2026-09-23）
 
-- 2026-09-23 通过 Zion CLI 重新加载正式项目并核对“公开课报名”表。正式部署 schema 为 `B9K5XJZMvlq`；本次不新增表或字段，继续使用已部署的数据结构。
+- 2026-09-24 通过 Zion CLI 重新加载正式项目并核对“公开课报名”表。正式部署 schema 为 `EdyVRX674M9`；本次不新增表或字段，继续使用已部署的数据结构，并已同步管理员自定义开放时间的动作流校验。
 - 一份问卷对应一条 `public_class_enrollment` 记录。工单状态保存在 `feedback_status`：`PENDING`（待处理）、`DRAFT`（处理中）、`CONFIRMED`（已完成）。管理员列表和详情必须继续通过主服务动作 `STAFF_CHILD_INTAKES` / `GET_CHILD_INTAKE` 读取，不能在前端直接放宽表权限。
-- 管理员回复写入 `feedback_content`，保存草稿或发布统一调用 `SAVE_CHILD_FEEDBACK`。写入必须携带 `feedback_revision` 做并发校验；发布后记录 `feedback_reviewer_id`、`feedback_confirmed_at` 和 `feedback_available_at`，已发布正文不可覆盖。
-- 家长只能读取自己报名记录。`DRAFT` 阶段以及确认后的等待期不返回 `feedback_content`；到达服务器生成的 `feedback_available_at` 后，`GET_QUESTIONNAIRE` 才返回正文并设置 `canViewFeedback=true`。客户端时间和客户端传入的开放时间均不能决定可见性。
+- 管理员回复写入 `feedback_content`，保存草稿或发布统一调用 `SAVE_CHILD_FEEDBACK`。写入必须携带 `feedback_revision` 做并发校验；发布时由管理员选择家长可查看时间，动作流校验该时间不早于当前时间且不超过一年，并记录 `feedback_reviewer_id`、`feedback_confirmed_at` 和 `feedback_available_at`。已发布正文及开放时间不可覆盖。
+- 家长只能读取自己报名记录。`DRAFT` 阶段以及确认后的等待期不返回 `feedback_content`；服务器当前时间到达已经校验并落库的 `feedback_available_at` 后，`GET_QUESTIONNAIRE` 才返回正文并设置 `canViewFeedback=true`。客户端本地时钟不能决定可见性。
 - 网页 UI：二维码发放页只保留“问卷工单”入口；二级工单页按待处理、处理中、已完成筛选；工单详情负责保存和发布；家长问卷页负责显示进度与最终回复。
 
 ## Hard Rules
