@@ -10,7 +10,7 @@ Zeabur 使用仓库根目录部署时，选择 Node.js 服务并设置：
 - Health Check Path：`/healthz`
 - 网页入口：`/web/`
 
-`/healthz` 会返回当前正式发布标识；`release: 2026.09.21.1` 对应包含三类身份管理与付费课程报名准备的协作仓库版本，可用于确认 Zeabur 是否已切换到本次构建。
+`/healthz` 会返回当前正式发布标识；`release: 2026.09.24.2` 对应扫码进场名单显示完整联系电话的协作仓库版本，可用于确认正式服务是否已切换到本次构建。
 
 根目录 `index.js` 会同时提供网页静态资源、`/api/h5`、`/api/wechat-oauth-callback` 和健康检查。不要使用 Zeabur 默认的 `node /src/index.js`，该路径不在本项目中。
 

@@ -38,6 +38,8 @@ check(invoke(manager.id,'CHECKIN_STAFF',{classId:c.id}).items.length===1,'Staff 
 check(invoke(manager.id,'CHECKIN_CANDIDATES',{search:String(user.id)}).items.length===1,'Account search');
 var classes=invoke(user.id,'CHECKIN_CLASSES');check(classes.items.some(function(x){return x.id===c.id;}),'Course scope query');
 var r=invoke(user.id,'CHECKIN_ROSTER',{classId:c.id});check(r.stats.registered===1&&r.stats.remaining===1,'Before stats');
+check(r.items[0].phone==='13800000000'&&r.items[0].phoneMasked==='13800000000','Full phone visible to assigned check-in staff');
+check(invoke(user.id,'CHECKIN_ROSTER',{classId:c.id,search:'13800000000'}).items.length===1,'Phone search');
 check(invoke(user.id,'CHECKIN_LOOKUP',{classId:c.id,entryCode:'EMPATH-ENTRY:'+entry}).enrollment.id===enrollment.id,'QR lookup');
 var first=invoke(user.id,'CHECKIN_CONFIRM',{classId:c.id,entryCode:entry});check(first.stats.attended===1&&first.stats.remaining===0&&!first.alreadyCheckedIn,'Confirmed stats');
 check(invoke(manager.id,'CHECKIN_CONFIRM',{classId:c.id,entryCode:entry}).alreadyCheckedIn,'Repeat is idempotent');
@@ -47,7 +49,7 @@ invoke(manager.id,'CHECKIN_SET_STAFF',{classId:c.id,accountId:user.id,active:fal
 denied(function(){invoke(user.id,'CHECKIN_CONFIRM',{classId:c.id,entryCode:entry});});
 denied(function(){invoke(other.id,'CHECKIN_ROSTER',{classId:c.id});});
 denied(function(){invoke(user.id,'CHECKIN_SET_STAFF',{classId:c.id,accountId:other.id,active:true});});
-nativeContext.setReturn('result',{passed:true,checks:12,rollback:true,syntheticClassId:c.id,syntheticEnrollmentId:enrollment.id});
+nativeContext.setReturn('result',{passed:true,checks:14,rollback:true,syntheticClassId:c.id,syntheticEnrollmentId:enrollment.id});
 """.replace('SOURCE', source)
 # Never add --updateDb: all synthetic inserts and changes must be rolled back.
 print(json.dumps(run('runtime', 'run-code', '--jsCode', wrapper), ensure_ascii=False, indent=2))

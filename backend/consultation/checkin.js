@@ -20,7 +20,9 @@ if (operation.indexOf('CHECKIN_') === 0) {
     return {registered:registered,attended:attended,remaining:Math.max(0,registered-attended)};
   }
   function checkinPerson(e) {
-    return {id:e.id,name:e.registrant_name,phoneMasked:String(e.phone||'').replace(/^(\d{3})\d{4}(\d{4})$/,'$1****$2'),attendanceStatus:e.attendance_status,verifiedAt:e.verified_at};
+    var phone=String(e.phone||'');
+    // Keep phoneMasked during rollout so older check-in clients also display the full number.
+    return {id:e.id,name:e.registrant_name,phone:phone,phoneMasked:phone,attendanceStatus:e.attendance_status,verifiedAt:e.verified_at};
   }
   function checkinPage(table,scope,fields) {
     if(payload.cursor)scope=and(scope,compare('_lt','id',id(payload.cursor)));
@@ -45,7 +47,7 @@ if (operation.indexOf('CHECKIN_') === 0) {
     var scope=and(eq('public_class_id',c.id),eq('status','REGISTERED','text'));
     if(payload.filter==='ATTENDED')scope=and(scope,eq('attendance_status','ATTENDED','text'));
     if(payload.filter==='REMAINING')scope=and(scope,{_not:eq('attendance_status','ATTENDED','text')});
-    var page=checkinPage('public_class_enrollment',checkinSearch(scope,['registrant_name']),CHECKIN_ENROLL_FIELDS);
+    var page=checkinPage('public_class_enrollment',checkinSearch(scope,['registrant_name','phone']),CHECKIN_ENROLL_FIELDS);
     result(state,{classInfo:c,stats:checkinStats(c.id),items:page.items.map(checkinPerson),nextCursor:page.nextCursor,isManager:isCheckinManager});
   }
   if(operation==='CHECKIN_STAFF') {
