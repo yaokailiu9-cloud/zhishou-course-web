@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const {handleApi, handleOauthCallback, handlePaymentNotify} = require('./server/h5');
+const {handleMemberStatus} = require('./server/member-status');
 
 const WEB_ROOT = path.join(__dirname, 'web');
 const MIME_TYPES = {
@@ -81,7 +82,7 @@ function createServer() {
       json(res, 200, {
         ok: true,
         service: 'zhishou-course-web',
-        release: '2026.09.24.1'
+        release: '2026.09.24.2'
       });
       return;
     }
@@ -91,6 +92,10 @@ function createServer() {
     }
     if (url.pathname === '/api/h5') {
       await handleApi(req, res);
+      return;
+    }
+    if (url.pathname === '/api/member-status') {
+      await handleMemberStatus(req, res, url);
       return;
     }
     if (url.pathname === '/api/wechat-pay-notify') {

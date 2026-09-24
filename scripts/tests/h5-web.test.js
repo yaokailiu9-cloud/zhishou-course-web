@@ -174,6 +174,53 @@ test('课程管理仍只经后端工作人员操作',async()=>{
   assert.match(server,/invoke\(session\.jwt, "SAVE_CLASS"/);
 });
 
+test('会员身份接口只接受五或六位 ID，并按两个已核实名单返回 1 或 0', async t => {
+  const originalFetch=global.fetch;
+  const calls=[];
+  global.fetch=async(url,options)=>{
+    const body=JSON.parse(options.body);
+    calls.push({url:String(url),options,body});
+    const found=body.variables.id==='12345';
+    return {
+      ok:true,
+      text:async()=>JSON.stringify({data:{users:found?[{id:'record'}]:[],whitelist:[]}})
+    };
+  };
+  t.after(()=>{ global.fetch=originalFetch; });
+  const server=createServer();
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+
+  const found=await request(server,'/api/member-status?id=12345');
+  assert.equal(found.status,200);
+  assert.equal(found.body,'1');
+  assert.equal(found.headers['access-control-allow-origin'],'*');
+  const missing=await request(server,'/api/member-status?id=654321');
+  assert.equal(missing.status,200);
+  assert.equal(missing.body,'0');
+  const invalid=await request(server,'/api/member-status?id=1234');
+  assert.equal(invalid.status,400);
+  assert.equal(invalid.body,'0');
+  assert.equal(calls.length,2);
+  assert.equal(calls[0].url,'https://zion-app.functorz.com/zero/bZ7yl9DZ4YY/api/graphql-v2');
+  assert.equal(Object.hasOwn(calls[0].options.headers,'authorization'),false);
+  assert.match(calls[0].body.query,/ud_yonghuxinxi_89e7ab/);
+  assert.match(calls[0].body.query,/ud_gongzhonghaoxueyuanbaimingdan_9a7b8b/);
+});
+
+test('会员身份上游异常不会误报为会员', async t => {
+  const originalFetch=global.fetch;
+  global.fetch=async()=>({ok:false,text:async()=>'{"errors":[{"message":"unavailable"}]}' });
+  t.after(()=>{ global.fetch=originalFetch; });
+  const server=createServer();
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const response=await request(server,'/api/member-status?id=12345');
+  assert.equal(response.status,502);
+  assert.equal(response.body,'0');
+  assert.equal(response.headers['x-member-check-error'],'upstream');
+});
+
 test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   const server=createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -183,7 +230,7 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   assert.deepEqual(JSON.parse(health.body),{
     ok:true,
     service:'zhishou-course-web',
-    release:'2026.09.24.1'
+    release:'2026.09.24.2'
   });
   const wechatVerify=await request(server,'/MP_verify_GFzG9U79F1ySzmh4.txt');
   assert.equal(wechatVerify.status,200);
