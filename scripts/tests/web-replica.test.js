@@ -70,6 +70,13 @@ test('all registered pages are bundled from the exact current mini-program sourc
   for(const route of manifest.pages)assert.ok(fs.existsSync(path.join(ROOT,'web/replica',route.split('/')[1]+'.css')));
   assert.doesNotMatch(read('web/replica/base.css'),/##page|\d+rpx/);
 });
+test('网页课程日期和时间选择器参与表单提交',async()=>{
+  const h=await host();h.host.wx.navigateTo({url:'/pages/course-edit/course-edit?id=6'});await tick();
+  h.host.current.setData({allowed:true,loading:false});await tick();
+  const form=h.document.querySelector('form');
+  for(const name of ['date','time','closeDate','closeTime','checkinDate','checkinTime'])
+    assert.ok(form.querySelector(`.web-picker-control[name="${name}"]`),`${name} must be a named form control`);
+});
 test('微信网页扫码使用官方扫一扫并将个人码交回签到页，取消可再次扫描',async()=>{
   const h=await host({navigator:{userAgent:'MicroMessenger'}});let ready,config,scan,out,failure;
   h.context.wx={config:r=>{config=r;ready();},ready:fn=>{ready=fn;},error(){},scanQRCode:r=>{scan=r;}};

@@ -1,10 +1,11 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const {readableError}=require('../../utils/serviceError');
 const presentation=require('../../utils/coursePresentation');
-function setup(call=async()=>({id:'123'})){
+function setup(call=async()=>({id:'123'}),readClass){
  let p;const modals=[];
+ const checkedCall=(op,value)=>op==='GET_STAFF_CLASS'?Promise.resolve({classInfo:readClass||{id:'123',revision:2,status:'PUBLISHED',registration_closes_at:presentation.iso(p.data.form.closeDate,p.data.form.closeTime)}}):call(op,value);
  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../pages/course-edit/course-edit.js'),'utf8'),{
-  Page:v=>p=v,require:n=>n.includes('coursePresentation')?presentation:n.includes('consultationService')?{call,error:(page,e)=>page.setData({error:readableError(e.message)})}:n.endsWith('/auth')?{requireLogin:()=>true}:{},
+  Page:v=>p=v,require:n=>n.includes('coursePresentation')?presentation:n.includes('consultationService')?{call:checkedCall,error:(page,e)=>page.setData({error:readableError(e.message)}),formatTime:value=>value}:n.endsWith('/auth')?{requireLogin:()=>true}:{},
   wx:{showToast(){},pageScrollTo(){},enableAlertBeforeUnload(){},disableAlertBeforeUnload(){},showModal:v=>modals.push(v)},encodeURIComponent
  });
  p.data=structuredClone(p.data);p.setData=function(patch){for(const[k,v]of Object.entries(patch)){const keys=k.split('.');let obj=this.data;for(const key of keys.slice(0,-1))obj=obj[key];obj[keys.at(-1)]=v;}};
@@ -63,6 +64,14 @@ test('发布失败弹出可读业务原因，保留草稿并恢复按钮',async(
  const {p,modals}=setup(async()=>{throw Error('org.graalvm.polyglot.PolyglotException: Error: 当前账号没有这项工作人员权限');});
  await p.publish();assert.equal(p.data.publishError,'当前账号没有这项工作人员权限');assert.equal(modals[0].content,p.data.publishError);
  assert.equal(p.data.busy,false);assert.equal(p.data.form.title,'发布回归验证');assert.equal(p.classId,undefined);
+});
+test('报名截止时间未写入后端时不显示保存成功',async()=>{
+ const {p}=setup(async()=>({id:'123'}),{id:'123',revision:2,status:'PUBLISHED',registration_closes_at:'2099-01-01T22:00:00+08:00'});
+ Object.assign(p.data.form,{date:'2099-01-02',closeDate:'2099-01-01',closeTime:'23:30'});
+ await p.publish();
+ assert.match(p.data.publishError,/报名截止时间未在后端生效/);
+ assert.equal(p.data.saveNotice,'');
+ assert.equal(p.data.form.closeTime,'23:30');
 });
 test('仅解包已知业务错误，异常堆栈及未知技术细节不透出',()=>{
  for(const message of ['请先微信登录','请选择未来的开课时间再发布','课程名称填写不完整或过长','课程已被更新，请刷新后再修改']){

@@ -3,8 +3,10 @@ const { decorate, formatTime } = require('./consultationService');
 function classCard(value) {
   const c=decorate(value || {});
   const registrationFee=Math.max(0,Number(c.registration_fee||0));
+  const deadline=formatTime(c.registration_closes_at || c.starts_at);
+  const deadlineCopy=text=>String(text||'').replace(/报名截止时间[:：]\s*[^\n。]*截止报名[。.]?/g,`报名截止时间：${deadline}截止报名。`);
   return {...c,registrationFee,feeText:registrationFee>0?`￥${registrationFee.toFixed(2)}`:'免费',isPaid:registrationFee>0, placeText:c.city ? c.city+' · 详细地址群内通知' : '详细地址将在课程群内通知',
-    deadlineText:formatTime(c.registration_closes_at || c.starts_at),
+    description:deadlineCopy(c.description),notice:deadlineCopy(c.notice),deadlineText:deadline,
     coverUrl:c.cover && c.cover.url || '', shareCodeUrl:c.share_code && c.share_code.url || ''};
 }
 function isUpcomingClass(value, now) {

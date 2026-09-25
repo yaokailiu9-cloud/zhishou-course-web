@@ -113,7 +113,7 @@
         el.classList.add('web-picker');
         const select=document.createElement(['date','time'].includes(values.mode)?'input':'select');select.className='web-picker-control';select.disabled=!!values.disabled;
         select.setAttribute('aria-label',el.textContent.trim()||'选择');
-        if(select.tagName==='INPUT'){select.type=values.mode;select.value=values.value||'';if(values.end)select.max=values.end;if(values.start)select.min=values.start}
+        if(select.tagName==='INPUT'){select.type=values.mode;select.value=values.value||'';if(values.name)select.name=values.name;if(values.end)select.max=values.end;if(values.start)select.min=values.start}
         else{(values.range||[]).forEach((item,i)=>{const option=document.createElement('option');option.value=i;option.textContent=values['range-key']?item[values['range-key']]:item;select.append(option)});select.value=values.value||0}
         select.addEventListener('change',event=>{event.stopPropagation();dispatch(page,values.bindchange,el,event,{value:select.value})});
         el.append(select);

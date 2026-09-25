@@ -1,6 +1,6 @@
 const service=require('../../utils/consultationService');const auth=require('../../utils/auth');const zion=require('../../utils/zion');const {dateParts,iso,classShare}=require('../../utils/coursePresentation');
 const empty=()=>({title:'',description:'',date:'',time:'',closeDate:'',closeTime:'',checkinDate:'',checkinTime:'',city:'',capacity:'0',registrationFee:'100',groupGuide:'',contactPhone:'',notice:'',signupUrl:'',coverId:null,groupQrId:null,shareCodeId:null});
-Page({data:{loading:true,busy:false,uploading:false,error:'',allowed:false,hasSavedClass:false,form:empty(),coverUrl:'',groupQrUrl:'',shareCodeUrl:'',savedClass:null,saveNotice:'',publishError:'',status:'DRAFT'},
+Page({data:{loading:true,busy:false,uploading:false,error:'',allowed:false,hasSavedClass:false,form:empty(),coverUrl:'',groupQrUrl:'',shareCodeUrl:'',savedClass:null,saveNotice:'',savedDeadlineText:'',publishError:'',status:'DRAFT'},
  onLoad(q={}){this.classId=q.id||null;this.editVersion=0;this.savedVersion=0;this.refresh();if(require("../../utils/loginReturn").restore(this,"course-edit",this.classId)){this.markEdited();}},
  async refresh(options={}){const version=this.editVersion || 0;const preserve=options.preserve===true || (options.preserve!==false && version!==(this.savedVersion||0));if(!auth.requireLogin('请登录负责课程的工作人员账号。')){this.setData({loading:false});return;}this.setData({loading:true,error:'',allowed:false});try{if(this.classId){const r=await service.call('GET_STAFF_CLASS',{classId:this.classId}),c=r.classInfo,t=dateParts(c.starts_at),d=dateParts(c.registration_closes_at),k=dateParts(c.checkin_closes_at);this.revision=c.revision;this.setData({allowed:true,hasSavedClass:true,savedClass:c,status:c.status,form:{title:c.title||'',description:c.description||'',date:t.date,time:t.time,closeDate:d.date,closeTime:d.time,checkinDate:k.date,checkinTime:k.time,city:c.city||'',capacity:String(c.capacity||0),registrationFee:String(c.registration_fee||0),groupGuide:c.group_guide||'',contactPhone:c.contact_phone||'',notice:c.notice||'',signupUrl:c.signup_url||'',coverId:c.cover&&c.cover.id||null,groupQrId:c.group_qr&&c.group_qr.id||null,shareCodeId:c.share_code&&c.share_code.id||null},coverUrl:c.cover&&c.cover.url||'',groupQrUrl:c.group_qr&&c.group_qr.url||'',shareCodeUrl:c.share_code&&c.share_code.url||'',...((preserve || (this.editVersion || 0)!==version)?{form:this.data.form,coverUrl:this.data.coverUrl,groupQrUrl:this.data.groupQrUrl,shareCodeUrl:this.data.shareCodeUrl}: {})});}else{await service.call('STAFF_CLASSES');this.setData({allowed:true});}}catch(e){service.error(this,e);}finally{this.setData({loading:false});}},
  markEdited(){this.editVersion=(this.editVersion||0)+1;if(wx.enableAlertBeforeUnload)wx.enableAlertBeforeUnload({message:'课程内容尚未保存，确定离开吗？'});},
@@ -27,20 +27,28 @@ Page({data:{loading:true,busy:false,uploading:false,error:'',allowed:false,hasSa
   if(checkin&&(!start||!Number.isFinite(Date.parse(checkin))||Date.parse(checkin)<Date.parse(start))){this.showFormError('签到截止时间不能早于开课时间');return;}
   if(f.contactPhone.trim()&&!/^1[3-9]\d{9}$/.test(f.contactPhone.trim())){this.showFormError('联系手机号请填写有效的11位号码，或留空');return;}
   if(Number(f.capacity)>0&&Number(f.capacity)<Number(this.data.savedClass&&this.data.savedClass.reserved_count||0)){this.showFormError('名额不能少于已报名人数');return;}
-  this.setData({busy:true,error:'',publishError:'',saveNotice:''});
+  this.setData({busy:true,error:'',publishError:'',saveNotice:'',savedDeadlineText:''});
+  let committed=false;
   try{
    const r=await service.call('SAVE_CLASS',{...f,id:this.classId,revision:this.revision,status,startsAt:iso(f.date,f.time),registrationClosesAt:iso(f.closeDate,f.closeTime),checkinClosesAt:iso(f.checkinDate,f.checkinTime)});
+   committed=true;
    this.classId=r.id;
-   // Preserve the committed result even if the follow-up read fails; do not suggest creating it again.
-   this.setData({hasSavedClass:true,status,savedClass:{id:r.id,title:f.title,status,coverUrl:this.data.coverUrl},saveNotice:status==='PUBLISHED'?'课程已发布，可直接微信分享给朋友或群。':status==='DRAFT'?'草稿已保存，发布后即可邀请报名。':'已结束本场报名。'});
+   const checked=await service.call('GET_STAFF_CLASS',{classId:r.id});
+   const saved=checked.classInfo;
+   if(!saved)throw new Error('课程已提交，但未能重新读取课程数据。请稍后重新读取。');
+   this.revision=saved.revision;
+   const expected=registration?Date.parse(registration):null;
+   const actual=saved.registration_closes_at?Date.parse(saved.registration_closes_at):null;
+   if(expected!==actual)throw new Error('报名截止时间未在后端生效，请重试保存。');
+   this.setData({hasSavedClass:true,status:saved.status,savedClass:saved,savedDeadlineText:saved.registration_closes_at?service.formatTime(saved.registration_closes_at):'未单独设置（开课时截止）',saveNotice:status==='PUBLISHED'?'课程已发布，报名截止时间已核对。':status==='DRAFT'?'草稿已保存，报名截止时间已核对。':'已结束本场报名，截止时间已核对。'});
    wx.showToast({title:status==='PUBLISHED'?'已发布':'已保存',icon:'success'});
    this.savedVersion=version;
    await this.refresh({preserve:(this.editVersion||0)!==version});
    if((this.editVersion||0)!==version)this.setData({saveNotice:'已保存提交时的版本，新增修改仍待保存。'});
    else if(wx.disableAlertBeforeUnload)wx.disableAlertBeforeUnload();
-   if(this.data.error)this.setData({error:'课程已保存，但重新读取失败。请重试读取，不必重复新建。'});
+   if(this.data.error)this.setData({error:'课程及截止时间已保存，但页面重新读取失败。请重试读取。'});
    if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:0,duration:200});
-  }catch(e){service.error(this,e);this.showFormError(this.data.error);if(wx.showModal)wx.showModal({title:'课程未发布或保存',content:this.data.error,showCancel:false,confirmText:'返回修改'});}finally{this.setData({busy:false});}
+  }catch(e){service.error(this,e);this.showFormError(committed?(e.message==='报名截止时间未在后端生效，请重试保存。'?e.message:'课程已提交，但尚未核对到后端数据。请重新读取后确认。'):this.data.error);if(wx.showModal)wx.showModal({title:committed?'课程保存待核实':'课程未发布或保存',content:this.data.error,showCancel:false,confirmText:'返回修改'});}finally{this.setData({busy:false});}
  },
  onShareAppMessage(){return classShare(this.data.savedClass);},
  preview(){if(this.classId)wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id='+this.classId});}
