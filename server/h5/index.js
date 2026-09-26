@@ -138,10 +138,11 @@ async function wechatJsapiTicket() {
   if (wechatJsapiCache.ticket && wechatJsapiCache.ticketExpiresAt > now) return wechatJsapiCache.ticket;
   let accessToken = wechatJsapiCache.accessToken;
   if (!accessToken || wechatJsapiCache.accessExpiresAt <= now) {
+    if (!wechatAppSecret()) throw new Error("AUTH:微信扫一扫未配置公众号 AppSecret");
     const tokenUrl = new URL("https://api.weixin.qq.com/cgi-bin/token");
-    tokenUrl.search = new URLSearchParams({grant_type:"client_credential", appid:wechatAppId(), secret:required("WECHAT_OA_APP_SECRET")}).toString();
+    tokenUrl.search = new URLSearchParams({grant_type:"client_credential", appid:wechatAppId(), secret:wechatAppSecret()}).toString();
     const token = await jsonRequest(tokenUrl);
-    if (token.errcode || !token.access_token) throw new Error("AUTH:微信分享配置暂不可用");
+    if (token.errcode || !token.access_token) throw new Error(`AUTH:微信扫一扫获取 access_token 失败（错误码 ${Number(token.errcode)||'未知'}）`);
     accessToken = token.access_token;
     wechatJsapiCache.accessToken = accessToken;
     wechatJsapiCache.accessExpiresAt = now + Math.max(60, Number(token.expires_in || 7200) - 120) * 1000;
@@ -149,7 +150,10 @@ async function wechatJsapiTicket() {
   const ticketUrl = new URL("https://api.weixin.qq.com/cgi-bin/ticket/getticket");
   ticketUrl.search = new URLSearchParams({access_token:accessToken, type:"jsapi"}).toString();
   const result = await jsonRequest(ticketUrl);
-  if (result.errcode || !result.ticket) throw new Error("AUTH:微信分享配置暂不可用");
+  if (result.errcode || !result.ticket) {
+    if ([40001,40014,42001].includes(Number(result.errcode))) wechatJsapiCache = {accessToken:"",accessExpiresAt:0,ticket:"",ticketExpiresAt:0};
+    throw new Error(`AUTH:微信扫一扫获取 jsapi_ticket 失败（错误码 ${Number(result.errcode)||'未知'}）`);
+  }
   wechatJsapiCache.ticket = result.ticket;
   wechatJsapiCache.ticketExpiresAt = now + Math.max(60, Number(result.expires_in || 7200) - 120) * 1000;
   return result.ticket;

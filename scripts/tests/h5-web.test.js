@@ -97,6 +97,18 @@ test('微信课程卡片签名固定且只接受本站网页地址',()=>{
   assert.throws(()=>shareUrlForRequest(req,'https://evil.example/web/'),/分享地址无效/);
 });
 
+test('微信签名接口明确区分缺少凭据与微信接口错误码',async t=>{
+  const originalFetch=global.fetch,originalOfficial=process.env.WECHAT_OA_APP_SECRET,originalLegacy=process.env.WECHAT_APP_SECRET;
+  delete process.env.WECHAT_OA_APP_SECRET;delete process.env.WECHAT_APP_SECRET;
+  const server=createServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  t.after(async()=>{global.fetch=originalFetch;if(originalOfficial===undefined)delete process.env.WECHAT_OA_APP_SECRET;else process.env.WECHAT_OA_APP_SECRET=originalOfficial;if(originalLegacy===undefined)delete process.env.WECHAT_APP_SECRET;else process.env.WECHAT_APP_SECRET=originalLegacy;await new Promise(resolve=>server.close(resolve));});
+  const path='/api/h5?action=share-signature&url='+encodeURIComponent(`https://127.0.0.1:${server.address().port}/web/`);
+  let response=await request(server,path);assert.equal(response.status,500);assert.match(JSON.parse(response.body).message,/未配置公众号 AppSecret/);
+  process.env.WECHAT_OA_APP_SECRET='test-only-secret';
+  global.fetch=async()=>({ok:true,text:async()=>JSON.stringify({errcode:40164,errmsg:'secret must never be shown'})});
+  response=await request(server,path);assert.equal(response.status,500);assert.match(JSON.parse(response.body).message,/错误码 40164/);assert.doesNotMatch(response.body,/secret must never be shown|test-only-secret/);
+});
+
 test('微信回调 code 只交给 Zion loginWithWechat 换取业务会话',async t=>{
   const originalFetch=global.fetch;
   const originalSecret=process.env.WECHAT_OA_APP_SECRET;

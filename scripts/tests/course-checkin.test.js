@@ -32,4 +32,6 @@ test('真实页面参数：选人、核对、确认、刷新人数与重复扫�
   const wx={showToast(){},showModal:r=>r.success({confirm:true}),scanCode:r=>{pending=r.success({result:scan});}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../pages/checkin/checkin.js'),'utf8'),{Page:p=>page=p,require:r=>r.includes('consultationService')?service:r.includes('/auth')?{requireLogin:()=>true}:{capture:()=>actor,current:a=>a===actor},wx,encodeURIComponent});
   page.setData=v=>Object.assign(page.data,v);page.onLoad({id:20});await page.onShow();assert.equal(page.data.isManager,true);assert.equal(page.data.items.find(x=>x.id===30).phone,'13800000000');await page.saveStaff(3,true);actor=3;await page.onShow();assert.equal(page.data.isManager,false);page.scan();await pending;assert.equal(page.data.candidate.name,'家长甲');assert.equal(page.data.candidate.phone,'13800000000');await page.confirmScan();assert.equal(page.data.stats.remaining,1);assert.equal(page.data.scanResult.title,'签到成功');page.scan();await pending;await page.confirmScan();assert.equal(page.data.scanResult.title,'已签到，无需重复');
+  page.inputEntryCode({detail:{value:'abc'}});page.manualLookup();assert.match(page.data.error,/24 位/);
+  page.inputEntryCode({detail:{value:'b'.repeat(24)}});await page.manualLookup();assert.equal(page.data.candidate.name,'家长乙');assert.equal(page.scanValue,'B'.repeat(24));
 });

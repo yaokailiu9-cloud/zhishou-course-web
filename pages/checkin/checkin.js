@@ -3,15 +3,16 @@ const auth = require('../../utils/auth');
 const session = require('../../utils/viewSession');
 
 Page({
-  data: {loading:false,busy:false,error:'',allowed:false,isManager:false,classId:'',classInfo:null,items:[],stats:{registered:0,attended:0,remaining:0},search:'',filter:'ALL',nextCursor:null,candidate:null,scanResult:null,staffOpen:false,staff:[],staffLoading:false,staffSearch:'',candidates:[],candidateCursor:null,staffError:'',tabs:[{key:'ALL',label:'全部报名'},{key:'REMAINING',label:'未签到'},{key:'ATTENDED',label:'已签到'}]},
+  data: {loading:false,busy:false,error:'',allowed:false,isManager:false,classId:'',classInfo:null,items:[],stats:{registered:0,attended:0,remaining:0},search:'',entryCode:'',filter:'ALL',nextCursor:null,candidate:null,scanResult:null,staffOpen:false,staff:[],staffLoading:false,staffSearch:'',candidates:[],candidateCursor:null,staffError:'',tabs:[{key:'ALL',label:'全部报名'},{key:'REMAINING',label:'未签到'},{key:'ATTENDED',label:'已签到'}]},
   onLoad(q={}) { this.setData({classId:q.id||''}); },
-  onShow() { this.scanValue=null;this.setData({allowed:false,isManager:false,items:[],classInfo:null,candidate:null,scanResult:null,staffOpen:false,staff:[],candidates:[]});return this.refresh(); },
-  onHide() { this.generation=(this.generation||0)+1;this.scanValue=null;this.setData({candidate:null,busy:false,staff:[],candidates:[]}); },
+  onShow() { this.scanValue=null;this.setData({allowed:false,isManager:false,items:[],classInfo:null,candidate:null,scanResult:null,entryCode:'',staffOpen:false,staff:[],candidates:[]});return this.refresh(); },
+  onHide() { this.generation=(this.generation||0)+1;this.scanValue=null;this.setData({candidate:null,busy:false,entryCode:'',staff:[],candidates:[]}); },
   onUnload() { this.onHide(); },
   refresh() { return this.load(false); },
   more() { return this.load(true); },
   inputSearch(e) { this.setData({search:e.detail.value}); },
   filter(e) { if(this.data.busy)return;this.setData({filter:e.currentTarget.dataset.key});return this.refresh(); },
+  inputEntryCode(e) { this.setData({entryCode:e.detail.value}); },
   openClass(e) { wx.navigateTo({url:'/pages/checkin/checkin?id='+encodeURIComponent(e.currentTarget.dataset.id)}); },
   async load(more) {
     const generation=this.generation=(this.generation||0)+1, identity=session.capture();
@@ -33,15 +34,23 @@ Page({
     if(this.data.busy||!this.data.allowed)return;
     const identity=session.capture(),generation=this.generation;
     this.setData({busy:true,error:'',candidate:null,scanResult:null});this.scanValue=null;
-    wx.scanCode({onlyFromCamera:true,scanType:['qrCode'],success:async r=>{
+    wx.scanCode({onlyFromCamera:true,scanType:['qrCode'],success:r=>this.lookupEntryCode(r.result,identity,generation),fail:e=>{if(!session.current(identity)||generation!==this.generation)return;this.setData({busy:false,error:/cancel/i.test(e.errMsg||'')?'':'微信扫一扫暂不可用，请拍照识码或输入入场码。'});}});
+  },
+  manualLookup() {
+    if(this.data.busy||!this.data.allowed||!this.data.classId)return;
+    const code=String(this.data.entryCode||'').trim().toUpperCase();
+    if(!/^[A-Z2-9]{24}$/.test(code)){this.setData({error:'请输入凭证下方的 24 位个人入场码。'});return;}
+    this.setData({busy:true,error:'',candidate:null,scanResult:null});this.scanValue=null;
+    return this.lookupEntryCode(code,session.capture(),this.generation);
+  },
+  async lookupEntryCode(code,identity,generation) {
+    if(!session.current(identity)||generation!==this.generation)return;
+    try {
+      const out=await service.call('CHECKIN_LOOKUP',{classId:this.data.classId,entryCode:code});
       if(!session.current(identity)||generation!==this.generation)return;
-      try {
-        const out=await service.call('CHECKIN_LOOKUP',{classId:this.data.classId,entryCode:r.result});
-        if(!session.current(identity)||generation!==this.generation)return;
-        this.scanValue=r.result;this.setData({candidate:out.enrollment,stats:out.stats});
-      } catch(e) { if(session.current(identity)&&generation===this.generation)service.error(this,e); }
-      finally { if(session.current(identity)&&generation===this.generation)this.setData({busy:false}); }
-    },fail:e=>{if(!session.current(identity)||generation!==this.generation)return;this.setData({busy:false,error:/cancel/i.test(e.errMsg||'')?'':'无法扫码，请允许相机权限后重试。'});}});
+      this.scanValue=code;this.setData({candidate:out.enrollment,stats:out.stats,entryCode:''});
+    } catch(e) { if(session.current(identity)&&generation===this.generation)service.error(this,e); }
+    finally { if(session.current(identity)&&generation===this.generation)this.setData({busy:false}); }
   },
   closeScan() {this.scanValue=null;this.setData({candidate:null});},
   async confirmScan() {

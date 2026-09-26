@@ -26,4 +26,6 @@ Vercel 发布时执行根目录 `build-vercel-public.js`，把同一份 `web/` �
 
 公众号后台需要把 `PUBLIC_ORIGIN` 的域名配置为网页授权域名。回调地址固定为 `/api/wechat-oauth-callback`。生产环境通过服务器端 OAuth 使用公众号 AppID 与 AppSecret，Zion 继续保存账号、报名与推荐关系。
 
+签到页在微信内调用扫一扫前，还需要公众号的 JS-SDK 签名。正式域名必须另行配置为公众号的「JS 接口安全域名」，部署服务也必须能用该公众号的 AppID / AppSecret 获取 `access_token` 和 `jsapi_ticket`。可用 `GET /api/h5?action=share-signature&url=https%3A%2F%2Fwww.apply.tianqiwushu.cn%2Fweb%2F` 核对签名接口：应返回 `ok:true`；若返回 500，先根据响应中的缺失配置或微信错误码核查公众号凭据及接口调用权限。签名接口正常但微信仍拒绝配置时，再核查 JS 接口安全域名。签到页保留拍照识码及手输报名凭证下方入场码的入口。
+
 推荐链接的 `ref` 参数是服务端签名值。用户首次通过推荐链接完成微信登录时写入推荐关系；后端唯一约束确保一名用户只能锁定一个推荐人。用户只能经动作流读取自己发出的直属推荐关系。
