@@ -79,7 +79,7 @@ test('网页课程日期和时间选择器参与表单提交',async()=>{
 });
 test('微信网页扫码使用官方扫一扫并将个人码交回签到页，取消可再次扫描',async()=>{
   const h=await host({navigator:{userAgent:'MicroMessenger'}});let ready,config,scan,out,failure;
-  h.context.wx={config:r=>{config=r;ready();},ready:fn=>{ready=fn;},error(){},scanQRCode:r=>{scan=r;}};
+  h.context.wx={config:r=>{config=r;ready();},ready:fn=>{ready=fn;},error(){},updateAppMessageShareData(){throw new Error('分享菜单不可用')},scanQRCode:r=>{scan=r;}};
   await h.host.wx.scanCode({success:r=>out=r,fail:r=>failure=r});
   assert.ok(config.jsApiList.includes('scanQRCode'));assert.equal(scan.needResult,1);
   scan.success({resultStr:'EMPATH-ENTRY:'+'A'.repeat(24)});assert.equal(out.result,'EMPATH-ENTRY:'+'A'.repeat(24));
@@ -108,8 +108,19 @@ test('微信签名未配置时明确提示拍照识码，点击后仍能进入�
   h.context.fetch=async()=>({ok:false,json:async()=>({ok:false,message:'配置暂不可用'})});
   const original=h.document.createElement.bind(h.document);let input,failure;
   h.document.createElement=tag=>{const el=original(tag);if(tag==='input'){input=el;el.click=()=>{};}return el;};
-  await h.host.wx.scanCode({fail:r=>failure=r});assert.match(h.document.querySelector('#modal').textContent,/拍照识码/);
+  await h.host.wx.scanCode({fail:r=>failure=r});assert.match(h.document.querySelector('#modal').textContent,/配置暂不可用/);
   h.document.querySelector('#modal .modal-actions button:last-child').onclick();assert.equal(input.capture,'environment');input.oncancel();assert.equal(failure.errMsg,'cancel');
+});
+test('微信配置和扫一扫的原始错误可在拍照兜底提示中定位',async()=>{
+  const h=await host({navigator:{userAgent:'MicroMessenger'}});let report;
+  h.context.wx={config(){report({errMsg:'config:invalid url domain'})},ready(){},error:fn=>{report=fn}};
+  await h.host.wx.scanCode({});
+  assert.match(h.document.querySelector('#modal').textContent,/JS 接口安全域名未通过/);
+  assert.match(h.document.querySelector('#modal').textContent,/config:invalid url domain/);
+  h.document.querySelector('#modal .modal-actions button:first-child').onclick();
+  let scan;h.context.wx={config(){},ready:fn=>fn(),error(){},scanQRCode:fn=>{scan=fn}};
+  await h.host.wx.scanCode({});scan.fail({errMsg:'scanQRCode:fail no permission'});
+  assert.match(h.document.querySelector('#modal').textContent,/扫一扫调用：scanQRCode:fail no permission/);
 });
 test('home renders source content, real tab navigation, and all page modules without JS errors',async()=>{
   const h=await host();assert.match(h.document.getElementById('page').textContent,/透过现象看本质/);

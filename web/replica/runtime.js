@@ -187,7 +187,7 @@
     page.setCustomNav=function(){this.setData({statusBarHeight:12,navHeight:76,navPaddingRight:0})};
     stack.push(page);showPage(page);
     if(!fromHistory){const hash='#/'+route+(Object.keys(options).length?'?'+new URLSearchParams(options):'');history[mode==='replace'?'replaceState':'pushState']({route},'',location.pathname+location.search+hash)}
-    lifecycle(page,'onLoad',options);lifecycle(page,'onShow').then(()=>{if(page===current&&[HOME,'pages/plaza/plaza','pages/public-class/public-class'].includes(page.route))prepareWechatShare(page).catch(()=>false);});queueMicrotask(()=>lifecycle(page,'onReady'));
+    lifecycle(page,'onLoad',options);lifecycle(page,'onShow').then(()=>{if(page===current&&[HOME,'pages/plaza/plaza','pages/public-class/public-class','pages/checkin/checkin'].includes(page.route))prepareWechatShare(page).catch(()=>false);});queueMicrotask(()=>lifecycle(page,'onReady'));
   }
   function back(){if(stack.length>1){if(unloadMessage){wx.showModal({title:'尚未保存',content:unloadMessage,success:r=>{if(r.confirm){unloadMessage='';history.back()}}});return}history.back()}else navigate('/'+HOME,'tab')}
   window.addEventListener('popstate',()=>{unloadMessage='';const {route,options}=parseRoute(location.hash);const previous=stack[stack.length-2];if(previous&&previous.route===route&&JSON.stringify(previous.options)===JSON.stringify(options)){lifecycle(current,'onUnload');stack.pop();showPage(previous);lifecycle(previous,'onShow')}else navigate(location.hash,'replace',true)});
@@ -234,11 +234,12 @@
       wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);let response,result;
         try{response=await fetch('/api/h5?action=share-signature&url='+encodeURIComponent(signedUrl),{credentials:'same-origin',signal:controller.signal});result=await response.json();}finally{clearTimeout(timeout)}
         if(!response.ok||!result.ok)throw new Error(result.message||'微信分享配置失败');
-        await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('微信组件配置超时')),12000);window.wx.ready(()=>{clearTimeout(timer);resolve()});window.wx.error(error=>{clearTimeout(timer);reject(error)});window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData','scanQRCode']})});return true;})().catch(error=>{wechatShareReady=null;throw error});
+        await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('微信组件配置超时')),12000);window.wx.ready(()=>{clearTimeout(timer);resolve()});window.wx.error(error=>{clearTimeout(timer);reject(new Error('微信 JS-SDK 配置失败：'+(error?.errMsg||error?.message||'未知原因')))});window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData','scanQRCode']})});return true;})().catch(error=>{wechatShareReady=null;throw error});
     }
     await wechatShareReady;
     const data={title:details.title,desc:details.desc,link:details.url.href,imgUrl:details.image};
-    window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image});
+    // Sharing is optional on the check-in screen; a share-menu failure must not disable scanning.
+    try{window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image})}catch(error){console.warn('微信分享菜单更新失败',error)}
     return true;
   }
   function showReferralPoster({url,title,name='',kind='course'}){
@@ -283,7 +284,13 @@
     input.oncancel=()=>finish({errMsg:'cancel'},true);
     try{input.click()}catch(_){finish({errMsg:'无法打开相机，请输入入场码。'},true)}
   }
-  function offerScanImage(o){modal({title:'使用拍照识码',content:'微信扫一扫暂不可用。可以拍摄用户的个人入场二维码继续签到，请保持画面清晰。',confirmText:'拍照识码',success:r=>{if(r.confirm)scanImage(o);else complete(o,{errMsg:'cancel'},true)}})}
+  function scanErrorReason(error){
+    const message=String(error?.errMsg||error?.message||error||'未知原因').replace(/https?:\/\/[^\s)]+/gi,'[链接]').slice(0,160);
+    if(/invalid.*url domain|url.*not.*domain/i.test(message))return 'JS 接口安全域名未通过（'+message+'）';
+    if(/invalid.*signature/i.test(message))return '签名校验未通过（'+message+'）';
+    return message;
+  }
+  function offerScanImage(o,error,stage='微信组件准备'){modal({title:'使用拍照识码',content:'微信扫一扫暂不可用。'+stage+'：'+scanErrorReason(error)+'。可以拍摄用户的个人入场二维码继续签到，请保持画面清晰。',confirmText:'拍照识码',success:r=>{if(r.confirm)scanImage(o);else complete(o,{errMsg:'cancel'},true)}})}
   const wx={
     getStorageSync:key=>storage.get(key)||'',setStorageSync:(key,val)=>storage.set(key,val),removeStorageSync:key=>storage.delete(key),
     getSystemInfoSync:()=>({windowWidth:Math.min(innerWidth,430),windowHeight:innerHeight,statusBarHeight:12,platform:'web',pixelRatio:devicePixelRatio,safeArea:{bottom:innerHeight}}),
@@ -342,7 +349,7 @@
     createCanvasContext:id=>{const commands=[];return{setFillStyle:color=>commands.push(ctx=>ctx.fillStyle=color),fillRect:(...args)=>commands.push(ctx=>ctx.fillRect(...args)),draw:(_,callback)=>requestAnimationFrame(()=>{const canvas=document.getElementById(id);if(canvas){const ctx=canvas.getContext('2d');commands.forEach(command=>command(ctx))}callback?.()})}},
     scanCode:async o=>{
       if(/MicroMessenger/i.test(navigator.userAgent)){
-        try{await prepareWechatShare(current);if(!window.wx?.scanQRCode)throw new Error('微信扫码组件不可用');window.wx.scanQRCode({needResult:1,scanType:['qrCode'],success:r=>complete(o,{result:r.resultStr}),fail:e=>{/cancel/i.test(e.errMsg||'')?complete(o,{errMsg:'cancel'},true):offerScanImage(o)},cancel:()=>complete(o,{errMsg:'cancel'},true)});}catch(error){offerScanImage(o)}
+        try{await prepareWechatShare(current);if(!window.wx?.scanQRCode)throw new Error('微信扫码组件不可用');window.wx.scanQRCode({needResult:1,scanType:['qrCode'],success:r=>complete(o,{result:r.resultStr}),fail:e=>{/cancel/i.test(e.errMsg||'')?complete(o,{errMsg:'cancel'},true):offerScanImage(o,e,'扫一扫调用')},cancel:()=>complete(o,{errMsg:'cancel'},true)});}catch(error){offerScanImage(o,error)}
         return;
       }
       scanImage(o);
