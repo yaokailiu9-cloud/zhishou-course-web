@@ -107,6 +107,8 @@ test('微信签名接口明确区分缺少凭据与微信接口错误码',async 
   process.env.WECHAT_OA_APP_SECRET='test-only-secret';
   global.fetch=async()=>({ok:true,text:async()=>JSON.stringify({errcode:40164,errmsg:'secret must never be shown'})});
   response=await request(server,path);assert.equal(response.status,500);assert.match(JSON.parse(response.body).message,/错误码 40164/);assert.doesNotMatch(response.body,/secret must never be shown|test-only-secret/);
+  global.fetch=async()=>({ok:true,text:async()=>JSON.stringify({errcode:40164,errmsg:'invalid ip 203.0.113.42 ipv6 ::ffff:203.0.113.42, not in whitelist; private hint'})});
+  response=await request(server,path);assert.equal(response.status,500);assert.match(JSON.parse(response.body).message,/出口 IP 203\.0\.113\.42 未加入公众号 IP 白名单/);assert.doesNotMatch(response.body,/private hint|test-only-secret/);
 });
 
 test('微信回调 code 只交给 Zion loginWithWechat 换取业务会话',async t=>{

@@ -142,7 +142,11 @@ async function wechatJsapiTicket() {
     const tokenUrl = new URL("https://api.weixin.qq.com/cgi-bin/token");
     tokenUrl.search = new URLSearchParams({grant_type:"client_credential", appid:wechatAppId(), secret:wechatAppSecret()}).toString();
     const token = await jsonRequest(tokenUrl);
-    if (token.errcode || !token.access_token) throw new Error(`AUTH:微信扫一扫获取 access_token 失败（错误码 ${Number(token.errcode)||'未知'}）`);
+    if (token.errcode || !token.access_token) {
+      const code=Number(token.errcode)||'未知';
+      const blockedIp=code===40164 ? String(token.errmsg||'').match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/)?.[0] : '';
+      throw new Error(`AUTH:微信扫一扫获取 access_token 失败（错误码 ${code}${blockedIp?`；出口 IP ${blockedIp} 未加入公众号 IP 白名单`:''}）`);
+    }
     accessToken = token.access_token;
     wechatJsapiCache.accessToken = accessToken;
     wechatJsapiCache.accessExpiresAt = now + Math.max(60, Number(token.expires_in || 7200) - 120) * 1000;
