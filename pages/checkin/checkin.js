@@ -5,8 +5,8 @@ const session = require('../../utils/viewSession');
 Page({
   data: {loading:false,busy:false,error:'',allowed:false,isManager:false,classId:'',classInfo:null,items:[],stats:{registered:0,attended:0,remaining:0},search:'',entryCode:'',filter:'ALL',nextCursor:null,candidate:null,scanResult:null,staffOpen:false,staff:[],staffLoading:false,staffSearch:'',candidates:[],candidateCursor:null,staffError:'',tabs:[{key:'ALL',label:'全部报名'},{key:'REMAINING',label:'未签到'},{key:'ATTENDED',label:'已签到'}]},
   onLoad(q={}) { this.setData({classId:q.id||''}); },
-  onShow() { this.scanValue=null;this.setData({allowed:false,isManager:false,items:[],classInfo:null,candidate:null,scanResult:null,entryCode:'',staffOpen:false,staff:[],candidates:[]});return this.refresh(); },
-  onHide() { this.generation=(this.generation||0)+1;this.scanValue=null;this.setData({candidate:null,busy:false,entryCode:'',staff:[],candidates:[]}); },
+  onShow() { clearTimeout(this.scanTimer);this.scanAttempt=(this.scanAttempt||0)+1;this.scanValue=null;this.setData({busy:false,allowed:false,isManager:false,items:[],classInfo:null,candidate:null,scanResult:null,entryCode:'',staffOpen:false,staff:[],candidates:[]});return this.refresh(); },
+  onHide() { clearTimeout(this.scanTimer);this.scanAttempt=(this.scanAttempt||0)+1;this.generation=(this.generation||0)+1;this.scanValue=null;this.setData({candidate:null,busy:false,entryCode:'',staff:[],candidates:[]}); },
   onUnload() { this.onHide(); },
   refresh() { return this.load(false); },
   more() { return this.load(true); },
@@ -32,9 +32,11 @@ Page({
   },
   scan() {
     if(this.data.busy||!this.data.allowed)return;
-    const identity=session.capture(),generation=this.generation;
+    const identity=session.capture(),generation=this.generation,attempt=this.scanAttempt=(this.scanAttempt||0)+1;
     this.setData({busy:true,error:'',candidate:null,scanResult:null});this.scanValue=null;
-    wx.scanCode({onlyFromCamera:true,scanType:['qrCode'],success:r=>this.lookupEntryCode(r.result,identity,generation),fail:e=>{if(!session.current(identity)||generation!==this.generation)return;this.setData({busy:false,error:/cancel/i.test(e.errMsg||'')?'':'微信扫一扫暂不可用，请拍照识码或输入入场码。'});}});
+    clearTimeout(this.scanTimer);
+    this.scanTimer=setTimeout(()=>{if(attempt!==this.scanAttempt||!session.current(identity)||generation!==this.generation)return;this.scanAttempt++;this.setData({busy:false,error:'扫码等待超时，请重试或输入入场码。'});},30000);
+    wx.scanCode({onlyFromCamera:true,scanType:['qrCode'],success:r=>{if(attempt!==this.scanAttempt)return;clearTimeout(this.scanTimer);return this.lookupEntryCode(r.result,identity,generation);},fail:e=>{if(attempt!==this.scanAttempt||!session.current(identity)||generation!==this.generation)return;clearTimeout(this.scanTimer);const message=e.errMsg||'';this.setData({busy:false,error:/cancel/i.test(message)?'':/^(未识别到二维码|无法读取照片|照片无效|识码组件未加载|无法打开相机)/.test(message)?message:'微信扫一扫暂不可用，请拍照识码或输入入场码。'});}});
   },
   manualLookup() {
     if(this.data.busy||!this.data.allowed||!this.data.classId)return;

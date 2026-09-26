@@ -1,6 +1,6 @@
 <view class="service-page course-page">
   <view class="service-hero"><text class="eyebrow">现场签到 · 扫码进场</text><text class="page-title">{{classInfo.title || '扫码进场'}}</text><text class="muted">{{classInfo ? classInfo.timeText : '选择课程，查看到场人数与入场名单'}}</text></view>
-  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh" disabled="{{busy}}">重新核实权限</button></view>
+  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh" disabled="{{busy}}">{{allowed ? '刷新签到信息' : '重新核实权限'}}</button></view>
   <block wx:if="{{allowed}}">
     <block wx:if="{{classId}}">
       <view class="course-stats"><view class="course-stat"><text class="number">{{stats.registered}}</text><text>报名总数</text></view><view class="course-stat"><text class="number">{{stats.attended}}</text><text>已签到</text></view><view class="course-stat"><text class="number">{{stats.remaining}}</text><text>未签到</text></view></view>

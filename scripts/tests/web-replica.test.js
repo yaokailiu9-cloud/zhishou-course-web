@@ -90,6 +90,19 @@ test('普通浏览器保留拍照识码入口，取消结束本次扫描',async(
   h.document.createElement=tag=>{const el=original(tag);if(tag==='input'){input=el;el.click=()=>{};}return el;};
   await h.host.wx.scanCode({fail:r=>failure=r});assert.equal(input.accept,'image/*');assert.equal(input.capture,'environment');input.oncancel();assert.equal(failure.errMsg,'cancel');
 });
+test('拍照识码在没有 createImageBitmap 的微信浏览器中仍可读取照片并释放资源',async()=>{
+  const h=await host();const original=h.document.createElement.bind(h.document);let input,canvas,result,revoked=false;
+  h.context.URL={createObjectURL:()=> 'blob:scan-test',revokeObjectURL:()=>{revoked=true}};
+  h.context.jsQR=()=>({data:'EMPATH-ENTRY:'+'A'.repeat(24)});
+  h.document.createElement=tag=>{const el=original(tag);
+    if(tag==='input'){input=el;el.click=()=>{};Object.defineProperty(el,'files',{value:[{type:'image/jpeg'}]});}
+    if(tag==='img'){Object.defineProperties(el,{naturalWidth:{value:2400},naturalHeight:{value:1800},src:{set(){queueMicrotask(()=>el.onload())}}});}
+    if(tag==='canvas'){canvas=el;el.getContext=()=>({drawImage(){},getImageData:()=>({data:new Uint8ClampedArray(4),width:canvas.width,height:canvas.height})});}
+    return el;};
+  await h.host.wx.scanCode({success:r=>result=r});await input.onchange();
+  assert.equal(result.result,'EMPATH-ENTRY:'+'A'.repeat(24));assert.equal(canvas.width,1600);assert.equal(canvas.height,1200);
+  assert.equal(revoked,true);assert.equal(input.parentElement,null);
+});
 test('微信签名未配置时明确提示拍照识码，点击后仍能进入相机入口',async()=>{
   const h=await host({navigator:{userAgent:'MicroMessenger'}});h.context.wx={config(){}};
   h.context.fetch=async()=>({ok:false,json:async()=>({ok:false,message:'配置暂不可用'})});

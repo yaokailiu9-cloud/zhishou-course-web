@@ -231,7 +231,9 @@
     if(!/MicroMessenger/i.test(navigator.userAgent))return false;await loadWechatSdk();
     const details=shareDetails(page);
     if(!wechatShareReady){
-      wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const response=await fetch('/api/h5?action=share-signature&url='+encodeURIComponent(signedUrl));const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||'微信分享配置失败');
+      wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);let response,result;
+        try{response=await fetch('/api/h5?action=share-signature&url='+encodeURIComponent(signedUrl),{credentials:'same-origin',signal:controller.signal});result=await response.json();}finally{clearTimeout(timeout)}
+        if(!response.ok||!result.ok)throw new Error(result.message||'微信分享配置失败');
         await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('微信组件配置超时')),12000);window.wx.ready(()=>{clearTimeout(timer);resolve()});window.wx.error(error=>{clearTimeout(timer);reject(error)});window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData','scanQRCode']})});return true;})().catch(error=>{wechatShareReady=null;throw error});
     }
     await wechatShareReady;
@@ -255,8 +257,31 @@
     const details=shareDetails(page);try{showReferralPoster({url:details.url.href,title:details.title,name:referralContext?.canInvite?session?.user?.name:''});}
     catch(_){wx.showToast({title:'报名二维码生成失败，请重试'});}
   }
+  async function decodeScanImage(file){
+    if(!window.jsQR)throw new Error('识码组件未加载，请刷新重试或输入入场码。');
+    const url=URL.createObjectURL(file),image=document.createElement('img');
+    try{
+      await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('无法读取照片，请重新拍摄或输入入场码。'));image.src=url});
+      const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;
+      if(!width||!height)throw new Error('照片无效，请重新拍摄或输入入场码。');
+      const scale=Math.min(1,1600/Math.max(width,height)),canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+      const context=canvas.getContext('2d');if(!context)throw new Error('无法读取照片，请重新拍摄或输入入场码。');
+      context.drawImage(image,0,0,canvas.width,canvas.height);
+      const pixels=context.getImageData(0,0,canvas.width,canvas.height);
+      const result=window.jsQR(pixels.data,pixels.width,pixels.height);
+      if(!result)throw new Error('未识别到二维码，请将整个入场码拍清楚后重试。');
+      return result.data;
+    }finally{URL.revokeObjectURL(url)}
+  }
   function scanImage(o){
-    const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';input.onchange=async()=>{try{const file=input.files[0];if(!file){complete(o,{errMsg:'cancel'},true);return}const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);const result=window.jsQR(pixels.data,pixels.width,pixels.height);bitmap.close();if(!result)throw new Error('未识别到二维码，请拍摄清晰图片后重试');complete(o,{result:result.data})}catch(error){complete(o,{errMsg:error.message},true)}};input.oncancel=()=>complete(o,{errMsg:'cancel'},true);input.click();
+    const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';
+    input.style.cssText='position:fixed;opacity:0;width:1px;height:1px;pointer-events:none';document.body.append(input);
+    let done=false;const finish=(result,failed)=>{if(done)return;done=true;input.remove();complete(o,result,failed)};
+    input.onchange=async()=>{const file=input.files?.[0];if(!file){finish({errMsg:'cancel'},true);return}
+      try{finish({result:await decodeScanImage(file)},false)}catch(error){finish({errMsg:error.message||'识码失败，请重试或输入入场码。'},true)}};
+    input.oncancel=()=>finish({errMsg:'cancel'},true);
+    try{input.click()}catch(_){finish({errMsg:'无法打开相机，请输入入场码。'},true)}
   }
   function offerScanImage(o){modal({title:'使用拍照识码',content:'微信扫一扫暂不可用。可以拍摄用户的个人入场二维码继续签到，请保持画面清晰。',confirmText:'拍照识码',success:r=>{if(r.confirm)scanImage(o);else complete(o,{errMsg:'cancel'},true)}})}
   const wx={
