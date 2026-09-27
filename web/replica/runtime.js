@@ -291,6 +291,43 @@
     return message;
   }
   function offerScanImage(o,error,stage='微信组件准备'){modal({title:'使用拍照识码',content:'微信扫一扫暂不可用。'+stage+'：'+scanErrorReason(error)+'。可以拍摄用户的个人入场二维码继续签到，请保持画面清晰。',confirmText:'拍照识码',success:r=>{if(r.confirm)scanImage(o);else complete(o,{errMsg:'cancel'},true)}})}
+  async function scanLiveCamera(o,nativeError,stage){
+    if(!navigator.mediaDevices?.getUserMedia||!window.jsQR){offerScanImage(o,nativeError,stage);return}
+    const dialog=$('#live-scanner'),video=dialog.querySelector('video'),canvas=document.createElement('canvas'),context=canvas.getContext('2d');
+    if(!context){offerScanImage(o,nativeError,stage);return}
+    let done=false,stream=null,frame=0,lastRead=-Infinity;
+    const stop=()=>{done=true;if(frame)window.cancelAnimationFrame?.(frame);stream?.getTracks().forEach(track=>track.stop());video.srcObject=null;if(dialog.open)dialog.close()};
+    dialog.querySelector('[data-action="cancel"]').onclick=()=>{stop();complete(o,{errMsg:'cancel'},true)};
+    dialog.querySelector('[data-action="photo"]').onclick=()=>{stop();scanImage(o)};
+    dialog.oncancel=event=>{event.preventDefault();stop();complete(o,{errMsg:'cancel'},true)};
+    dialog.showModal();
+    try{
+      const media=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+      if(done){media.getTracks().forEach(track=>track.stop());return}
+      stream=media;video.srcObject=media;await video.play();
+      const read=time=>{
+        if(done)return;
+        if(video.readyState>=2&&video.videoWidth&&video.videoHeight&&time-lastRead>=120){
+          lastRead=time;const scale=Math.min(1,800/Math.max(video.videoWidth,video.videoHeight));
+          canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
+          context.drawImage(video,0,0,canvas.width,canvas.height);
+          const pixels=context.getImageData(0,0,canvas.width,canvas.height),code=window.jsQR(pixels.data,pixels.width,pixels.height);
+          if(code?.data){stop();complete(o,{result:code.data});return}
+        }
+        frame=requestAnimationFrame(read);
+      };
+      frame=requestAnimationFrame(read);
+    }catch(error){if(!done){stop();offerScanImage(o,new Error(scanErrorReason(nativeError)+'；网页相机：'+scanErrorReason(error)),'扫码')}}
+  }
+  function startWechatScan(o,retried=false){
+    try{window.wx.scanQRCode({needResult:1,scanType:['qrCode'],success:r=>complete(o,{result:r.resultStr}),fail:e=>{
+      if(/cancel/i.test(e.errMsg||'')){complete(o,{errMsg:'cancel'},true);return}
+      if(!retried&&/offline verifying/i.test(e.errMsg||'')){
+        wechatShareReady=null;
+        prepareWechatShare(current).then(()=>setTimeout(()=>startWechatScan(o,true),350)).catch(error=>scanLiveCamera(o,error,'微信组件准备'));
+      }else scanLiveCamera(o,e,'扫一扫调用');
+    },cancel:()=>complete(o,{errMsg:'cancel'},true)})}catch(error){scanLiveCamera(o,error,'扫一扫调用')}
+  }
   const wx={
     getStorageSync:key=>storage.get(key)||'',setStorageSync:(key,val)=>storage.set(key,val),removeStorageSync:key=>storage.delete(key),
     getSystemInfoSync:()=>({windowWidth:Math.min(innerWidth,430),windowHeight:innerHeight,statusBarHeight:12,platform:'web',pixelRatio:devicePixelRatio,safeArea:{bottom:innerHeight}}),
@@ -349,7 +386,7 @@
     createCanvasContext:id=>{const commands=[];return{setFillStyle:color=>commands.push(ctx=>ctx.fillStyle=color),fillRect:(...args)=>commands.push(ctx=>ctx.fillRect(...args)),draw:(_,callback)=>requestAnimationFrame(()=>{const canvas=document.getElementById(id);if(canvas){const ctx=canvas.getContext('2d');commands.forEach(command=>command(ctx))}callback?.()})}},
     scanCode:async o=>{
       if(/MicroMessenger/i.test(navigator.userAgent)){
-        try{await prepareWechatShare(current);if(!window.wx?.scanQRCode)throw new Error('微信扫码组件不可用');window.wx.scanQRCode({needResult:1,scanType:['qrCode'],success:r=>complete(o,{result:r.resultStr}),fail:e=>{/cancel/i.test(e.errMsg||'')?complete(o,{errMsg:'cancel'},true):offerScanImage(o,e,'扫一扫调用')},cancel:()=>complete(o,{errMsg:'cancel'},true)});}catch(error){offerScanImage(o,error)}
+        try{await prepareWechatShare(current);if(!window.wx?.scanQRCode)throw new Error('微信扫码组件不可用');startWechatScan(o)}catch(error){scanLiveCamera(o,error,'微信组件准备')}
         return;
       }
       scanImage(o);

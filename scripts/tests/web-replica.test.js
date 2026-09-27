@@ -122,6 +122,31 @@ test('微信配置和扫一扫的原始错误可在拍照兜底提示中定位',
   await h.host.wx.scanCode({});scan.fail({errMsg:'scanQRCode:fail no permission'});
   assert.match(h.document.querySelector('#modal').textContent,/扫一扫调用：scanQRCode:fail no permission/);
 });
+test('微信离线权限校验失败后重新配置并重试一次扫一扫',async()=>{
+  const h=await host({navigator:{userAgent:'MicroMessenger'}});let ready,scan,configCount=0,scanCount=0,result;
+  h.context.wx={ready:fn=>{ready=fn},error(){},config(){configCount++;ready()},scanQRCode:fn=>{scan=fn;scanCount++}};
+  await h.host.wx.scanCode({success:r=>result=r});
+  scan.fail({errMsg:'scanQRCode:the permission value is offline verifying'});
+  await new Promise(resolve=>setTimeout(resolve,420));
+  assert.equal(configCount,2);assert.equal(scanCount,2);
+  scan.success({resultStr:'EMPATH-ENTRY:'+'B'.repeat(24)});
+  assert.equal(result.result,'EMPATH-ENTRY:'+'B'.repeat(24));
+});
+test('微信扫一扫拒绝后网页相机连续识码并释放摄像头',async()=>{
+  const h=await host({navigator:{userAgent:'MicroMessenger'}});let ready,scan,result,stopped=false;
+  h.context.navigator.mediaDevices={getUserMedia:async()=>({getTracks:()=>[{stop:()=>{stopped=true}}]})};
+  h.context.wx={ready:fn=>{ready=fn},error(){},config(){ready()},scanQRCode:fn=>{scan=fn}};
+  const video=h.document.querySelector('#live-scanner video');
+  Object.defineProperties(video,{readyState:{value:4},videoWidth:{value:1280},videoHeight:{value:720}});
+  video.play=async()=>{};
+  h.context.jsQR=()=>({data:'EMPATH-ENTRY:'+'C'.repeat(24)});
+  const create=h.document.createElement.bind(h.document);
+  h.document.createElement=tag=>{const el=create(tag);if(tag==='canvas')el.getContext=()=>({drawImage(){},getImageData:()=>({data:new Uint8ClampedArray(4),width:800,height:450})});return el};
+  h.context.requestAnimationFrame=fn=>{queueMicrotask(()=>fn(200));return 1};
+  await h.host.wx.scanCode({success:r=>result=r});scan.fail({errMsg:'scanQRCode:fail no permission'});await tick();
+  assert.equal(result.result,'EMPATH-ENTRY:'+'C'.repeat(24));assert.equal(stopped,true);
+  assert.equal(h.document.querySelector('#live-scanner').open,false);
+});
 test('home renders source content, real tab navigation, and all page modules without JS errors',async()=>{
   const h=await host();assert.match(h.document.getElementById('page').textContent,/透过现象看本质/);
   assert.doesNotMatch(h.document.getElementById('page').textContent,/到课核实后，可申请线下咨询/);
