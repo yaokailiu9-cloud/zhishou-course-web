@@ -1,1 +1,11 @@
 @import "../../styles/consultation-components.wxss";
+.archive-section { margin-top: 28rpx; padding-top: 24rpx; border-top: 1rpx solid #e9e8e1; }
+.archive-section-title { display: block; color: #003b39; font-size: 30rpx; font-weight: 600; margin-bottom: 12rpx; }
+.archive-field { margin: 20rpx 0; }
+.archive-field .field-label { display: block; margin-bottom: 12rpx; }
+.archive-options { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.archive-option { margin: 0; padding: 10rpx 20rpx; border: 1rpx solid #c8d4d0; border-radius: 12rpx; background: #fff; color: #33514e; font-size: 26rpx; line-height: 1.5; }
+.archive-option::after { border: 0; }
+.archive-option.selected { background: #003b39; border-color: #003b39; color: #fff; }
+.archive-answer { padding: 12rpx 0; border-bottom: 1rpx solid #f0eee9; }
+.archive-answer .muted, .archive-answer .body { display: block; white-space: pre-wrap; }

@@ -6,9 +6,32 @@
    <block wx:if="{{canAccept && appointment.status === 'PENDING'}}"><picker mode="date" bindchange="dateChange"><view class="picker-field">{{confirmDate || '选择确认日期'}}</view></picker><picker mode="time" bindchange="timeChange"><view class="picker-field">{{confirmTime || '选择确认时间'}}</view></picker><textarea placeholder="预约说明、到店指引" value="{{staffNote}}" bindinput="noteChange" maxlength="2000"/><button class="primary" disabled="{{busy}}" bindtap="confirmAppointment">确认预约时间</button></block>
    <button wx:if="{{appointment.status === 'PENDING' || appointment.status === 'CONFIRMED'}}" class="text-button" disabled="{{busy}}" bindtap="cancelAppointment">取消本次预约</button>
   </view>
-  <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.child_info}}" class="card record-section"><text class="section-title">孩子基础信息</text>
-   <block wx:if="{{!isStaff && appointment.status === 'CONFIRMED'}}"><text class="muted">请在到店前填写。本次信息与本次预约关联保存。</text><text class="field-label">孩子姓名或称呼</text><input placeholder="孩子姓名或称呼" value="{{childForm.name}}" data-key="name" bindinput="inputChild" maxlength="60"/><text class="field-label">年龄（0–30岁）</text><input placeholder="年龄" type="number" value="{{childForm.age}}" data-key="age" bindinput="inputChild" maxlength="2"/><text class="field-label">年级（选填）</text><input placeholder="年级（选填）" value="{{childForm.grade}}" data-key="grade" bindinput="inputChild" maxlength="60"/><text class="field-label">家长姓名</text><input placeholder="家长姓名" value="{{childForm.guardian}}" data-key="guardian" bindinput="inputChild" maxlength="60"/><text class="field-label">与孩子关系</text><input placeholder="与孩子关系" value="{{childForm.relationship}}" data-key="relationship" bindinput="inputChild" maxlength="60"/><text class="field-label">联系电话</text><input placeholder="联系电话" type="number" value="{{childForm.phone}}" data-key="phone" bindinput="inputChild" maxlength="11"/><text class="field-label">当前主要困扰</text><textarea placeholder="当前主要困扰" value="{{childForm.concerns}}" data-key="concerns" bindinput="inputChild" maxlength="4000"/><text class="field-label">希望本次沟通解决的问题（选填）</text><textarea placeholder="希望本次沟通解决的问题（选填）" value="{{childForm.goals}}" data-key="goals" bindinput="inputChild" maxlength="2000"/><button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveChild">保存基础信息</button></block>
-   <block wx:elif="{{appointment.child_info}}"><text class="body">{{appointment.child_info.name}} · {{appointment.child_info.age}}岁 · {{appointment.child_info.grade}}</text><text class="muted">{{appointment.child_info.guardian}}（{{appointment.child_info.relationship}}） · {{appointment.child_info.phone}}</text><text class="body">{{appointment.child_info.concerns}}</text><text class="muted">沟通期待：{{appointment.child_info.goals || '未填写'}}</text></block><text wx:else class="muted">等待家长填写基础信息。</text>
+  <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.child_info}}" class="card record-section archive-card">
+   <text class="section-title">孩子家庭档案</text>
+   <block wx:if="{{!isStaff && appointment.status === 'CONFIRMED'}}">
+    <text class="muted">请在到店前填写。可先保存已填写的内容，之后继续补充；资料仅用于本次咨询。</text>
+    <view wx:for="{{childSections}}" wx:for-item="section" wx:key="title" class="archive-section">
+     <text class="archive-section-title">{{section.title}}</text>
+     <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" class="archive-field">
+      <text class="field-label">{{field.label}}</text>
+      <block wx:if="{{field.type === 'choice' || field.type === 'multi'}}">
+       <view class="archive-options">
+        <button wx:for="{{field.options}}" wx:for-item="option" wx:key="label" class="archive-option {{option.selected ? 'selected' : ''}}" data-key="{{field.key}}" data-value="{{option.label}}" bindtap="chooseChild">{{option.label}}</button>
+       </view>
+      </block>
+      <textarea wx:elif="{{field.type === 'textarea'}}" placeholder="请填写{{field.label}}" value="{{field.value}}" data-key="{{field.key}}" bindinput="inputChild" maxlength="{{field.maxLength}}"/>
+      <input wx:else placeholder="请填写{{field.label}}" type="{{field.key === 'age' || field.key === 'phone' ? 'number' : 'text'}}" value="{{field.value}}" data-key="{{field.key}}" bindinput="inputChild" maxlength="{{field.maxLength}}"/>
+     </view>
+    </view>
+    <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveChild">保存家庭档案</button>
+   </block>
+   <block wx:elif="{{appointment.child_info}}">
+    <view wx:for="{{answeredChildSections}}" wx:for-item="section" wx:key="title" class="archive-section">
+     <text class="archive-section-title">{{section.title}}</text>
+     <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" class="archive-answer"><text class="muted">{{field.label}}</text><text class="body">{{field.value}}</text></view>
+    </view>
+   </block>
+   <text wx:else class="muted">等待家长填写家庭档案。</text>
   </view>
   <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.status === 'COMPLETED'}}" class="card record-section"><text class="section-title">沟通总结</text><text class="muted">本页本次咨询的留言、反馈与老师回复可生成文字草稿，也支持经同意录制面谈。由老师检查确认后形成正式记录。</text><button class="secondary" disabled="{{summaryBusy || recording}}" loading="{{summaryBusy}}" bindtap="summarizeText">总结本次文字沟通</button><button wx:if="{{!recording}}" class="secondary" disabled="{{summaryBusy}}" bindtap="startRecording">经同意录制面谈</button><button wx:else class="primary" bindtap="stopRecording">录音中 {{recordingSeconds}} 秒 · 停止并总结</button><text wx:if="{{recording}}" class="muted">单段最长10分钟，可分段录制。离开页面会停止录音。</text>
    <view wx:for="{{summaryJobs}}" wx:key="id" class="task"><text class="muted">{{item.source === 'AUDIO' ? '面谈录音' : '文字聊天'}} · {{item.statusText}} · {{item.createdText}}</text><text class="body" wx:if="{{item.draft}}">{{item.draft}}</text><text class="error" wx:if="{{item.error_message}}">{{item.error_message}}</text><button wx:if="{{item.status === 'FAILED'}}" class="text-button" data-id="{{item.id}}" bindtap="retrySummary" disabled="{{busy}}">重新生成</button><button wx:if="{{item.status === 'UPLOADING'}}" class="text-button" data-id="{{item.id}}" bindtap="processRecording" disabled="{{busy}}">处理已上传录音</button><button wx:if="{{canReply && item.draft && (!record || record.status !== 'CONFIRMED')}}" class="text-button" data-id="{{item.id}}" bindtap="useSummary">填入老师记录，继续编辑</button></view><button wx:if="{{summaryJobs.length}}" class="text-button" bindtap="refreshSummary">刷新总结进度</button><text wx:if="{{summaryJobs.length}}" class="muted">{{nextSummaryCursor ? '已加载' : '共'}} {{summaryJobs.length}} 条总结</text><button wx:if="{{nextSummaryCursor}}" class="secondary" data-kind="summary" bindtap="moreHistory" disabled="{{moreLoading || loading}}">查看更多总结</button>

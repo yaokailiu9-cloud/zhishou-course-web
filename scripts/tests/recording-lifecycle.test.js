@@ -24,7 +24,7 @@ function harness() {
   };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../pages/consultation-detail/consultation-detail.js'), 'utf8'), {
     Page: p => { page = p; },
-    require: name => name.includes('consultationRecording') ? upload : name.includes('consultationService') ? service : {restore:()=>false},
+    require: name => name.includes('consultationRecording') ? upload : name.includes('consultationService') ? service : name.includes('childArchive') ? require('../../utils/childArchive') : {restore:()=>false},
     wx: {getRecorderManager: () => recorder, showModal: d => d.success({confirm:true}), showToast: d => toasts.push(d)},
     setInterval: f => { timers.add(f); return f; }, clearInterval: f => timers.delete(f), Date
   });

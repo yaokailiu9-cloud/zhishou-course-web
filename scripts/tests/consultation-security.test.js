@@ -25,6 +25,36 @@ test('缺少人工核实证据不能申请',()=>{const db=fixture();db.public_cl
 test('不能从待确认阶段直接填写孩子资料',()=>rejectsNoWrites(202,'SAVE_CHILD_INFO',{appointmentId:32,childInfo:{}},/预约确认后/));
 test('孩子信息严格白名单，写入不会改变归属和状态',()=>{const e=engine(fixture());e.run(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:{name:'小甲',age:8,guardian:'家长',relationship:'母亲',phone:'13800000000',concerns:'学习沟通',customer_id:202,status:'COMPLETED'}});const a=e.db.offline_appointment[0];assert.equal(a.customer_id,201);assert.equal(a.status,'CONFIRMED');assert.equal(a.child_info.customer_id,undefined);assert.equal(a.child_info.name,'小甲');});
 test('缺失年龄不能默认为0',()=>rejectsNoWrites(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:{age:''}},/年龄/));
+test('家庭档案多选与对抗情况只由本人保存，老师可查看，旧客户端保存不会抹掉扩展项',()=>{
+ const e=engine(fixture());const basic={name:'合成孩子',age:11,grade:'五年级',guardian:'合成家长',relationship:'母亲',phone:'13800000000',concerns:'沟通困难'};
+ e.run(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:{...basic,parentsDivorced:'否',dailyTraits:['善良重情','心思灵活'],issues:['拖沓','沉迷游戏'],opposeParents:'是',opposeParentsDegree:'一般',moneyAmount:'约100'}});
+ const saved=e.db.offline_appointment[0].child_info;
+ assert.equal(saved.parentsDivorced,'否');assert.deepEqual(Array.from(saved.issues),['拖沓','沉迷游戏']);assert.equal(saved.opposeParentsDegree,'一般');
+ assert.equal(e.run(101,'GET_APPOINTMENT',{appointmentId:31}).data.appointment.child_info.moneyAmount,'约100');
+ e.run(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:basic});
+ assert.equal(e.db.offline_appointment[0].child_info.opposeParents,'是');
+ assert.deepEqual(Array.from(e.db.offline_appointment[0].child_info.dailyTraits),['善良重情','心思灵活']);
+});
+test('家庭档案拒绝伪造字段、非法选项和重复多选值',()=>{
+ const basic={name:'合成孩子',age:11,guardian:'合成家长',relationship:'母亲',phone:'13800000000',concerns:'沟通困难'};
+ const e=engine(fixture());e.run(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:{...basic,customer_id:202,unauthorized:'x'}});
+ assert.equal(e.db.offline_appointment[0].child_info.customer_id,undefined);
+ assert.equal(e.db.offline_appointment[0].child_info.unauthorized,undefined);
+ rejectsNoWrites(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:{...basic,parentsDivorced:'未知'}},/档案选项无效/);
+ rejectsNoWrites(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:{...basic,issues:['拖沓','拖沓']}},/档案多选项无效/);
+});
+test('纸质档案每个表单字段都能通过服务端白名单保存',()=>{
+ const archive=require('../../utils/childArchive');const form=archive.empty({name:'合成孩子',age:'11',guardian:'合成家长',relationship:'母亲',phone:'13800000000',concerns:'沟通困难'});
+ for(const field of archive.fields){
+  if(field.type==='choice')form[field.key]=field.options[0];
+  else if(field.type==='multi')form[field.key]=[field.options[0]];
+  else if(['filledAt','signatureDate'].includes(field.key))form[field.key]='2026-09-29';
+  else if(!form[field.key])form[field.key]='合成测试';
+ }
+ const e=engine(fixture());e.run(201,'SAVE_CHILD_INFO',{appointmentId:31,childInfo:form});
+ const saved=e.db.offline_appointment[0].child_info;
+ for(const field of archive.fields)assert.ok(Object.prototype.hasOwnProperty.call(saved,field.key),field.key);
+});
 test('已确认记录不能被覆盖',()=>rejectsNoWrites(101,'SAVE_RECORD',{appointmentId:31,summary:'覆盖',confirm:true,advice:[]},/已确认/));
 test('不存在的建议不能反馈',()=>rejectsNoWrites(201,'SEND_FEEDBACK',{appointmentId:31,adviceKey:'forged',content:'反馈',requestKey:'x'},/已确认的执行建议/));
 test('咨询完成后仍可反馈，反馈及回复均幂等保留',()=>{const e=engine(fixture());e.db.offline_appointment[0].status='COMPLETED';const p={appointmentId:31,adviceKey:'step-1',content:'今天耐心听完了',requestKey:'one'};e.run(201,'SEND_FEEDBACK',p);e.run(201,'SEND_FEEDBACK',p);assert.equal(e.db.consultation_feedback.length,1);const f=e.db.consultation_feedback[0];const r={feedbackId:f.id,content:'继续坚持',requestKey:'reply'};e.run(101,'REPLY_FEEDBACK',r);e.run(101,'REPLY_FEEDBACK',r);assert.equal(e.db.consultation_feedback_reply.length,1);assert.equal(f.status,'REPLIED');});

@@ -49,3 +49,14 @@ label { font-size:calc(26 * var(--rpx)); color:#48665a; }
 .member-hero .journey-step { border-color:#41615b; }
 .member-hero .journey-note { color:#bfd0cb; }
 .record-section .section-title { padding-bottom:calc(18 * var(--rpx)); border-bottom:calc(1 * var(--rpx)) solid #e8e3df; }
+
+.archive-section { margin-top: calc(28 * var(--rpx)); padding-top: calc(24 * var(--rpx)); border-top: calc(1 * var(--rpx)) solid #e9e8e1; }
+.archive-section-title { display: block; color: #003b39; font-size: calc(30 * var(--rpx)); font-weight: 600; margin-bottom: calc(12 * var(--rpx)); }
+.archive-field { margin: calc(20 * var(--rpx)) 0; }
+.archive-field .field-label { display: block; margin-bottom: calc(12 * var(--rpx)); }
+.archive-options { display: flex; flex-wrap: wrap; gap: calc(12 * var(--rpx)); }
+.archive-option { margin: 0; padding: calc(10 * var(--rpx)) calc(20 * var(--rpx)); border: calc(1 * var(--rpx)) solid #c8d4d0; border-radius: calc(12 * var(--rpx)); background: #fff; color: #33514e; font-size: calc(26 * var(--rpx)); line-height: 1.5; }
+.archive-option::after { border: 0; }
+.archive-option.selected { background: #003b39; border-color: #003b39; color: #fff; }
+.archive-answer { padding: calc(12 * var(--rpx)) 0; border-bottom: calc(1 * var(--rpx)) solid #f0eee9; }
+.archive-answer .muted, .archive-answer .body { display: block; white-space: pre-wrap; }
