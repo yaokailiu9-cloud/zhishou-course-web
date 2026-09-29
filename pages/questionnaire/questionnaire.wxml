@@ -15,6 +15,14 @@
     <view class="result-head"><view><text class="panel-caption">我的梳理结果</text><text class="section-title">{{feedbackTitle}}</text></view><text class="result-state">{{feedbackState === 'READY' ? '可查看' : feedbackState === 'WAITING' ? '待开放' : feedbackState === 'DRAFT' ? '处理中' : '待处理'}}</text></view>
     <text class="result-note">{{feedbackNote}}</text>
     <text wx:if="{{feedbackState === 'WAITING'}}" class="available-time">开放时间：{{feedbackAvailableText}}</text>
+    <view class="submitted-questions">
+     <text class="submitted-questions-title">我提交的问题</text>
+     <text class="submitted-questions-label">当时选择的两个主要问题</text>
+     <view class="submitted-issues"><text wx:for="{{intake.child_issues}}" wx:key="*this" class="submitted-issue">{{item}}</text></view>
+     <view wx:if="{{intake.child_description}}" class="submitted-question-detail"><text class="submitted-questions-label">问题描述</text><text class="submitted-question-copy">{{intake.child_description}}</text></view>
+     <view wx:if="{{intake.child_daily_behavior}}" class="submitted-question-detail"><text class="submitted-questions-label">当时填写的日常表现</text><text class="submitted-question-copy">{{intake.child_daily_behavior}}</text></view>
+    </view>
+    <text wx:if="{{feedbackState === 'READY'}}" class="feedback-heading">知守的回复</text>
     <text wx:if="{{feedbackState === 'READY'}}" class="feedback-content">{{feedbackContent}}</text>
     <button wx:if="{{feedbackState !== 'READY'}}" class="secondary refresh-result" bindtap="refresh" disabled="{{loading}}">{{loading ? '正在刷新…' : '刷新处理进度'}}</button>
    </view>
