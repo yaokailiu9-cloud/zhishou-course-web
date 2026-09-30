@@ -11,12 +11,12 @@ Page({
  async refresh(){
   const requestId=this.requestId=(this.requestId||0)+1,identity=viewSession.capture();
   this.setData({allowed:false,isManager:false,shareUrl:'',items:[],nextCursor:null,total:0,error:'',qrError:'',loading:false});
-  if(!auth.requireLogin('登录后查看你的推荐报名码和推荐客户。'))return;
+  if(!auth.isLoggedIn()){wx.redirectTo({url:'/pages/customer/customer'});return;}
   this.setData({loading:true});
   try{
    const r=await referral.context(this.classId);
    if(requestId!==this.requestId||!viewSession.current(identity))return;
-   if(!r.canInvite)throw new Error('当前账号没有推荐权限，请联系管理人员设置代理身份。');
+   if(!r.canInvite){wx.redirectTo({url:'/pages/customer/customer'});return;}
    this.setData({allowed:true,isManager:!!r.isManager,shareUrl:r.shareUrl||'',scope:r.isManager?this.data.scope:'own'},()=>{
     if(r.shareUrl)qr.draw(this,'referral-code',r.shareUrl).catch(()=>this.setData({qrError:'二维码生成失败，可复制下方推荐链接。'}));
    });

@@ -1,5 +1,5 @@
 <view class="service-page questionnaire-page">
- <view class="questionnaire-hero"><text class="eyebrow">知守 · 简易方案梳理</text><text class="page-title">2026问卷梳理</text><text class="muted">{{offer && offer.inviterName ? '由 ' + offer.inviterName + ' 邀请填写' : '围绕家庭当前最需要解决的问题，完成一次结构化梳理'}}</text></view>
+ <view class="questionnaire-hero"><text class="eyebrow">知守 · 简易方案梳理</text><text class="page-title">2026问卷梳理</text><text class="muted">围绕家庭当前最需要解决的问题，完成一次结构化梳理</text></view>
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button wx:if="{{!offer}}" bindtap="refresh">重新加载</button></view>
  <view wx:if="{{loading}}" class="card"><text class="muted">正在确认问卷与支付状态…</text></view>
  <block wx:if="{{offer && !paid}}">

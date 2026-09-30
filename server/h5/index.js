@@ -355,10 +355,9 @@ async function managerBootstrap(session) {
 async function bootstrap(req) {
   const session = readSession(req);
   const family = session ? await invoke(session.jwt, "FAMILY_OVERVIEW", {}) : {canInvite:false, role:"GUEST"};
-  const [courseData, enrollments, referralStatus, referrals, manager] = await Promise.all([
+  const [courseData, enrollments, referrals, manager] = await Promise.all([
     invoke(session && session.jwt, "LIST_CLASSES", {}),
     session ? invoke(session.jwt, "MY_ENROLLMENTS", {}) : Promise.resolve({items:[]}),
-    session ? invoke(session.jwt, "MY_REFERRAL_STATUS", {}) : Promise.resolve({binding:null}),
     session && family.canInvite ? invoke(session.jwt, "MY_REFERRALS", {}) : Promise.resolve({items:[]}),
     managerBootstrap(session)
   ]);
@@ -367,7 +366,6 @@ async function bootstrap(req) {
     user:session ? session.account : null,
     courses:courseData.classes || [],
     enrollments:enrollments.items || [],
-    referralBinding:referralStatus.binding || null,
     referrals:referrals.items || [],
     referralToken:session && family.canInvite ? refToken(session.account.id) : "",
     role:family.role,
@@ -401,7 +399,7 @@ async function handleApi(req, res) {
     }
     if(action==='capture-referral') {
       const input=await body(req), current=readSession(req), referrerId=decodeRef(input.ref);
-      if(!referrerId)return json(res,400,{ok:false,message:'推荐二维码已失效，请联系分享人重新生成'});
+      if(!referrerId)return json(res,400,{ok:false,message:'报名二维码已失效，请联系分享人重新发送'});
       if(String(referrerId)===String(current?.account?.id))return json(res,200,{ok:true,data:{invitation:null}});
       const previous=readInvitation(req,current), safeTarget=invitationReturn(input.returnTo);
       // Refreshing the login gate must not replace the original course with the plaza.
@@ -443,18 +441,21 @@ async function handleApi(req, res) {
       const current = readSession(req);
       const forwardedReferrer=invitationRef(req,current,url.searchParams.get("ref"));
       const data = await invoke(current?.jwt, "REFERRAL_OVERVIEW", {referrerId:forwardedReferrer});
+      if (!data.canInvite) return json(res,200,{ok:true,data:{canInvite:false,isManager:false,hasEnrollment:!!data.hasEnrollment}});
       const token = current && data.canInvite ? refToken(current.account.id) : "";
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
       const link = new URL('/web/', origin);
       if (token) link.searchParams.set('ref', token);
       const classId = url.searchParams.get('classId'),target=url.searchParams.get('target');
       link.hash = target==='questionnaire' ? '/pages/questionnaire/questionnaire' : classId && /^[1-9][0-9]*$/.test(classId) ? '/pages/public-class-detail/public-class-detail?id='+classId : '/pages/plaza/plaza';
-      return json(res,200,{ok:true,data:{...data,referralToken:token,forwardToken:forwardedReferrer?refToken(forwardedReferrer):'',shareUrl:token?link.href:""}});
+      return json(res,200,{ok:true,data:{...data,referralToken:token,shareUrl:token?link.href:""}});
     }
     if (action === "questionnaire-context") {
       if (req.method !== "GET") return json(res,405,{ok:false,message:"请求方式无效"});
       const current=readSession(req),referrerId=invitationRef(req,current,url.searchParams.get('ref'));
-      return json(res,200,{ok:true,data:await invoke(current?.jwt,'GET_QUESTIONNAIRE',{referrerId})});
+      const data=await invoke(current?.jwt,'GET_QUESTIONNAIRE',{referrerId});
+      if(data.offer)delete data.offer.inviterName;
+      return json(res,200,{ok:true,data});
     }
     const session = readSession(req);
     if (!session) return json(res, 401, {ok:false, message:"请先微信登录"});

@@ -15,7 +15,7 @@ Page({
    const feedbackTitle=feedbackState==='READY'?'梳理结果已送达':feedbackState==='WAITING'?'回复已完成':feedbackState==='DRAFT'?'正在梳理':'待工作人员处理';
    const feedbackNote=feedbackState==='READY'?'请认真阅读工作人员给你的回复。':feedbackState==='WAITING'?'工作人员已经完成回复，将在下方时间开放查看。':feedbackState==='DRAFT'?'工作人员正在整理你的资料，请耐心等待。':'资料已进入问卷工单，工作人员处理后会更新状态。';
    this.enrollmentId=e&&e.id;this.setData({offer:r.offer,intake:e,priceText:Number(r.offer&&r.offer.price||0).toFixed(2),issues:r.issues||[],paid:!!e,submitted:!!(e&&e.child_submitted_at),loggedIn:auth.isLoggedIn(),form,feedbackState,feedbackTitle,feedbackNote,feedbackContent:e&&e.canViewFeedback?e.feedback_content||'':'',feedbackAvailableText:e&&e.feedback_available_at?service.formatTime(e.feedback_available_at):''});
-  }catch(e){service.error(this,e);}finally{this.setData({loading:false});}
+  }catch(e){if(/代理|推荐/.test(String(e&&e.message||'')))this.setData({error:'请使用收到的问卷二维码进入，或在“我的方案”查看自己的资料。'});else service.error(this,e);}finally{this.setData({loading:false});}
  },
  input(e){const key=e.currentTarget.dataset.key;if(Object.prototype.hasOwnProperty.call(this.data.form,key))this.setData({['form.'+key]:e.detail.value});},
  chooseGender(e){if(!this.data.submitted)this.setData({'form.gender':e.currentTarget.dataset.value});},
@@ -31,7 +31,7 @@ Page({
   if(!auth.isLoggedIn()){this.login();return;}
   const name=String(this.data.form.guardianName||'').trim(),phone=String(this.data.form.guardianPhone||'').trim();
   if(!name||!/^1[3-9]\d{9}$/.test(phone)){this.setData({error:'请先填写家长姓名和有效的11位联系电话。'});return;}
-  this.setData({busy:true,error:''});try{const r=await questionnaire.pay({name,phone},this.data.offer.price);if(r&&r.enrollment){this.enrollmentId=r.enrollment.id;this.setData({paid:true,form:{...this.data.form,guardianName:name,guardianPhone:phone}});await this.refresh();}}catch(e){service.error(this,e);}finally{this.setData({busy:false});}
+  this.setData({busy:true,error:''});try{const r=await questionnaire.pay({name,phone},this.data.offer.price);if(r&&r.enrollment){this.enrollmentId=r.enrollment.id;this.setData({paid:true,form:{...this.data.form,guardianName:name,guardianPhone:phone}});await this.refresh();}}catch(e){if(/代理|推荐/.test(String(e&&e.message||'')))this.setData({error:'问卷入口已失效，请让分享人重新发送二维码。'});else service.error(this,e);}finally{this.setData({busy:false});}
  },
  async submit(){
   if(this.data.busy||!this.enrollmentId||this.data.submitted)return;const f=this.data.form;

@@ -202,7 +202,7 @@
   }
   function webLogin(){
     if(invitationError){wx.showToast({title:invitationError});return;}
-    if(invitation&&!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'请在微信中登录',content:'请用微信扫一扫，或长按识别分享人发来的报名二维码。推荐信息已保留。',showCancel:false});return;}
+    if(invitation&&!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'请在微信中登录',content:'请用微信扫一扫，或长按识别收到的报名二维码。',showCancel:false});return;}
     if(!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'微信登录',content:'请将当前网页链接在微信中打开，再点击微信登录。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:location.href})}});return}
     const ref=new URLSearchParams(location.search).get('ref')||'';
     location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(invitation?.returnTo||'/web/#/'+HOME);
@@ -213,12 +213,12 @@
     const response=await fetch('/api/h5?action=referral-context&ref='+encodeURIComponent(new URLSearchParams(location.search).get('ref')||'')+'&classId='+encodeURIComponent(classId||'')+'&target='+encodeURIComponent(target||''));
     const body=await response.json();
     if(identity!==session)throw new Error('登录身份已变化，请重试');
-    if(!response.ok||!body.ok)throw new Error(body.message||'推荐信息加载失败，请刷新重试');
+    if(!response.ok||!body.ok)throw new Error(body.message||'报名信息加载失败，请刷新重试');
     referralContext={...body.data,identity};return body.data;
   }
   function shareDetails(page){
     const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');
-    const ref=(referralContext?.identity===session&&(referralContext?.referralToken||referralContext?.forwardToken))||new URLSearchParams(location.search).get('ref');if(ref)url.searchParams.set('ref',ref);
+    const ref=referralContext?.identity===session&&referralContext?.canInvite?referralContext.referralToken:'';if(ref)url.searchParams.set('ref',ref);
     const image=info.imageUrl?new URL(info.imageUrl,location.origin).href:'';
     return {info,url,title:info.title||'知守',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
   }
@@ -254,7 +254,7 @@
     return image;
   }
   async function share(page){
-    try{await getReferralContext();}catch(_){if(session){wx.showToast({title:'推荐信息加载失败，请重试分享'});return;}}
+    try{await getReferralContext();}catch(_){if(session){wx.showToast({title:'分享信息加载失败，请重试'});return;}}
     const details=shareDetails(page);try{showReferralPoster({url:details.url.href,title:details.title,name:referralContext?.canInvite?session?.user?.name:''});}
     catch(_){wx.showToast({title:'报名二维码生成失败，请重试'});}
   }
@@ -397,10 +397,10 @@
   async function start(){
     const incomingRef=new URLSearchParams(location.search).get('ref');
     if(incomingRef){
-      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:'/web/'+(location.hash||'#/pages/plaza/plaza')})});const body=await response.json();if(!response.ok||!body.ok)throw new Error(body.message||'推荐信息暂未保存，请重新加载');invitation=body.data.invitation;}
-      catch(e){invitationError=e.message||'推荐信息暂未保存，请重新加载';}
+      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:'/web/'+(location.hash||'#/pages/plaza/plaza')})});const body=await response.json();if(!response.ok||!body.ok)throw new Error(body.message||'报名入口暂时无法打开，请重新加载');invitation=body.data.invitation;}
+      catch(e){invitationError=e.message||'报名入口暂时无法打开，请重新加载';}
     }
-    try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载，推荐来源不会被清除';}
+    try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载报名页面';}
     if(session)try{await getReferralContext();}catch(_){/* Retry explicitly when sharing; public browsing remains available. */}
     for(const item of source.config.tabBar.list){const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');$('#tabbar').append(button)}
     $('#back-button').onclick=back;

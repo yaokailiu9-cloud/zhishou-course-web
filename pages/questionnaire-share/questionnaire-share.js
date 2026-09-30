@@ -8,10 +8,10 @@ Page({
  onShow(){this.refresh();},
  async refresh(){
   this.setData({loading:true,recordsLoading:false,error:'',allowed:false,isManager:false,shareUrl:'',qrError:'',recordCount:0,pendingCount:0});
-  if(!auth.requireLogin('登录后生成简易方案梳理二维码。')){this.setData({loading:false});return;}
+  if(!auth.isLoggedIn()){wx.redirectTo({url:'/pages/customer/customer'});this.setData({loading:false});return;}
   try{
    const r=await referral.context('', 'questionnaire');
-   if(!r.canInvite||!r.shareUrl)throw new Error('当前账号没有发放问卷的权限');
+   if(!r.canInvite||!r.shareUrl){wx.redirectTo({url:'/pages/customer/customer'});return;}
    this.setData({allowed:true,isManager:!!r.isManager,shareUrl:r.shareUrl},()=>qr.draw(this,'questionnaire-code',r.shareUrl).catch(()=>this.setData({qrError:'二维码生成失败，请刷新重试。'})));
    if(r.isManager)await this.loadRecords(false);
   }catch(e){service.error(this,e);}finally{this.setData({loading:false});}

@@ -33,7 +33,7 @@ test('扫码邀请跨登录、刷新、无参数首页、支付和登录重试�
  login=await req('/api/h5?action=login');state=new URL(login.headers.location).searchParams.get('state');
  const callback=await req('/api/wechat-oauth-callback?'+new URLSearchParams({code:'ok',state}));assert.equal(callback.headers.location,returnTo);
  const session=await req('/api/h5?action=session');assert.equal(session.data.loggedIn,true);assert.equal(session.data.user.id,'101');assert.equal(session.data.invitation.returnTo,returnTo);assert.ok(!session.raw.includes('jwt-101'));
- const context=await req('/api/h5?action=referral-context');assert.equal(decodeRef(context.data.forwardToken),'17','登录后 URL 无参数时转发仍保留推荐人');assert.equal(context.data.referralToken,'','普通用户不能生成自己的代理码');
+ const context=await req('/api/h5?action=referral-context');assert.equal(context.data.forwardToken,undefined,'普通用户不能取得转发推荐码');assert.equal(context.data.referralToken,undefined,'普通用户不能生成自己的推荐码');
  await req('/api/h5?action=enroll',{classId:7,name:'合成',phone:'13800000000'});assert.equal(operations.at(-1).payload.referrerId,'17');
  await req('/api/h5?action=course-pay',{classId:7,name:'合成',phone:'13800000000'});assert.equal(operations.at(-1).payload.referrerId,'17');
  const before=verify(decodeURIComponent(jar.get('zhishou_h5_session')));

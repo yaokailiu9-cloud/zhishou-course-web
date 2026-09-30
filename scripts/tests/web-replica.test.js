@@ -37,13 +37,14 @@ test('从我的链接进入时落到首页，仍可主动切换我的且课程�
   assert.equal(h.host.current.route,'pages/public-class-detail/public-class-detail');
   assert.equal(h.host.current.options.id,'12');
 });
-test('客户页隐藏代理入口和累计消费，代理仍可看到发放入口',async()=>{
+test('客户页按后台邀请权限隐藏推荐入口，只有本人方案入口可见',async()=>{
   const h=await host();
   h.host.wx.navigateTo({url:'/pages/profile/profile'});await tick();
   const page=h.document.getElementById('page');
-  h.host.current.setData({isLoggedIn:true,canInvite:true,userInfo:{id:'18',nickName:'客户',role:'customer'}});await tick();
+  h.host.current.setData({isLoggedIn:true,canInvite:false,hasMyPlan:true,userInfo:{id:'18',nickName:'客户',role:'agent'}});await tick();
   assert.doesNotMatch(page.textContent,/简易方案梳理|推荐客户|累计消费/);
-  h.host.current.setData({userInfo:{id:'19',nickName:'代理',role:'agent'}});await tick();
+  assert.match(page.textContent,/我的方案/);
+  h.host.current.setData({canInvite:true,userInfo:{id:'19',nickName:'代理',role:'agent'}});await tick();
   assert.match(page.textContent,/简易方案梳理|推荐客户/);
   assert.doesNotMatch(page.textContent,/累计消费/);
 });
@@ -61,7 +62,7 @@ test('扫码来源先保存再登录，刷新无 ref 仍强制登录并回到原
   const fetch=async(url,options={})=>{calls.push({url,options});return {ok:true,status:200,headers:[],json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:false,invitation:{returnTo}}:String(url).includes('capture-referral')?{invitation:{returnTo}}:{candidate:{name:'推荐人甲'}}})};};
   const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=signed-invitation',hash:'#/pages/public-class-detail/public-class-detail?id=7'},fetch});
   assert.equal(calls[0].url,'/api/h5?action=capture-referral');assert.equal(JSON.parse(calls[0].options.body).returnTo,returnTo);assert.equal(calls[0].options.credentials,'same-origin');
-  assert.equal(h.host.current.route,'pages/invite-login/invite-login');assert.ok(h.document.querySelector('#page').textContent.includes('推荐人甲'));
+  assert.equal(h.host.current.route,'pages/invite-login/invite-login');assert.doesNotMatch(h.document.querySelector('#page').textContent,/推荐人甲|代理|推荐归属/);
   h.host.wx.switchTab({url:'/pages/plaza/plaza'});await tick();assert.equal(h.host.current.route,'pages/invite-login/invite-login');
   h.host.current.login();let url=new URL(h.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);
   const refreshed=await host({navigator:{userAgent:'MicroMessenger'},fetch});assert.equal(refreshed.host.current.route,'pages/invite-login/invite-login');refreshed.host.current.login();url=new URL(refreshed.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);assert.equal(url.searchParams.get('ref'),'');
@@ -161,7 +162,8 @@ test('home renders source content, real tab navigation, and all page modules wit
   const h=await host();assert.match(h.document.getElementById('page').textContent,/透过现象看本质/);
   assert.doesNotMatch(h.document.getElementById('page').textContent,/到课核实后，可申请线下咨询/);
   assert.equal(h.document.querySelectorAll('#tabbar button').length,4);
-  for(const route of h.context.MiniSource.config.pages){h.host.wx.navigateTo({url:'/'+route});await tick();assert.equal(h.host.current.route,route==='pages/manager/manager'?'pages/profile/profile':route);assert.ok(h.document.getElementById('page').textContent.trim(),route)}
+  const customerRedirects=new Set(['pages/manager/manager','pages/referrals/referrals','pages/questionnaire-share/questionnaire-share']);
+  for(const route of h.context.MiniSource.config.pages){h.host.wx.navigateTo({url:'/'+route});await tick();assert.equal(h.host.current.route,customerRedirects.has(route)?route==='pages/manager/manager'?'pages/profile/profile':'pages/customer/customer':route);assert.ok(h.document.getElementById('page').textContent.trim(),route)}
   assert.deepEqual(h.errors,[]);
 });
 test('网页公开课显示后台费用但不向报名端展示名额，名额只保留在管理端',async()=>{
@@ -248,6 +250,8 @@ test('课程详情分享生成图片二维码，不调用系统发送长链接',
   h.host.requireModule('utils/referralPoster').poster=(_canvas,value)=>{shared=value;return 'data:image/png;base64,dGVzdA==';};
   h.host.wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id=7'});await tick();
   h.host.current.setData({classInfo:{id:'7',title:'奖励的误区',status:'PUBLISHED',canEnroll:true,coverUrl:'https://example.invalid/cover.jpg'}});await tick();
+  assert.equal(h.document.querySelector('.course-footer .secondary'),null);
+  h.host.current.setData({canInvite:true});await tick();
   h.document.querySelector('.course-footer .secondary').dispatchEvent(new h.Event('click',{bubbles:true}));await tick();
   assert.equal(shared.title,'奖励的误区');assert.match(shared.url,/#\/pages\/public-class-detail\/public-class-detail\?id=7$/);
   assert.equal(h.document.querySelector('#image-preview').open,true);assert.match(h.document.querySelector('#image-preview img').src,/^data:image\/png/);assert.ok(!h.document.querySelector('#image-preview').textContent.includes('http'));

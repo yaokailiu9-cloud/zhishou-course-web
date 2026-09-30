@@ -1,5 +1,5 @@
 <view class="service-page questionnaire-share-page">
- <view class="service-hero"><text class="eyebrow">代理专属发放</text><text class="page-title">简易方案梳理</text><text class="muted">2026问卷梳理，填写前缴费，代理可以发</text></view>
+ <view wx:if="{{allowed}}" class="service-hero"><text class="eyebrow">专属问卷发放</text><text class="page-title">简易方案梳理</text><text class="muted">2026问卷梳理，填写前缴费</text></view>
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新核实身份</button></view>
  <view wx:if="{{loading && !allowed}}" class="card"><text class="muted">正在生成专属二维码…</text></view>
  <view wx:if="{{allowed}}" class="card qr-card">

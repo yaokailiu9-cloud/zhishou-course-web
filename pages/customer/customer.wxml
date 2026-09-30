@@ -6,6 +6,7 @@
  <view wx:if="{{!isLoggedIn}}" class="card"><text class="section-title">登录后查看你的服务记录</text><text class="muted">报名、预约和反馈会保存在你的微信账号下。</text><button class="primary" bindtap="login">微信登录</button></view>
  <text wx:if="{{loading}}" class="muted">正在加载你的记录…</text>
  <block wx:if="{{isLoggedIn}}">
+  <view wx:if="{{hasMyPlan}}" class="card" bindtap="openMyPlan"><view class="row"><text class="section-title">我的方案</text><text class="link">查看 ›</text></view><text class="body">{{myPlanSubmitted ? '查看我提交的问卷、梳理进度和结果' : '继续填写我的问卷'}}</text></view>
   <view class="notice">{{eligible ? '已核实参加公开课，可以提交线下咨询申请；具体时间由工作人员确认。' : '参加免费公开课后，由工作人员核实到课情况，再开放咨询申请。'}}</view>
   <view class="row"><text class="section-title">我的公开课报名</text><button class="text-button" bindtap="goMine">全部报名 ›</button></view>
   <view wx:for="{{enrollments}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="openClass"><view class="row"><text class="card-title">{{item.public_class.title}}</text><text class="pill">免费</text></view><text class="muted">{{item.statusText}} · {{item.attendanceText}} · {{item.groupText}}</text><text class="body">{{item.public_class.group_guide || '工作人员将联系你进群，课程地址在群内通知。'}}</text><text class="link">查看入场凭证与进群指引 ›</text></view>

@@ -1,4 +1,4 @@
-<view class="manager-page safe-bottom">
+<view wx:if="{{accessChecked}}" class="manager-page safe-bottom">
   <view class="manager-topbar" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px;">
     <view class="icon-button" bindtap="returnToProfile">
       <text>‹</text>

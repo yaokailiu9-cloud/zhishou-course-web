@@ -23,6 +23,8 @@ Page({
     isLoggedIn: false,
     canCheckin: false,
     canInvite: false,
+    hasMyPlan: false,
+    myPlanSubmitted: false,
     userInfo: {},
     defaultPortrait: userPortrait,
     avatarText: "客",
@@ -89,6 +91,8 @@ Page({
         isLoggedIn: false,
         canCheckin: false,
         canInvite: false,
+        hasMyPlan: false,
+        myPlanSubmitted: false,
         userInfo: {},
         avatarText: "客",
         isServiceProvider: false,
@@ -107,7 +111,21 @@ Page({
     this.loadManagerAccess(storedUser);
     this.loadCheckinAccess();
     this.loadReferralAccess();
+    this.loadMyPlan();
   },
+
+  async loadMyPlan() {
+    const identity=viewSession.capture();
+    this.setData({hasMyPlan:false,myPlanSubmitted:false});
+    try {
+      const result=await checkinService.call('GET_QUESTIONNAIRE');
+      if(viewSession.current(identity))this.setData({hasMyPlan:!!result.enrollment,myPlanSubmitted:!!(result.enrollment&&result.enrollment.child_submitted_at)});
+    } catch (_) {
+      // An account without a paid questionnaire has no personal plan entry.
+    }
+  },
+
+  goMyPlan() { wx.navigateTo({url:'/pages/questionnaire/questionnaire'}); },
 
   async loadReferralAccess() {
     const identity=viewSession.capture();this.setData({canInvite:false});
