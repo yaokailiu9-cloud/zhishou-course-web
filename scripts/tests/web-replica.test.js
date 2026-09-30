@@ -37,6 +37,16 @@ test('从我的链接进入时落到首页，仍可主动切换我的且课程�
   assert.equal(h.host.current.route,'pages/public-class-detail/public-class-detail');
   assert.equal(h.host.current.options.id,'12');
 });
+test('客户页隐藏代理入口和累计消费，代理仍可看到发放入口',async()=>{
+  const h=await host();
+  h.host.wx.navigateTo({url:'/pages/profile/profile'});await tick();
+  const page=h.document.getElementById('page');
+  h.host.current.setData({isLoggedIn:true,canInvite:true,userInfo:{id:'18',nickName:'客户',role:'customer'}});await tick();
+  assert.doesNotMatch(page.textContent,/简易方案梳理|推荐客户|累计消费/);
+  h.host.current.setData({userInfo:{id:'19',nickName:'代理',role:'agent'}});await tick();
+  assert.match(page.textContent,/简易方案梳理|推荐客户/);
+  assert.doesNotMatch(page.textContent,/累计消费/);
+});
 test('微信登录请求指定首页为回调落点并保留推荐人',async()=>{
   const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=test-ref',hash:'#mine'}});
   h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();

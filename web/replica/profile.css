@@ -358,63 +358,6 @@
   font-weight: 700;
 }
 
-.wealth-grid {
-  display: grid;
-  margin-top: calc(64 * var(--rpx));
-}
-
-.wealth-card {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  min-height: calc(196 * var(--rpx));
-  padding: calc(44 * var(--rpx));
-  overflow: hidden;
-  background: #ffffff;
-  border: calc(1 * var(--rpx)) solid var(--em-color-border-muted);
-  border-radius: calc(32 * var(--rpx));
-  box-shadow: 0 calc(10 * var(--rpx)) calc(32 * var(--rpx)) rgba(0, 39, 39, 0.04);
-}
-
-.wealth-label {
-  display: block;
-  color: var(--em-color-text-secondary);
-  font-size: calc(24 * var(--rpx));
-  font-weight: 700;
-}
-
-.wealth-value {
-  display: flex;
-  align-items: baseline;
-  margin-top: calc(24 * var(--rpx));
-  color: var(--em-color-primary);
-  font-family: "Songti SC", "STSong", "SimSun", serif;
-  font-size: calc(50 * var(--rpx));
-  font-weight: 700;
-  line-height: 1;
-}
-
-.wealth-value text {
-  margin-right: calc(10 * var(--rpx));
-  font-family: "Songti SC", "STSong", "SimSun", serif;
-  font-size: calc(34 * var(--rpx));
-}
-
-.wallet-ghost {
-  position: absolute;
-  right: calc(-12 * var(--rpx));
-  bottom: calc(-18 * var(--rpx));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(132 * var(--rpx));
-  height: calc(132 * var(--rpx));
-  color: rgba(115, 92, 0, 0.42);
-  font-size: calc(60 * var(--rpx));
-  background: rgba(228, 226, 226, 0.64);
-  border-radius: calc(18 * var(--rpx));
-}
-
 .manager-panel {
   margin-top: calc(28 * var(--rpx));
   padding: calc(30 * var(--rpx));

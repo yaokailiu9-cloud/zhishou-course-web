@@ -45,12 +45,6 @@ Page({
     },
     consultationStatus: "未开通",
     paidUntilText: "暂无有效服务",
-    orderCards: [
-      { label: "待支付", value: 0 },
-      { label: "服务中", value: 0 },
-      { label: "已完成", value: 0 }
-    ],
-    accountBalanceText: "0.00",
     testCustomerPreviewActive: false
   },
 
@@ -65,22 +59,6 @@ Page({
     this.setData({ testCustomerPreviewActive: testCustomerPreview.isActive() });
     this.hydrateUserFromStorage();
     this.refreshAccess();
-  },
-
-  refreshCustomerSummary(accountId) {
-    const identity=viewSession.capture();
-    zion.getCustomerAccountSummary(accountId)
-      .then((summary) => {
-        if (!summary) return;
-        if(!viewSession.current(identity))return;
-        this.setData({
-          accountBalanceText: summary.totalSpentText || "0.00",
-          orderCards: summary.orderCards || this.data.orderCards
-        });
-      })
-      .catch((error) => {
-        console.warn("refreshCustomerSummary failed", error);
-      });
   },
 
   setCustomNav() {
@@ -126,7 +104,6 @@ Page({
       avatarText: storedUser.nickName ? storedUser.nickName.slice(0, 1) : "客"
     });
     this.refreshBackendUser(storedUser.id);
-    this.refreshCustomerSummary(storedUser.id);
     this.loadManagerAccess(storedUser);
     this.loadCheckinAccess();
     this.loadReferralAccess();
@@ -315,7 +292,6 @@ Page({
             ? "已创建账户并登录成功。"
             : "欢迎回来，已恢复你的微信账户。"
         });
-        this.refreshCustomerSummary(syncedUser.id);
         this.loadManagerAccess(syncedUser);
         wx.showToast({
           title: loginResult && loginResult.isNewAccount ? "账户已创建" : "欢迎回来",

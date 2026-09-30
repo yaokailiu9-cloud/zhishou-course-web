@@ -358,63 +358,6 @@
   font-weight: 700;
 }
 
-.wealth-grid {
-  display: grid;
-  margin-top: 64rpx;
-}
-
-.wealth-card {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  min-height: 196rpx;
-  padding: 44rpx;
-  overflow: hidden;
-  background: #ffffff;
-  border: 1rpx solid var(--em-color-border-muted);
-  border-radius: 32rpx;
-  box-shadow: 0 10rpx 32rpx rgba(0, 39, 39, 0.04);
-}
-
-.wealth-label {
-  display: block;
-  color: var(--em-color-text-secondary);
-  font-size: 24rpx;
-  font-weight: 700;
-}
-
-.wealth-value {
-  display: flex;
-  align-items: baseline;
-  margin-top: 24rpx;
-  color: var(--em-color-primary);
-  font-family: "Songti SC", "STSong", "SimSun", serif;
-  font-size: 50rpx;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.wealth-value text {
-  margin-right: 10rpx;
-  font-family: "Songti SC", "STSong", "SimSun", serif;
-  font-size: 34rpx;
-}
-
-.wallet-ghost {
-  position: absolute;
-  right: -12rpx;
-  bottom: -18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 132rpx;
-  height: 132rpx;
-  color: rgba(115, 92, 0, 0.42);
-  font-size: 60rpx;
-  background: rgba(228, 226, 226, 0.64);
-  border-radius: 18rpx;
-}
-
 .manager-panel {
   margin-top: 28rpx;
   padding: 30rpx;
