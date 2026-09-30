@@ -3,7 +3,7 @@ const questionnaire=require('../../utils/questionnaire');
 const service=require('../../utils/consultationService');
 const empty=()=>({name:'',gender:'',age:'',grade:'',economicSource:'',issues:[],description:'',dailyBehavior:'',guardianName:'',guardianPhone:'',consent:false});
 Page({
- data:{loading:true,busy:false,error:'',offer:null,intake:null,priceText:'19.90',paid:false,submitted:false,loggedIn:false,issues:[],form:empty(),feedbackState:'PENDING',feedbackTitle:'待工作人员处理',feedbackNote:'提交后，工作人员会在这里更新梳理进度。',feedbackContent:'',feedbackAvailableText:''},
+ data:{loading:true,busy:false,error:'',offer:null,intake:null,priceText:'0.01',paid:false,submitted:false,loggedIn:false,issues:[],form:empty(),feedbackState:'PENDING',feedbackTitle:'待工作人员处理',feedbackNote:'提交后，工作人员会在这里更新梳理进度。',feedbackContent:'',feedbackAvailableText:''},
  onLoad(){require('../../utils/loginReturn').restore(this,'questionnaire','');},
  onShow(){this.refresh();},
  async refresh(){
@@ -31,7 +31,7 @@ Page({
   if(!auth.isLoggedIn()){this.login();return;}
   const name=String(this.data.form.guardianName||'').trim(),phone=String(this.data.form.guardianPhone||'').trim();
   if(!name||!/^1[3-9]\d{9}$/.test(phone)){this.setData({error:'请先填写家长姓名和有效的11位联系电话。'});return;}
-  this.setData({busy:true,error:''});try{const r=await questionnaire.pay({name,phone});if(r&&r.enrollment){this.enrollmentId=r.enrollment.id;this.setData({paid:true,form:{...this.data.form,guardianName:name,guardianPhone:phone}});await this.refresh();}}catch(e){service.error(this,e);}finally{this.setData({busy:false});}
+  this.setData({busy:true,error:''});try{const r=await questionnaire.pay({name,phone},this.data.offer.price);if(r&&r.enrollment){this.enrollmentId=r.enrollment.id;this.setData({paid:true,form:{...this.data.form,guardianName:name,guardianPhone:phone}});await this.refresh();}}catch(e){service.error(this,e);}finally{this.setData({busy:false});}
  },
  async submit(){
   if(this.data.busy||!this.enrollmentId||this.data.submitted)return;const f=this.data.form;

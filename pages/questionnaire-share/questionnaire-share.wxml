@@ -3,7 +3,7 @@
  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重新核实身份</button></view>
  <view wx:if="{{loading && !allowed}}" class="card"><text class="muted">正在生成专属二维码…</text></view>
  <view wx:if="{{allowed}}" class="card qr-card">
-  <text class="panel-caption">我的专属问卷码</text><text class="section-title">微信扫码 · 支付 19.9 元后填写</text>
+  <text class="panel-caption">我的专属问卷码</text><text class="section-title">微信扫码 · 按页面金额支付后填写</text>
   <canvas wx:if="{{shareUrl && !qrError}}" class="questionnaire-code" canvas-id="questionnaire-code" style="width:256px;height:256px;"></canvas>
   <text wx:if="{{qrError}}" class="error">{{qrError}}</text>
   <button class="primary" bindtap="openPoster" disabled="{{!shareUrl}}">打开二维码大图</button>

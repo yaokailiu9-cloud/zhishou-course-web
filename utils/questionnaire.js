@@ -10,6 +10,10 @@ function request(action,data={},method='GET'){
   }));
 }
 function context(){return request('questionnaire-context',{ref:wx.getReferralToken?wx.getReferralToken():''});}
-function pay(payload){return payment.enroll(payload,'￥19.90',{action:'questionnaire-pay',noun:'简易方案梳理',confirmTitle:'填写前缴费'});}
+function pay(payload, price){
+  const cents=Math.round(Number(price)*100);
+  if(!Number.isSafeInteger(cents)||cents<1||Math.abs(Number(price)*100-cents)>0.00001)throw new Error('问卷价格暂时无效，请刷新后重试');
+  return payment.enroll(payload,'￥'+(cents/100).toFixed(2),{action:'questionnaire-pay',noun:'简易方案梳理',confirmTitle:'填写前缴费'});
+}
 function submit(payload){return service.call('SUBMIT_CHILD_INTAKE',payload);}
 module.exports={context,pay,submit};
