@@ -27,6 +27,7 @@ for (fid,nodes),detail in zip(flows,details['responses']):
   if file=='authorize': code+='\n'+Path('backend/consultation/referral.js').read_text()+'\n'+Path('backend/consultation/checkin.js').read_text()
   if file=='classes': code=code.replace('// FAMILY_HANDLERS: build script inserts family.js here.',Path('backend/consultation/family.js').read_text())
   if file=='classes': code=code.replace('// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.',Path('utils/md5.js').read_text().replace('module.exports = { md5Base64 };','')+'\n'+Path('backend/consultation/course-payment.js').read_text())
+  if file=='appointments': code=code.replace('// AGENT_APPOINTMENTS: build script inserts agent-appointments.js here.',Path('backend/consultation/agent-appointments.js').read_text())
   updates.append({'name':'UPDATE_ACTION_FLOW_NODE','args':{'actionFlowId':fid,'nodeId':node,'config':{'type':'CUSTOM_CODE','code':code}}})
 r=call(updates);(out/'code-updated.json').write_text(json.dumps(r,ensure_ascii=False,indent=2))
 validation=run('schema','validate');(out/'schema-validation.json').write_text(json.dumps(validation,ensure_ascii=False,indent=2))

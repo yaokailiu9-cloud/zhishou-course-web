@@ -56,4 +56,5 @@ if (op === "GET_APPOINTMENT") {
   var feedback=pageRows("consultation_feedback",eq("appointment_id",a.id),FEEDBACK_FIELDS,p.feedbackCursor,200,p.paginate===true);
   result(s,{appointment:a,record:record,feedbacks:feedback.items,nextFeedbackCursor:feedback.nextCursor,summaryJobs:jobs.items.map(refreshSummaryJob),nextSummaryCursor:jobs.nextCursor,isStaff:assigned,canAccept:assigned && s.actor.canAccept,canReply:assigned && s.actor.canReply});
 }
+// AGENT_APPOINTMENTS: build script inserts agent-appointments.js here.
 context.setReturn("state",s);
