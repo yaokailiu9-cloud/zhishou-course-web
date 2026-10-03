@@ -11078,7 +11078,7 @@ const questionnaire=require('../../utils/questionnaire');
 const service=require('../../utils/consultationService');
 const empty=()=>({name:'',gender:'',age:'',grade:'',economicSource:'',issues:[],description:'',dailyBehavior:'',guardianName:'',guardianPhone:'',consent:false});
 Page({
- data:{loading:true,busy:false,error:'',offer:null,intake:null,priceText:'0.01',paid:false,submitted:false,loggedIn:false,issues:[],form:empty(),feedbackState:'PENDING',feedbackTitle:'待工作人员处理',feedbackNote:'提交后，工作人员会在这里更新梳理进度。',feedbackContent:'',feedbackAvailableText:''},
+ data:{loading:true,busy:false,error:'',offer:null,intake:null,priceText:'19.90',paid:false,submitted:false,loggedIn:false,issues:[],form:empty(),feedbackState:'PENDING',feedbackTitle:'待工作人员处理',feedbackNote:'提交后，工作人员会在这里更新梳理进度。',feedbackContent:'',feedbackAvailableText:''},
  onLoad(){require('../../utils/loginReturn').restore(this,'questionnaire','');},
  onShow(){this.refresh();},
  async refresh(){
