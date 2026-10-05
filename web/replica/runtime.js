@@ -44,6 +44,71 @@
     try {Promise.resolve(page[name]({type:native?.type||'tap',currentTarget:target,target,detail})).catch(error=>wx.showToast({title:error.message||'操作未完成'}))}
     catch(error){console.error(error);wx.showToast({title:error.message||'操作未完成'})}
   }
+  const pickerMemory=new Map();
+  const pad2=n=>String(n).padStart(2,'0');
+  const dateText=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  const parseDate=text=>{const m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(text||''));return m?new Date(+m[1],+m[2]-1,+m[3]):null};
+  const WEEK='日一二三四五六';
+  let pickerClose=null;
+  // 网页版日期/时间选择面板：挂在 #page 之外，选择过程中页面不重绘；点“确定”才回调一次。
+  function openDateTimePicker({mode,value,start,end,title,onConfirm}){
+    if(pickerClose)pickerClose();
+    const isDate=mode==='date',now=new Date(),todayText=dateText(now);
+    const inRange=v=>(!start||v>=start)&&(!end||v<=end);
+    let selected=value&&inRange(value)?value:'';
+    if(isDate&&!selected){const fallback=start&&todayText<start?start:end&&todayText>end?end:todayText;selected=fallback;}
+    const initial=isDate?parseDate(selected)||now:now;let viewYear=initial.getFullYear(),viewMonth=initial.getMonth();
+    let hour=selected&&!isDate?selected.slice(0,2):'',minute=selected&&!isDate?selected.slice(3,5):'';
+    const mask=document.createElement('div');mask.className='web-sheet-mask';
+    const sheet=document.createElement('div');sheet.className='web-sheet';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');sheet.setAttribute('aria-label',title);sheet.tabIndex=-1;
+    mask.append(sheet);
+    const result=()=>isDate?selected:(hour&&minute?hour+':'+minute:'');
+    const pretty=()=>{const v=result();if(!v)return isDate?'请选择日期':'请选择小时和分钟';if(!isDate)return v;const d=parseDate(v);return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日 周'+WEEK[d.getDay()]};
+    function dateBody(){
+      const lo=start?+start.slice(0,4):end?now.getFullYear()-100:now.getFullYear()-5,hi=end?+end.slice(0,4):now.getFullYear()+10;
+      const years=[];for(let y=Math.min(lo,viewYear);y<=Math.max(hi,viewYear);y++)years.push(y);
+      const monthFirst=new Date(viewYear,viewMonth,1),days=new Date(viewYear,viewMonth+1,0).getDate();
+      const prevOk=!start||dateText(new Date(viewYear,viewMonth,0))>=start,nextOk=!end||dateText(new Date(viewYear,viewMonth+1,1))<=end;
+      let cells='';for(let i=0;i<monthFirst.getDay();i++)cells+='<span></span>';
+      for(let d=1;d<=days;d++){const v=dateText(new Date(viewYear,viewMonth,d));
+        cells+=`<button type="button" class="web-day${v===selected?' on':''}${v===todayText?' today':''}" data-day="${v}"${inRange(v)?'':' disabled'}>${d}</button>`;}
+      return `<div class="web-cal-head"><button type="button" data-act="prev" aria-label="上个月"${prevOk?'':' disabled'}>‹</button>
+        <select data-act="year" aria-label="年份">${years.map(y=>`<option value="${y}"${y===viewYear?' selected':''}>${y}年</option>`).join('')}</select>
+        <select data-act="month" aria-label="月份">${Array.from({length:12},(_,m)=>`<option value="${m}"${m===viewMonth?' selected':''}>${m+1}月</option>`).join('')}</select>
+        <button type="button" data-act="next" aria-label="下个月"${nextOk?'':' disabled'}>›</button></div>
+        <div class="web-cal-week">${[...WEEK].map(w=>`<span>${w}</span>`).join('')}</div><div class="web-cal-grid">${cells}</div>`;
+    }
+    function timeBody(){
+      const minutes=[];for(let m=0;m<60;m+=5)minutes.push(pad2(m));if(minute&&!minutes.includes(minute)){minutes.push(minute);minutes.sort();}
+      const ok=v=>inRange(v);
+      const hours=Array.from({length:24},(_,h)=>pad2(h)).map(h=>`<button type="button" class="web-time${h===hour?' on':''}" data-hour="${h}"${minutes.some(m=>ok(h+':'+m))?'':' disabled'}>${h}</button>`).join('');
+      const mins=minutes.map(m=>`<button type="button" class="web-time${m===minute?' on':''}" data-minute="${m}"${!hour||ok(hour+':'+m)?'':' disabled'}>${m}</button>`).join('');
+      return `<p class="web-time-label">时</p><div class="web-time-grid">${hours}</div><p class="web-time-label">分</p><div class="web-time-grid">${mins}</div>`;
+    }
+    function draw(){
+      const v=result();
+      sheet.innerHTML=`<div class="web-sheet-bar"><button type="button" data-act="cancel">取消</button><strong>${title}</strong><button type="button" data-act="ok" class="web-sheet-ok"${v&&inRange(v)?'':' disabled'}>确定</button></div>
+        <p class="web-sheet-value${v?'':' empty'}">${pretty()}</p>${isDate?dateBody():timeBody()}`;
+    }
+    const restoreOverflow=document.body.style.overflow;
+    function close(){mask.remove();document.body.style.overflow=restoreOverflow;document.removeEventListener('keydown',onKey,true);pickerClose=null;}
+    function onKey(event){if(event.key==='Escape'){event.preventDefault();close();}}
+    sheet.addEventListener('click',event=>{
+      const b=event.target.closest('button');if(!b||b.disabled)return;
+      if(b.dataset.day)selected=b.dataset.day;
+      else if(b.dataset.hour){hour=b.dataset.hour;if(minute&&!inRange(hour+':'+minute))minute='';}
+      else if(b.dataset.minute)minute=b.dataset.minute;
+      else if(b.dataset.act==='prev'||b.dataset.act==='next'){const d=new Date(viewYear,viewMonth+(b.dataset.act==='next'?1:-1),1);viewYear=d.getFullYear();viewMonth=d.getMonth();}
+      else if(b.dataset.act==='cancel'){close();return}
+      else if(b.dataset.act==='ok'){const v=result();close();if(v)onConfirm(v);return}
+      draw();
+    });
+    sheet.addEventListener('change',event=>{const t=event.target;if(t.dataset.act==='year')viewYear=+t.value;if(t.dataset.act==='month')viewMonth=+t.value;draw();});
+    mask.addEventListener('click',event=>{if(event.target===mask)close()});
+    document.addEventListener('keydown',onKey,true);
+    draw();document.body.append(mask);document.body.style.overflow='hidden';pickerClose=close;
+    try{sheet.focus({preventScroll:true})}catch(_){}
+  }
   function children(nodes, scope, parent, page) {
     let branch=false;
     for(const node of nodes){
@@ -111,12 +176,24 @@
       children(node.children,scope,el,page);
       if(node.tag==='picker'){
         el.classList.add('web-picker');
-        const select=document.createElement(['date','time'].includes(values.mode)?'input':'select');select.className='web-picker-control';select.disabled=!!values.disabled;
-        select.setAttribute('aria-label',el.textContent.trim()||'选择');
-        if(select.tagName==='INPUT'){select.type=values.mode;select.value=values.value||'';if(values.name)select.name=values.name;if(values.end)select.max=values.end;if(values.start)select.min=values.start}
-        else{(values.range||[]).forEach((item,i)=>{const option=document.createElement('option');option.value=i;option.textContent=values['range-key']?item[values['range-key']]:item;select.append(option)});select.value=values.value||0}
-        select.addEventListener('change',event=>{event.stopPropagation();dispatch(page,values.bindchange,el,event,{value:select.value})});
-        el.append(select);
+        if(['date','time'].includes(values.mode)){
+          // 日期/时间用页面外的底部面板选择，确认后才 setData，避免整页重绘打断原生控件。
+          const memoryKey=[page.route,values.bindchange,values.mode,values['data-key']||''].join('|');
+          const current=values.value||pickerMemory.get(memoryKey)||'';
+          const hidden=document.createElement('input');hidden.type='hidden';hidden.className='web-picker-control';hidden.value=current;if(values.name)hidden.name=values.name;
+          el.append(hidden);el.setAttribute('role','button');el.tabIndex=values.disabled?-1:0;if(values.disabled)el.setAttribute('aria-disabled','true');
+          const label=el.textContent.trim()||(values.mode==='date'?'选择日期':'选择时间');el.setAttribute('aria-label',label);
+          const open=event=>{event.preventDefault();if(values.disabled)return;
+            openDateTimePicker({mode:values.mode,value:current,start:values.start||'',end:values.end||'',title:label,
+              onConfirm:value=>{pickerMemory.set(memoryKey,value);dispatch(page,values.bindchange,el,{type:'change'},{value})}});};
+          el.addEventListener('click',open);el.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')open(event)});
+        }else{
+          const select=document.createElement('select');select.className='web-picker-control';select.disabled=!!values.disabled;
+          select.setAttribute('aria-label',el.textContent.trim()||'选择');
+          (values.range||[]).forEach((item,i)=>{const option=document.createElement('option');option.value=i;option.textContent=values['range-key']?item[values['range-key']]:item;select.append(option)});select.value=values.value||0;
+          select.addEventListener('change',event=>{event.stopPropagation();dispatch(page,values.bindchange,el,event,{value:select.value})});
+          el.append(select);
+        }
       }
       parent.append(el);
       if(values['scroll-into-view'])requestAnimationFrame(()=>{const target=document.getElementById(values['scroll-into-view']);if(target)target.scrollIntoView({block:'nearest'})});

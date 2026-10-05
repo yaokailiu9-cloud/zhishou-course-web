@@ -215,9 +215,38 @@ test('网页表单等待中文输入法组词完成后再更新页面',async()=>
 test('date/selector controls emit mini-program values and protected pages do not grant staff access',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/profile-edit/profile-edit'});await tick();
   const select=h.document.querySelector('select');assert.ok(select);const option=select.querySelectorAll('option')[2];option.selected=true;select.dispatchEvent(new h.Event('change',{bubbles:true}));await tick();assert.equal(h.host.current.data.gender,'男');
-  const birthday=h.document.querySelector('input[type="date"]');assert.ok(birthday);assert.match(birthday.parentElement.textContent,/生日.*请选择/);birthday.value='2012-03-04';birthday.dispatchEvent(new h.Event('change',{bubbles:true}));await tick();assert.equal(h.host.current.data.birthday,'2012-03-04');
+  const birthday=[...h.document.querySelectorAll('.web-picker[role="button"]')].find(el=>/生日/.test(el.textContent));assert.ok(birthday);assert.match(birthday.textContent,/生日.*请选择/);
+  const click=el=>el.dispatchEvent(new h.Event('click',{bubbles:true}));
+  click(birthday);const sheet=h.document.querySelector('.web-sheet');assert.ok(sheet,'点击生日应打开日期面板');
+  const pick=(act,value)=>{const s=sheet.querySelector(`select[data-act="${act}"]`);for(const o of s.querySelectorAll("option"))o.value===String(value)?o.setAttribute("selected",""):o.removeAttribute("selected");s.dispatchEvent(new h.Event('change',{bubbles:true}));};
+  pick('year',2012);pick('month',2);click(sheet.querySelector('[data-day="2012-03-04"]'));
+  assert.equal(h.host.current.data.birthday||'','', '确定前不写入页面数据');click(sheet.querySelector('[data-act="ok"]'));await tick();
+  assert.equal(h.host.current.data.birthday,'2012-03-04');assert.equal(h.document.querySelector('.web-sheet'),null);
   h.host.wx.disableAlertBeforeUnload();h.host.wx.navigateTo({url:'/pages/course-roster/course-roster?id=1'});await tick();assert.equal(h.host.current.data.allowed,false);
   assert.equal(h.host.wx.getStorageSync('zionJwt'),'');assert.equal(h.document.querySelectorAll('[data-field="attendanceStatus"]').length,0);
+});
+test('网页时间面板：先选小时再选分钟不重绘页面，确定后只回传一次并在重开时保留',async()=>{
+  const h=await host();h.host.wx.navigateTo({url:'/pages/course-edit/course-edit?id=6'});await tick();
+  h.host.current.setData({allowed:true,loading:false});await tick();
+  const click=el=>el.dispatchEvent(new h.Event('click',{bubbles:true}));
+  const field=()=>h.document.querySelector('.web-picker-control[name="time"]').closest('.web-picker');
+  const before=field();let updates=0;const setData=h.host.current.setData.bind(h.host.current);h.host.current.setData=(...a)=>{updates++;return setData(...a)};
+  click(before);let sheet=h.document.querySelector('.web-sheet');assert.ok(sheet);
+  click(sheet.querySelector('[data-hour="14"]'));click(sheet.querySelector('[data-minute="30"]'));await tick();
+  assert.equal(updates,0,'选择过程中不应触发页面 setData');assert.equal(field(),before,'选择过程中页面元素不应被重建');
+  assert.match(sheet.querySelector('.web-sheet-value').textContent,/14:30/);
+  click(sheet.querySelector('[data-act="ok"]'));await tick();
+  assert.equal(h.host.current.data.form.time,'14:30');assert.equal(updates,1);
+  assert.equal(h.document.querySelector('.web-picker-control[name="time"]').value,'14:30');
+  click(field());sheet=h.document.querySelector('.web-sheet');assert.ok(sheet.querySelector('[data-hour="14"].on'));assert.ok(sheet.querySelector('[data-minute="30"].on'));
+  click(sheet.querySelector('[data-act="cancel"]'));assert.equal(h.document.querySelector('.web-sheet'),null);assert.equal(h.host.current.data.form.time,'14:30');
+});
+test('网页日期面板不能选早于最早可选日期的日子',async()=>{
+  const h=await host();h.host.wx.navigateTo({url:'/pages/course-edit/course-edit?id=6'});await tick();
+  h.host.current.setData({allowed:true,loading:false});await tick();
+  const el=h.document.querySelector('.web-picker-control[name="date"]').closest('.web-picker');
+  el.dispatchEvent(new h.Event('click',{bubbles:true}));const sheet=h.document.querySelector('.web-sheet');
+  const days=[...sheet.querySelectorAll('[data-day]')];assert.ok(days.length>=28);assert.ok(sheet.querySelector('.web-day.on'),'默认选中今天，可直接确定');
 });
 test('网页定位使用浏览器授权并把城市与坐标交回资料页',async()=>{
   let geocodeUrl,result,failure;
