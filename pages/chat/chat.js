@@ -501,23 +501,19 @@ Page({
       if (!wx.getStorageSync("chatReturnSource")) {
         wx.setStorageSync("chatReturnSource", "manager-serving");
       }
-      this.setData({ canOpenSessionDrawer: true });
-      return Promise.resolve(true);
     }
 
-    const storedProviderId = wx.getStorageSync("activeServiceProviderId");
-    if (storedProviderId) {
-      this.setData({ canOpenSessionDrawer: true });
-      return Promise.resolve(true);
-    }
-
+    // The manager view context is only a UI hint; the drawer always re-checks the backend identity.
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
         if (!viewSession.current(identity) || this.hidden || this.unloaded) return false;
-        const allowed = !!(provider && provider.id && provider.serviceStatus === "ACTIVE");
+        const allowed = zion.isManagerProvider(provider);
         if (allowed) {
           wx.setStorageSync("activeServiceProviderId", provider.id);
           wx.setStorageSync("activeManagerAccountId", provider.accountId || userInfo.id);
+        } else {
+          wx.removeStorageSync("activeServiceProviderId");
+          wx.removeStorageSync("activeManagerAccountId");
         }
         this.setData({ canOpenSessionDrawer: allowed });
         return allowed;
@@ -805,16 +801,12 @@ Page({
       this.setData({ managerSessionLoading: true });
     }
 
-    const storedProviderId = wx.getStorageSync("activeServiceProviderId");
-    const storedManagerAccountId = wx.getStorageSync("activeManagerAccountId");
-
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
         if (!current()) throw new Error("stale drawer request");
-        const resolvedProvider = provider && provider.id
-          ? provider
-          : (storedProviderId ? { id: storedProviderId, accountId: storedManagerAccountId } : null);
-        if (!resolvedProvider || !resolvedProvider.id) {
+        // Re-check the backend identity each time; cached provider ids are not authorization.
+        const resolvedProvider = zion.isManagerProvider(provider) ? provider : null;
+        if (!resolvedProvider) {
           return { sessions: [] };
         }
         return zion.listManagerSessions({
@@ -1280,11 +1272,5 @@ Page({
         }
       }
     });
-  },
-
-  mockUnlock() {
-    payment.markConsultationPaid(60);
-    this.refreshAccess();
-    wx.showToast({ title: "已开通聊天", icon: "success" });
   }
 });

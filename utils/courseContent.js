@@ -14,4 +14,9 @@ function courseSections(description) {
   flush();
   return sections;
 }
-module.exports={courseSections};
+// Single place for the backend subtitle that marks 《答案库》 series courses.
+const ANSWER_LIBRARY_SUBTITLE='《答案库》系列课程';
+function isAnswerLibraryCourse(course) {
+  return !!course && course.subtitle===ANSWER_LIBRARY_SUBTITLE;
+}
+module.exports={courseSections,ANSWER_LIBRARY_SUBTITLE,isAnswerLibraryCourse};

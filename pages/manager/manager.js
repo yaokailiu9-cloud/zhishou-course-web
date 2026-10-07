@@ -227,13 +227,7 @@ Page({
 
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
-        const allowed = Boolean(
-          provider
-          && provider.serviceStatus === "ACTIVE"
-          && provider.serviceKind === "STAFF"
-          && provider.canReply
-          && provider.canAcceptOrder
-        );
+        const allowed = zion.isManagerProvider(provider);
         if (!allowed) {
           wx.showToast({ title: "仅服务人员可进入", icon: "none" });
           wx.switchTab({ url: "/pages/profile/profile" });

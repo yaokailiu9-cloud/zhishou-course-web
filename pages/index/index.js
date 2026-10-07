@@ -1,6 +1,7 @@
 const zion = require("../../utils/zion");
 const chatContext = require("../../utils/chatContext");
 const auth = require("../../utils/auth");
+const { isAnswerLibraryCourse } = require("../../utils/courseContent");
 
 Page({
   goCustomerPortal() {
@@ -71,7 +72,7 @@ Page({
     try {
       const response = await zion.listCourses({limit:50});
       const list = Array.isArray(response.courses) ? response.courses : [];
-      this.setData({featuredCourses:list.filter(course=>course.subtitle==='《答案库》系列课程'||course.badge==='付费')});
+      this.setData({featuredCourses:list.filter(course=>isAnswerLibraryCourse(course)||course.badge==='付费')});
     } catch (_) {
       this.setData({featuredCourses:[],courseError:"课程暂时加载失败，请重试。"});
     } finally {

@@ -1,5 +1,5 @@
 const zion = require("../../utils/zion");
-const { courseSections } = require("../../utils/courseContent");
+const { courseSections, isAnswerLibraryCourse } = require("../../utils/courseContent");
 
 Page({
   data: {
@@ -7,6 +7,7 @@ Page({
     navHeight: 104,
     navPaddingRight: 180,
     course: null,
+    isAnswerLibrary: false,
     contentSections: [],
     error: "",
     loading: true,
@@ -42,10 +43,10 @@ Page({
   },
 
   fetchCourse(courseId=this.courseId) {
-    this.setData({loading:true,error:"",course:null});
+    this.setData({loading:true,error:"",course:null,isAnswerLibrary:false});
     return zion.getCourse(courseId).then(r=>{
       if(!r.course || !r.course.id || !r.course.title){this.setData({error:"这门课程不存在或已下架。"});return;}
-      this.setData({course:r.course,contentSections:courseSections(r.course.description)});wx.setNavigationBarTitle({title:r.course.title});
+      this.setData({course:r.course,isAnswerLibrary:isAnswerLibraryCourse(r.course),contentSections:courseSections(r.course.description)});wx.setNavigationBarTitle({title:r.course.title});
     }).catch(()=>this.setData({error:"课程加载失败，请检查网络后重试。"})).finally(()=>this.setData({loading:false}));
   },
   retryCourse(){this.fetchCourse();},

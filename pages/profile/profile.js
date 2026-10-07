@@ -183,11 +183,7 @@ Page({
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
         if(!viewSession.current(identity))return null;
-        const allowed = Boolean(
-          provider
-          && provider.serviceStatus === "ACTIVE"
-          && (provider.canReply || provider.canAcceptOrder)
-        );
+        const allowed = zion.isManagerProvider(provider);
         if (!allowed) {
           this.setData({
             isServiceProvider: false,

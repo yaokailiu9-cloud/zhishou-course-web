@@ -3,7 +3,7 @@ const {courseSections}=require('../../utils/courseContent');
 function home(listCourses){
  let page;const navigations=[];
  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../pages/index/index.js'),'utf8'),{
-  Page:p=>page=p,require:n=>n.endsWith('/zion')?{listCourses}:{enterCustomerView(){}},encodeURIComponent,
+  Page:p=>page=p,require:n=>n.endsWith('/zion')?{listCourses}:n.endsWith('/courseContent')?require('../../utils/courseContent'):{enterCustomerView(){}},encodeURIComponent,
   wx:{navigateTo:v=>navigations.push(v.url)}
  });
  page.data=structuredClone(page.data);page.setData=function(patch){Object.assign(this.data,patch);};return{page,navigations};

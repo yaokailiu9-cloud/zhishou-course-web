@@ -30,7 +30,7 @@ function(scope){with(scope){try{return (showVideoPlayer && playingVideoUrl)}catc
 function(scope){with(scope){try{return (playingVideoUrl)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (course.coverUrl)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (course.chapters[0].videoUrl)}catch(_){return undefined}}},
-function(scope){with(scope){try{return (course.subtitle === '《答案库》系列课程' ? course.title : course.badge)}catch(_){return undefined}}},
+function(scope){with(scope){try{return (isAnswerLibrary ? course.title : course.badge)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (course.durationText)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (course.title)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (course.subtitle)}catch(_){return undefined}}},
@@ -1016,7 +1016,12 @@ function courseSections(description) {
   flush();
   return sections;
 }
-module.exports={courseSections};
+// Single place for the backend subtitle that marks 《答案库》 series courses.
+const ANSWER_LIBRARY_SUBTITLE='《答案库》系列课程';
+function isAnswerLibraryCourse(course) {
+  return !!course && course.subtitle===ANSWER_LIBRARY_SUBTITLE;
+}
+module.exports={courseSections,ANSWER_LIBRARY_SUBTITLE,isAnswerLibraryCourse};
 
 },
 "utils/coursePayment":function(require,module,exports,Page,wx,getApp,getCurrentPages){
@@ -4510,50 +4515,8 @@ const WECHAT_LOGIN_ACTION_FLOW_ID = "4e0d236b-9a2c-4510-9c73-8cdade71e9e3";
 const WECHAT_LOGIN_ACTION_FLOW_VERSION = 1;
 const CHAT_SESSION_STORAGE_KEY = "consultationSessionId";
 const APP_VERSION = "1";
-const DEFAULT_MANAGER_ACCOUNT_ID = "1000000000000010";
-const DEFAULT_MANAGER_SERVICE_PROVIDER_ID = "1";
 const ACCOUNT_PROFILE_KEY = "account_profile";
 const LEGACY_ACCOUNT_PROFILE_KEY = "serenity_profile";
-const DEFAULT_MANAGER_IDENTITY = {
-  user: {
-    id: DEFAULT_MANAGER_ACCOUNT_ID,
-    nickName: "刘曜恺",
-    avatarUrl: "",
-    role: "manager",
-    phone: "",
-    username: "刘曜恺"
-  },
-  serviceProvider: {
-    id: DEFAULT_MANAGER_SERVICE_PROVIDER_ID,
-    accountId: DEFAULT_MANAGER_ACCOUNT_ID,
-    displayName: "刘曜恺",
-    title: "情感咨询经理",
-    avatarUrl: "https://api.dicebear.com/7.x/thumbs/png?seed=manager-linjing",
-    bio: "",
-    specialties: [],
-    serviceStatus: "ACTIVE",
-    verified: true,
-    canReply: true,
-    canAcceptOrder: true,
-    onlineStatus: "online",
-    rating: "4.9",
-    pricePerHour: 200,
-    serviceMinutes: 60,
-    todayWaitingCount: 0,
-    activeSessionCount: 0,
-    todayIncome: 0,
-    totalIncome: 12800
-  }
-};
-
-function cloneDefaultManagerIdentity() {
-  return JSON.parse(JSON.stringify(DEFAULT_MANAGER_IDENTITY));
-}
-
-function isDefaultManagerAccount(accountId) {
-  return String(accountId || "") === DEFAULT_MANAGER_ACCOUNT_ID;
-}
-
 function makeClientMessageId() {
   return `miniapp_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
 }
@@ -5348,95 +5311,6 @@ function getStoredAccountProfile(infoMap = {}) {
   return {};
 }
 
-function getDefaultManagerIdentity() {
-  const query = `
-    query GetDefaultManagerIdentity {
-      service_provider(limit: 20) {
-        id
-        account_id
-        display_name
-        title
-        avatar_url
-        service_status
-        verified
-        can_reply
-        can_accept_order
-        online_status
-        rating
-        price_per_hour
-        service_minutes
-        today_waiting_count
-        active_session_count
-        today_income
-        total_income
-        account {
-          username
-          wechat_nickname
-          wechat_avatar_url
-        }
-      }
-      account(limit: 100) {
-        id
-        username
-        oauth2_user_info_map
-        wechat_nickname
-        wechat_avatar_url
-        fz_phone_number
-        user_type
-        account_profile_id
-        account_profile {
-          id
-          user_name
-          avatar_url
-          avatar_image {
-            id
-            url
-          }
-          city
-          address
-          gender
-          birthday
-          phone
-          wechat_avatar_url
-          location_info
-        }
-      }
-    }
-  `;
-
-  return graphql(query).then((res) => {
-    const providers = (res.data.service_provider || []).map(normalizeServiceProvider);
-    const provider = providers.find((item) => item.serviceStatus === "ACTIVE" && (item.canReply || item.canAcceptOrder))
-      || providers[0];
-    if (!provider) {
-      return cloneDefaultManagerIdentity();
-    }
-    const account = (res.data.account || []).find((item) => String(item.id) === String(provider.accountId));
-    const user = account
-      ? normalizeAccount(account)
-      : {
-        id: provider.accountId,
-        nickName: provider.displayName,
-        avatarUrl: provider.avatarUrl,
-        role: "manager",
-        phone: ""
-      };
-    return {
-      user: {
-        ...user,
-        id: provider.accountId || user.id,
-        nickName: provider.displayName || user.nickName,
-        avatarUrl: provider.avatarUrl || user.avatarUrl,
-        role: "manager"
-      },
-      serviceProvider: provider
-    };
-  }).catch((error) => {
-    console.warn("getDefaultManagerIdentity fallback", error);
-    return cloneDefaultManagerIdentity();
-  });
-}
-
 function listCourses(filters = {}) {
   const query = `
     query ListCourses($limit: Int) {
@@ -5835,18 +5709,22 @@ function resolveAdvisorServiceProvider(advisorId) {
     });
 }
 
-function isActiveServiceProvider(provider) {
+// Matches the backend manager check: agents share service_provider but never get manager access.
+function isManagerProvider(provider) {
   return Boolean(
     provider
+    && provider.id
     && provider.serviceStatus === "ACTIVE"
-    && (provider.canReply || provider.canAcceptOrder)
+    && provider.serviceKind === "STAFF"
+    && provider.canReply
+    && provider.canAcceptOrder
   );
 }
 
 function assertCanBookAdvisor(customerAccountId, advisorId) {
   return getServiceProviderByAccount(customerAccountId)
     .then((provider) => {
-      if (isActiveServiceProvider(provider)) {
+      if (isManagerProvider(provider)) {
         return {
           allowed: false,
           binding: null,
@@ -5909,58 +5787,6 @@ function ensureCustomerServiceBinding(data = {}) {
     }
     return createCustomerServiceBinding(data);
   });
-}
-
-function canTransferCustomerBinding(account) {
-  const role = account && (account.user_type || account.role);
-  return role === "admin" || role === "super_admin";
-}
-
-function transferCustomerServiceBinding(data = {}) {
-  const query = `
-    query GetAccountRole($id: bigint!) {
-      account_by_pk(id: $id) {
-        id
-        user_type
-      }
-    }
-  `;
-  const updateQuery = `
-    mutation TransferCustomerServiceBinding($id: bigint!, $data: customer_service_binding_set_input!) {
-      update_customer_service_binding_by_pk(pk_columns: { id: $id }, _set: $data) {
-        id
-        binding_status
-        bound_at
-        transfer_note
-        last_transferred_at
-        customer_account_id
-        advisor_id
-        service_provider_id
-      }
-    }
-  `;
-  const transferredAt = new Date().toISOString();
-
-  return graphql(query, { id: Number(data.operatorAccountId) })
-    .then((res) => {
-      const account = res.data.account_by_pk;
-      if (!canTransferCustomerBinding(account)) {
-        const error = new Error("仅更高权限人员可以移交客户绑定关系。");
-        error.code = "TRANSFER_FORBIDDEN";
-        throw error;
-      }
-      return resolveAdvisorServiceProvider(data.advisorId);
-    })
-    .then((resolved) => graphql(updateQuery, {
-      id: Number(data.bindingId),
-      data: {
-        advisor_id: Number(resolved.advisorId),
-        service_provider_id: Number(resolved.serviceProviderId),
-        binding_status: ACTIVE_CUSTOMER_BINDING_STATUS,
-        transfer_note: data.transferNote || "",
-        last_transferred_at: transferredAt
-      }
-    }).then((updateRes) => normalizeCustomerServiceBinding(updateRes.data.update_customer_service_binding_by_pk)));
 }
 
 function createQuestion(data) {
@@ -6817,16 +6643,13 @@ function saveAccountProfile(profile = {}) {
       : graphql(insertProfileQuery, { object: profileData }).then((profileRes) => profileRes.data.insert_account_profile_one);
 
     return saveProfilePromise.then((savedProfile) => {
-      const nextRole = currentAccount.user_type === "manager"
-        ? "manager"
-        : (profile.role || currentAccount.user_type || "customer");
+      // Business identity (user_type / service_provider) is maintained by backend flows only.
       const data = {
         // H5 OAuth uses this stable identifier to recover the same account.
         username: /^wxh5_[a-f0-9]{36}$/.test(currentAccount.username || "")
           ? currentAccount.username : (profile.userName || ""),
         wechat_nickname: profile.userName || "",
         wechat_avatar_url: profile.avatarUrl || "",
-        user_type: nextRole,
         account_profile_id: savedProfile && savedProfile.id ? Number(savedProfile.id) : currentAccount.account_profile_id
       };
 
@@ -7510,9 +7333,18 @@ function getManagerOrderDetail(params = {}) {
 
 function listManagerSessions(options = "waiting") {
   const filters = typeof options === "string" ? { status: options } : (options || {});
+  // Filter and order on the server so newer sessions are never cut off by the limit.
+  const idEquals = (column, value) => ({
+    _eq: { bigint_operand: { left_operand: { column }, right_operand: { literal: Number(value) } } }
+  });
+  const scopes = [];
+  if (filters.serviceProviderId) scopes.push(idEquals("service_provider_id", filters.serviceProviderId));
+  if (filters.managerAccountId) scopes.push(idEquals("manager_account_id", filters.managerAccountId));
+  const where = scopes.length ? { _or: scopes } : {};
+  const legacyWhere = filters.managerAccountId ? idEquals("manager_account_id", filters.managerAccountId) : where;
   const query = `
-    query ListSessions {
-      consultation_session(limit: 50) {
+    query ListSessions($where: consultation_session_bool_exp!) {
+      consultation_session(where: $where, order_by: { last_message_at: desc }, limit: 50) {
         id
         order_id
         customer_account_id
@@ -7548,8 +7380,8 @@ function listManagerSessions(options = "waiting") {
     }
   `;
   const legacyQuery = `
-    query ListSessions {
-      consultation_session(limit: 50) {
+    query ListSessions($where: consultation_session_bool_exp!) {
+      consultation_session(where: $where, order_by: { last_message_at: desc }, limit: 50) {
         id
         order_id
         customer_account_id
@@ -7575,10 +7407,10 @@ function listManagerSessions(options = "waiting") {
     }
   `;
 
-  return graphql(query)
+  return graphql(query, { where })
     .catch((error) => {
       if (isSchemaCompatibilityError(error)) {
-        return graphql(legacyQuery);
+        return graphql(legacyQuery, { where: legacyWhere });
       }
       throw error;
     })
@@ -7698,11 +7530,10 @@ module.exports = {
   assertCanBookAdvisor,
   createCustomerServiceBinding,
   ensureCustomerServiceBinding,
-  transferCustomerServiceBinding,
   listServiceProviders,
   getServiceProviderByAccount,
+  isManagerProvider,
   createServiceProviderProfile,
-  getDefaultManagerIdentity,
   createQuestion,
   getBoundConsultationSession,
   updateConsultationSession,
@@ -7746,6 +7577,7 @@ module.exports = {
 const zion = require("../../utils/zion");
 const chatContext = require("../../utils/chatContext");
 const auth = require("../../utils/auth");
+const { isAnswerLibraryCourse } = require("../../utils/courseContent");
 
 Page({
   goCustomerPortal() {
@@ -7816,7 +7648,7 @@ Page({
     try {
       const response = await zion.listCourses({limit:50});
       const list = Array.isArray(response.courses) ? response.courses : [];
-      this.setData({featuredCourses:list.filter(course=>course.subtitle==='《答案库》系列课程'||course.badge==='付费')});
+      this.setData({featuredCourses:list.filter(course=>isAnswerLibraryCourse(course)||course.badge==='付费')});
     } catch (_) {
       this.setData({featuredCourses:[],courseError:"课程暂时加载失败，请重试。"});
     } finally {
@@ -7832,6 +7664,7 @@ Page({
 },
 "pages/plaza/plaza":function(require,module,exports,Page,wx,getApp,getCurrentPages){
 const zion = require("../../utils/zion");
+const { isAnswerLibraryCourse } = require("../../utils/courseContent");
 
 Page({
   data: {
@@ -7886,7 +7719,7 @@ Page({
   },
 
   refreshCourses() {
-    const visibleCourses = (this.allCourses || []).filter(item => item.subtitle === '《答案库》系列课程');
+    const visibleCourses = (this.allCourses || []).filter(isAnswerLibraryCourse);
     const featuredCourse = visibleCourses.find((item) => item.badge) || visibleCourses[0] || null;
     this.setData({ visibleCourses, featuredCourse });
   },
@@ -7909,7 +7742,7 @@ Page({
 },
 "pages/course-detail/course-detail":function(require,module,exports,Page,wx,getApp,getCurrentPages){
 const zion = require("../../utils/zion");
-const { courseSections } = require("../../utils/courseContent");
+const { courseSections, isAnswerLibraryCourse } = require("../../utils/courseContent");
 
 Page({
   data: {
@@ -7917,6 +7750,7 @@ Page({
     navHeight: 104,
     navPaddingRight: 180,
     course: null,
+    isAnswerLibrary: false,
     contentSections: [],
     error: "",
     loading: true,
@@ -7952,10 +7786,10 @@ Page({
   },
 
   fetchCourse(courseId=this.courseId) {
-    this.setData({loading:true,error:"",course:null});
+    this.setData({loading:true,error:"",course:null,isAnswerLibrary:false});
     return zion.getCourse(courseId).then(r=>{
       if(!r.course || !r.course.id || !r.course.title){this.setData({error:"这门课程不存在或已下架。"});return;}
-      this.setData({course:r.course,contentSections:courseSections(r.course.description)});wx.setNavigationBarTitle({title:r.course.title});
+      this.setData({course:r.course,isAnswerLibrary:isAnswerLibraryCourse(r.course),contentSections:courseSections(r.course.description)});wx.setNavigationBarTitle({title:r.course.title});
     }).catch(()=>this.setData({error:"课程加载失败，请检查网络后重试。"})).finally(()=>this.setData({loading:false}));
   },
   retryCourse(){this.fetchCourse();},
@@ -8524,23 +8358,19 @@ Page({
       if (!wx.getStorageSync("chatReturnSource")) {
         wx.setStorageSync("chatReturnSource", "manager-serving");
       }
-      this.setData({ canOpenSessionDrawer: true });
-      return Promise.resolve(true);
     }
 
-    const storedProviderId = wx.getStorageSync("activeServiceProviderId");
-    if (storedProviderId) {
-      this.setData({ canOpenSessionDrawer: true });
-      return Promise.resolve(true);
-    }
-
+    // The manager view context is only a UI hint; the drawer always re-checks the backend identity.
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
         if (!viewSession.current(identity) || this.hidden || this.unloaded) return false;
-        const allowed = !!(provider && provider.id && provider.serviceStatus === "ACTIVE");
+        const allowed = zion.isManagerProvider(provider);
         if (allowed) {
           wx.setStorageSync("activeServiceProviderId", provider.id);
           wx.setStorageSync("activeManagerAccountId", provider.accountId || userInfo.id);
+        } else {
+          wx.removeStorageSync("activeServiceProviderId");
+          wx.removeStorageSync("activeManagerAccountId");
         }
         this.setData({ canOpenSessionDrawer: allowed });
         return allowed;
@@ -8828,16 +8658,12 @@ Page({
       this.setData({ managerSessionLoading: true });
     }
 
-    const storedProviderId = wx.getStorageSync("activeServiceProviderId");
-    const storedManagerAccountId = wx.getStorageSync("activeManagerAccountId");
-
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
         if (!current()) throw new Error("stale drawer request");
-        const resolvedProvider = provider && provider.id
-          ? provider
-          : (storedProviderId ? { id: storedProviderId, accountId: storedManagerAccountId } : null);
-        if (!resolvedProvider || !resolvedProvider.id) {
+        // Re-check the backend identity each time; cached provider ids are not authorization.
+        const resolvedProvider = zion.isManagerProvider(provider) ? provider : null;
+        if (!resolvedProvider) {
           return { sessions: [] };
         }
         return zion.listManagerSessions({
@@ -9303,12 +9129,6 @@ Page({
         }
       }
     });
-  },
-
-  mockUnlock() {
-    payment.markConsultationPaid(60);
-    this.refreshAccess();
-    wx.showToast({ title: "已开通聊天", icon: "success" });
   }
 });
 
@@ -9499,11 +9319,7 @@ Page({
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
         if(!viewSession.current(identity))return null;
-        const allowed = Boolean(
-          provider
-          && provider.serviceStatus === "ACTIVE"
-          && (provider.canReply || provider.canAcceptOrder)
-        );
+        const allowed = zion.isManagerProvider(provider);
         if (!allowed) {
           this.setData({
             isServiceProvider: false,
@@ -9960,13 +9776,7 @@ Page({
 
     return zion.getServiceProviderByAccount(userInfo.id)
       .then((provider) => {
-        const allowed = Boolean(
-          provider
-          && provider.serviceStatus === "ACTIVE"
-          && provider.serviceKind === "STAFF"
-          && provider.canReply
-          && provider.canAcceptOrder
-        );
+        const allowed = zion.isManagerProvider(provider);
         if (!allowed) {
           wx.showToast({ title: "仅服务人员可进入", icon: "none" });
           wx.switchTab({ url: "/pages/profile/profile" });
