@@ -412,7 +412,7 @@
     getAccountInfoSync:()=>({miniProgram:{envVersion:'release',version:'web-replica-20260922'}}),
     navigateTo:o=>navigate(o.url),switchTab:o=>navigate(o.url,'tab'),redirectTo:o=>navigate(o.url,'replace'),reLaunch:o=>navigate(o.url,'tab'),navigateBack:back,
     showTabBar:()=>{},setNavigationBarTitle:o=>{document.title=o.title+' · 知守';$('#page-title').textContent=o.title},
-    pageScrollTo:o=>window.scrollTo({top:o.scrollTop||0,behavior:o.duration?'smooth':'instant'}),
+    pageScrollTo:o=>{const target=o.selector&&document.querySelector(o.selector);if(target){const top=target.getBoundingClientRect().top+window.scrollY+(o.offsetTop||0);window.scrollTo({top:Math.max(0,top),behavior:o.duration?'smooth':'instant'});return;}window.scrollTo({top:o.scrollTop||0,behavior:o.duration?'smooth':'instant'});},
     showToast:o=>{clearTimeout(toastTimer);$('#toast').textContent=o.title;$('#toast').hidden=false;toastTimer=setTimeout(()=>$('#toast').hidden=true,o.duration||2600)},
     showLoading:o=>{$('#loading').textContent=o.title||'正在加载…';$('#loading').hidden=false},hideLoading:()=>$('#loading').hidden=true,
     showModal:modal,

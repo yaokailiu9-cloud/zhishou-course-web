@@ -15,17 +15,20 @@
     <text wx:if="{{!isStaff}}" class="muted">请在到店前填写。可先提交已填写的内容，之后继续补充；资料仅用于本次咨询。</text>
     <view wx:for="{{childSections}}" wx:for-item="section" wx:key="title" class="archive-section">
      <text class="archive-section-title">{{section.title}}</text>
-     <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" class="archive-field">
-      <text class="field-label">{{field.label}}</text>
+     <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" id="child-field-{{field.key}}" class="archive-field {{field.error ? 'has-error' : ''}}">
+      <text class="field-label">{{field.label}}<text wx:if="{{field.required}}" class="required"> 必填</text></text>
       <block wx:if="{{field.type === 'choice' || field.type === 'multi'}}">
        <view class="archive-options">
         <button wx:for="{{field.options}}" wx:for-item="option" wx:key="label" class="archive-option {{option.selected ? 'selected' : ''}}" data-key="{{field.key}}" data-value="{{option.label}}" bindtap="chooseChild">{{option.label}}</button>
        </view>
       </block>
+      <picker wx:elif="{{field.type === 'date'}}" mode="date" value="{{field.value}}" data-key="{{field.key}}" bindchange="pickChildDate"><view class="picker-field {{field.value ? '' : 'placeholder'}}">{{field.value || '点击选择' + field.label}}</view></picker>
       <textarea wx:elif="{{field.type === 'textarea'}}" placeholder="请填写{{field.label}}" value="{{field.value}}" data-key="{{field.key}}" bindinput="inputChild" maxlength="{{field.maxLength}}"/>
       <input wx:else placeholder="请填写{{field.label}}" type="{{field.key === 'age' || field.key === 'phone' ? 'number' : 'text'}}" value="{{field.value}}" data-key="{{field.key}}" bindinput="inputChild" maxlength="{{field.maxLength}}"/>
+      <text wx:if="{{field.error}}" class="field-error">{{field.error}}</text>
      </view>
     </view>
+    <text wx:if="{{archiveError}}" class="archive-error">{{archiveError}}</text>
     <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveChild">提交档案</button>
     <button wx:if="{{canEditArchive}}" class="text-button" disabled="{{busy}}" bindtap="cancelArchiveEdit">取消修改</button>
    </block>

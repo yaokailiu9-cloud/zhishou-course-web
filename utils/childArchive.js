@@ -3,12 +3,14 @@ const choice = (key, label, options) => ({ key, label, type: 'choice', options }
 const multi = (key, label, options) => ({ key, label, type: 'multi', options });
 const text = (key, label, maxLength = 120) => ({ key, label, type: 'text', maxLength });
 const long = (key, label, maxLength = 2000) => ({ key, label, type: 'textarea', maxLength });
+const date = (key, label) => ({ key, label, type: 'date', maxLength: 10 });
+const must = field => ({ ...field, required: true });
 const yesNo = ['是', '否'];
 const sections = [
   { title: '孩子与家长', fields: [
-    text('name', '孩子姓名或称呼', 60), choice('gender', '性别', ['男', '女', '其他']), text('age', '年龄（0–30岁）', 2), text('grade', '年级', 60),
-    text('wechatNickname', '微信昵称', 60), text('filledAt', '填写日期（年-月-日）', 10), text('guardian', '家长姓名', 60),
-    text('relationship', '与孩子关系', 60), text('phone', '联系电话', 11), long('concerns', '当前主要困扰', 4000), long('goals', '希望本次沟通解决的问题')
+    must(text('name', '孩子姓名或称呼', 60)), choice('gender', '性别', ['男', '女', '其他']), must(text('age', '年龄（0–30岁）', 2)), text('grade', '年级', 60),
+    text('wechatNickname', '微信昵称', 60), date('filledAt', '填写日期'), must(text('guardian', '家长姓名', 60)),
+    must(text('relationship', '与孩子关系', 60)), must(text('phone', '联系电话', 11)), must(long('concerns', '当前主要困扰', 4000)), long('goals', '希望本次沟通解决的问题')
   ] },
   { title: '一、家庭基本情况', fields: [
     text('fatherName', '父亲姓名'), text('fatherOccupation', '父亲职业'), text('motherName', '母亲姓名'), text('motherOccupation', '母亲职业'),
@@ -48,15 +50,15 @@ const sections = [
   ] },
   { title: '七、孩子经济状况', fields: [
     text('moneyAmount', '现有经济数目（约，元）', 30), long('moneySource', '现有经济来源'),
-    text('signatureName', '家长签字（填写姓名）'), text('signatureDate', '签字日期（年-月-日）', 10), long('remarks', '备注')
+    text('signatureName', '家长签字（填写姓名）'), date('signatureDate', '签字日期'), long('remarks', '备注')
   ] }
 ];
 const fields = sections.flatMap(section => section.fields);
 const fieldByKey = Object.fromEntries(fields.map(field => [field.key, field]));
 const empty = defaults => Object.assign(Object.fromEntries(fields.map(field => [field.key, field.type === 'multi' ? [] : ''])), defaults || {});
-function formSections(form) {
+function formSections(form, errors) {
   return sections.map(section => ({ ...section, fields: section.fields.map(field => ({
-    ...field, value: Array.isArray(form[field.key]) ? form[field.key].join('、') : String(form[field.key] ?? ''),
+    ...field, error: (errors && errors[field.key]) || '', value: Array.isArray(form[field.key]) ? form[field.key].join('、') : String(form[field.key] ?? ''),
     options: (field.options || []).map(option => ({ label: option, selected: field.type === 'multi' ? (form[field.key] || []).includes(option) : form[field.key] === option }))
   })) }));
 }
@@ -74,4 +76,31 @@ function normalizeDate(value) {
   return `${m[1]}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 const dateKeys = ['filledAt', 'signatureDate'];
-module.exports = { sections, fields, fieldByKey, empty, formSections, answeredSections, normalizeDate, dateKeys };
+// Returns {fieldKey: message} for every field the parent must fix before submitting.
+function validate(form) {
+  const errors = {};
+  fields.forEach(field => {
+    const value = String(form[field.key] ?? '').trim();
+    if (field.required && !value) errors[field.key] = '请填写' + field.label.replace(/（.*）$/, '');
+    else if (value.length > field.maxLength) errors[field.key] = '最多填写' + field.maxLength + '个字';
+  });
+  const age = String(form.age ?? '').trim();
+  if (age && (!/^\d+$/.test(age) || Number(age) > 30)) errors.age = '年龄请填写0至30的整数';
+  const phone = String(form.phone ?? '').trim();
+  if (phone && !/^1[3-9]\d{9}$/.test(phone)) errors.phone = '请填写有效的11位手机号';
+  dateKeys.forEach(key => { if (normalizeDate(form[key]) === null) errors[key] = '请重新选择日期'; });
+  return errors;
+}
+// Map a backend rejection back to the field it is about, so the page can outline it.
+function errorField(message) {
+  const text = String(message || '');
+  if (/年龄/.test(text)) return 'age';
+  if (/手机号|联系电话/.test(text)) return 'phone';
+  if (/日期/.test(text)) return 'filledAt';
+  if (/性别/.test(text)) return 'gender';
+  const option = text.match(/档案(?:多)?选项无效：(\w+)/);
+  if (option && fieldByKey[option[1]]) return option[1];
+  const field = fields.find(item => text.indexOf(item.label.replace(/（.*）$/, '')) === 0);
+  return field ? field.key : '';
+}
+module.exports = { sections, fields, fieldByKey, empty, formSections, answeredSections, normalizeDate, dateKeys, validate, errorField };

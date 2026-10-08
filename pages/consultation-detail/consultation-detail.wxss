@@ -9,3 +9,9 @@
 .archive-option.selected { background: #003b39; border-color: #003b39; color: #fff; }
 .archive-answer { padding: 12rpx 0; border-bottom: 1rpx solid #f0eee9; }
 .archive-answer .muted, .archive-answer .body { display: block; white-space: pre-wrap; }
+.archive-field.has-error { padding: 16rpx; border: 2rpx solid #d93025; border-radius: 16rpx; background: #fff6f5; }
+.archive-field .required { color: #d93025; font-size: 24rpx; }
+.field-error, .archive-error { display: block; margin-top: 10rpx; color: #d93025; font-size: 26rpx; line-height: 1.5; }
+.archive-error { margin: 24rpx 0 12rpx; }
+.picker-field.placeholder { color: #9a9a92; }
+.archive-field.has-error input, .archive-field.has-error textarea, .archive-field.has-error .picker-field { border-color: #d93025; }
