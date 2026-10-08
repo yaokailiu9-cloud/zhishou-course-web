@@ -201,7 +201,8 @@ if(op==='MY_OVERVIEW') {
 }
 if(op==='STAFF_OVERVIEW') {
   staff(s,s.actor.canAccept?'canAccept':'canReply');
-  var history=pageRows('offline_appointment',eq('provider_id',s.actor.providerId),APPOINTMENT_FIELDS,p.appointmentCursor,200,p.paginate===true);
+  // Managers who can take bookings see every booking so they can accept others' bookings.
+  var history=pageRows('offline_appointment',s.actor.serviceKind==='STAFF'&&s.actor.canAccept?{}:eq('provider_id',s.actor.providerId),APPOINTMENT_FIELDS,p.appointmentCursor,200,p.paginate===true);
   result(s,{classes:list('public_class',and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE)},ENROLL_FIELDS,200):[],appointments:history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
 }
 // FAMILY_HANDLERS: build script inserts family.js here.

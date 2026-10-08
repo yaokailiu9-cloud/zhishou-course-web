@@ -1,7 +1,7 @@
 // Paid follow-up package: after the agent-booked free consultation has produced a child archive,
 // the parent buys 5 sessions (public_class.product_kind = CONSULT_PACKAGE, paid through the course
 // payment flow) and books each session here. Every booking waits for the supervisor to confirm.
-var PACKAGE_SESSIONS=5;
+var PACKAGE_SESSIONS=5,PACKAGE_UNIT_PRICE=1000;
 function packageProduct(){
   var rows=list('public_class',and(eq('product_kind','CONSULT_PACKAGE','text'),eq('status','PUBLISHED','text')),CLASS_FIELDS,2);
   return rows.length===1?rows[0]:null;
@@ -16,25 +16,27 @@ function archivedConsultation(accountId){
 function ownedPackage(accountId,product){
   return product?list('public_class_enrollment',and(eq('customer_id',accountId),eq('public_class_id',product.id),eq('status','REGISTERED','text')),'id created_at',1)[0]||null:null;
 }
-// Sessions are keyed package:<package enrollment>:<1..5>; the unique request_key prevents overbooking.
-function packageBookings(pkg){return list('offline_appointment',compare('_ilike','request_key','package:'+pkg.id+':%','text'),'id request_key status',PACKAGE_SESSIONS*4);}
+// Each PAID order of the package adds 5 sessions to the same entitlement.
+function packageTotal(accountId,product){return PACKAGE_SESSIONS*list('course_registration_order',and(eq('customer_id',accountId),eq('public_class_id',product.id),eq('status','PAID','text')),'id',500).length;}
+// Sessions are keyed package:<package enrollment>:<n>; the unique request_key prevents overbooking.
+function packageBookings(pkg){return list('offline_appointment',compare('_ilike','request_key','package:'+pkg.id+':%','text'),'id request_key status',501);}
 if (op === 'GET_PACKAGE') {
   login(s);var product=packageProduct(),archived=archivedConsultation(s.actor.accountId),pkg=ownedPackage(s.actor.accountId,product);
-  var active=pkg?packageBookings(pkg).filter(function(a){return a.status!=='CANCELED';}):[];
-  result(s,{offer:product?{id:product.id,title:product.title,price:Number(product.registration_fee||0),sessions:PACKAGE_SESSIONS}:null,eligible:!!archived,
-    package:pkg?{id:pkg.id,total:PACKAGE_SESSIONS,used:active.length,remaining:Math.max(0,PACKAGE_SESSIONS-active.length),hasPending:active.some(function(a){return a.status==='PENDING';})}:null,
+  var active=pkg?packageBookings(pkg).filter(function(a){return a.status!=='CANCELED';}):[],total=pkg?packageTotal(s.actor.accountId,product):0;
+  result(s,{offer:product?{id:product.id,title:product.title,price:Number(product.registration_fee||0),sessions:PACKAGE_SESSIONS,unitPrice:PACKAGE_UNIT_PRICE}:null,eligible:!!archived,
+    package:pkg?{id:pkg.id,total:total,used:active.length,remaining:Math.max(0,total-active.length),hasPending:active.some(function(a){return a.status==='PENDING';})}:null,
     defaults:archived?{name:archived.contact_name||'',phone:archived.phone||''}:null});
 }
 if (op === 'CREATE_APPOINTMENT') {
-  login(s);var pkg=ownedPackage(s.actor.accountId,packageProduct());
-  if (!pkg) fail('请先购买5次咨询后再预约');
+  login(s);var product=packageProduct(),pkg=ownedPackage(s.actor.accountId,product),total=pkg?packageTotal(s.actor.accountId,product):0;
+  if (!pkg||!total) fail('请先购买5次咨询后再预约');
   var archived=archivedConsultation(s.actor.accountId);
   if (!archived) fail('首次咨询建立档案后才能预约后续咨询');
   var booked=packageBookings(pkg),active=booked.filter(function(a){return a.status!=='CANCELED';});
   if (active.some(function(a){return a.status==='PENDING';})) fail('已有待确认的预约，请等咨询主管确认后再预约下一次');
-  if (active.length>=PACKAGE_SESSIONS) fail('5次咨询已全部预约');
+  if (active.length>=total) fail('已购咨询已全部预约，可以再购买5次咨询');
   var slot=0;
-  for (var n=1;n<=PACKAGE_SESSIONS&&!slot;n++) if (!active.some(function(a){return a.request_key==='package:'+pkg.id+':'+n;})) slot=n;
+  for (var n=1;n<=total&&!slot;n++) if (!active.some(function(a){return a.request_key==='package:'+pkg.id+':'+n;})) slot=n;
   var key='package:'+pkg.id+':'+slot,reuse=booked.filter(function(a){return a.request_key===key;})[0];
   var requested=date(p.requestedTime,'期望咨询时间');
   if (new Date(requested).getTime()<=Date.now()) fail('请选择未来的咨询时间');

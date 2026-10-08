@@ -84,7 +84,8 @@ var FEEDBACK_FIELDS = "id created_at appointment_id author_id advice_key content
 function appointment(s, value, mode) {
   login(s); var a = one("offline_appointment", value, APPOINTMENT_FIELDS);
   var own = String(a.customer_id) === String(s.actor.accountId);
-  var assigned = String(a.provider_id) === String(s.actor.providerId) && !!s.actor.providerId;
+  // Bookings default to the supervisor, but every manager who can take bookings may accept them.
+  var assigned = !!s.actor.providerId && (String(a.provider_id) === String(s.actor.providerId) || (s.actor.serviceKind === "STAFF" && !!s.actor.canAccept));
   if (mode === "owner" ? !own : mode === "staff" ? !assigned : !(own || assigned)) fail("不能访问其他客户的咨询资料");
   return a;
 }

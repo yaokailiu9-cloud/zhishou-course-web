@@ -367,11 +367,11 @@ test('服务管理中管理人员可修改备注并提交档案，其他资料�
 });
 
 test('客户页按首次咨询档案与购买状态显示5次咨询购买或预约入口，不再提供免费自助申请',async()=>{
-  const offer={id:90,title:'5次咨询',price:3999,sessions:5},states=[
+  const offer={id:90,title:'5次咨询',price:3999,sessions:5,unitPrice:1000},states=[
     [{offer,eligible:false,package:null,defaults:null},['由代理为你预约第1次'],['购买5次咨询','预约下一次咨询']],
-    [{offer,eligible:true,package:null,defaults:{name:'家长甲',phone:'13800000000'}},['后续5次咨询','￥3999','购买5次咨询'],['预约下一次咨询']],
-    [{offer,eligible:true,package:{id:91,total:5,used:1,remaining:4,hasPending:false},defaults:{name:'家长甲',phone:'13800000000'}},['剩余 4 次','已预约 1 / 5 次','预约下一次咨询'],['购买5次咨询']],
-    [{offer,eligible:true,package:{id:91,total:5,used:2,remaining:3,hasPending:true},defaults:{}},['已有待确认的预约'],['预约下一次咨询']]];
+    [{offer,eligible:true,package:null,defaults:{name:'家长甲',phone:'13800000000'}},['后续5次咨询','单次咨询 ￥1000，5次咨询 ￥3999','购买5次咨询'],['预约下一次咨询','再购买']],
+    [{offer,eligible:true,package:{id:91,total:5,used:1,remaining:4,hasPending:false},defaults:{name:'家长甲',phone:'13800000000'}},['剩余 4 次','已预约 1 / 5 次','预约下一次咨询','再购买5次咨询','单次咨询 ￥1000 · 5次咨询 ￥3999'],['后续5次咨询']],
+    [{offer,eligible:true,package:{id:91,total:5,used:2,remaining:3,hasPending:true},defaults:{}},['已有待确认的预约','再购买5次咨询'],['预约下一次咨询']]];
   for(const [pkg,shown,hidden] of states){
     const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:18});
     const calls=[];h.host.requireModule('utils/consultationService').call=async(op,p)=>{calls.push([op,p]);return op==='GET_PACKAGE'?pkg:op==='MY_OVERVIEW'?{eligible:true,enrollments:[],appointments:[]}:op==='CREATE_APPOINTMENT'?{id:77}:{};};

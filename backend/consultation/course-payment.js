@@ -32,7 +32,8 @@ if(op==='PREPARE_COURSE_PAYMENT'){
   login(s);payKey();payBuyer(s.actor.accountId);
   var c=one('public_class',p.classId,CLASS_FIELDS),scope=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
   var enrollment=list('public_class_enrollment',scope,ENROLL_FIELDS,1)[0];
-  if(enrollment&&enrollment.status==='REGISTERED')result(s,{enrollment:enrollment});
+  // The 5-session package can be bought repeatedly; each paid order adds sessions.
+  if(enrollment&&enrollment.status==='REGISTERED'&&c.product_kind!=='CONSULT_PACKAGE')result(s,{enrollment:enrollment});
   else {
     var pending=list('course_registration_order',and(scope,eq('status','PENDING','text')),ORDER_FIELDS,1)[0];
     if(pending)result(s,{order:payPublic(pending),resume:true});
@@ -88,10 +89,11 @@ if(op==='CONFIRM_COURSE_PAYMENT'){
     var c=one('public_class',order.public_class_id,CLASS_FIELDS),scope=and(eq('customer_id',order.customer_id),eq('public_class_id',c.id));
     var existing=list('public_class_enrollment',scope,ENROLL_FIELDS,1)[0],firstEnrollment=!list('public_class_enrollment',eq('customer_id',order.customer_id),'id',1).length;
     // Never lose an actual payment if the final seat was taken during checkout.
-    var review=!!(existing&&existing.status==='REGISTERED')||!classView(c,false).canEnroll;
+    var repeat=c.product_kind==='CONSULT_PACKAGE'&&!!existing&&existing.status==='REGISTERED';
+    var review=(!!(existing&&existing.status==='REGISTERED')&&!repeat)||!classView(c,false).canEnroll;
     lockClass(c,review?{}:{reserved_count:Number(c.reserved_count||0)+1});
     update('course_registration_order',and(eq('id',order.id),eq('status','PENDING','text')),{status:review?'PAID_REVIEW':'PAID',amount_paid:Number(order.amount),transaction_id:v.transaction_id,paid_at:new Date().toISOString(),request_key:null,failure_message:review?'已收到款项，课程状态已变化，请联系工作人员安排课程或退款。':null});
-    if(!review){
+    if(!review&&!repeat){
       var values={customer_id:order.customer_id,public_class_id:c.id,payment_order_id:order.id,registrant_name:order.registrant_name,phone:order.phone,status:'REGISTERED',attendance_status:'PENDING',group_status:'PENDING',entry_code:entryCode(),canceled_at:null,verified_at:null,verified_by_id:null,checkin_method:null};
       if(existing)update('public_class_enrollment',and(eq('id',existing.id),eq('status','CANCELED','text')),values);
       else if(!insert('public_class_enrollment',values,'public_class_enrollment_customer_class_key'))fail('报名状态已变化，请重试');

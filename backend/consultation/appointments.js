@@ -6,7 +6,7 @@ if (op === "CONFIRM_APPOINTMENT") {
   if (new Date(confirmed).getTime()<=Date.now()) fail("请选择未来的咨询时间");
   var e=one("public_class_enrollment",a.enrollment_id,"id attendance_status status verified_at");
   if (e.attendance_status!=="ATTENDED" || e.status!=="REGISTERED" || !e.verified_at) fail("请先核实该客户实际参加公开课");
-  update("offline_appointment",and(eq("id",a.id),eq("status","PENDING","text")),{status:"CONFIRMED",confirmed_at:confirmed,staff_note:text(p.note,"预约说明",2000,false)}); result(s,{id:a.id});
+  update("offline_appointment",and(eq("id",a.id),eq("status","PENDING","text")),{status:"CONFIRMED",confirmed_at:confirmed,provider_id:s.actor.providerId,staff_note:text(p.note,"预约说明",2000,false)}); result(s,{id:a.id});
 }
 if (op === "CANCEL_APPOINTMENT") {
   var a=appointment(s,p.appointmentId);
@@ -41,7 +41,7 @@ if (op === "SAVE_CHILD_ARCHIVE") {
   var value=typeof p.remarks==="string" ? p.remarks : p.childInfo && p.childInfo.remarks;
   if (typeof value!=="string") fail("备注请求格式无效");
   var child=Object.assign({},a.child_info,{remarks:text(value,"备注",2000,false)});
-  update("offline_appointment",and(eq("id",a.id),eq("provider_id",s.actor.providerId),eq("updated_at",a.updated_at,"timestamptz")),{child_info:child});
+  update("offline_appointment",and(eq("id",a.id),eq("updated_at",a.updated_at,"timestamptz")),{child_info:child});
   result(s,{id:a.id,updatedAt:one("offline_appointment",a.id,"id updated_at").updated_at});
 }
 if (op === "SAVE_CHILD_REMARKS") {
@@ -53,12 +53,12 @@ if (op === "SAVE_CHILD_REMARKS") {
   if (p.previousRemarks!==previous) fail("备注已被更新，请重新打开档案后再修改");
   var remarks=text(p.remarks,"备注",2000,false);
   var child=Object.assign({},latest.child_info,{remarks:remarks});
-  update("offline_appointment",and(eq("id",a.id),eq("provider_id",s.actor.providerId),eq("updated_at",latest.updated_at,"timestamptz")),{child_info:child});
+  update("offline_appointment",and(eq("id",a.id),eq("updated_at",latest.updated_at,"timestamptz")),{child_info:child});
   result(s,{id:a.id,remarks:remarks});
 }
 if (op === "GET_APPOINTMENT") {
   var a=appointment(s,p.appointmentId);
-  var assigned=!!s.actor.providerId && String(a.provider_id)===String(s.actor.providerId);
+  var assigned=!!s.actor.providerId && (String(a.provider_id)===String(s.actor.providerId) || (s.actor.serviceKind==="STAFF" && !!s.actor.canAccept));
   var record=list("offline_consultation_record",and(eq("appointment_id",a.id),assigned ? {} : eq("status","CONFIRMED","text")),RECORD_FIELDS,1)[0] || null;
   var jobs=pageRows("consultation_summary_job",and(eq("appointment_id",a.id),assigned ? {} : eq("requester_id",s.actor.accountId)),JOB_FIELDS,p.summaryCursor,30,p.paginate===true);
   var feedback=pageRows("consultation_feedback",eq("appointment_id",a.id),FEEDBACK_FIELDS,p.feedbackCursor,200,p.paginate===true);
