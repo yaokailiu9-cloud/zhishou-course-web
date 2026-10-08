@@ -357,11 +357,11 @@ test('H5 修改昵称保留稳定登录用户名，并展示保存后的昵称',
   assert.equal(user.nickName,'新昵称');
 });
 
-test('独立孩子档案不展示咨询安排，负责老师有备注输入和保存按钮',async()=>{
+test('服务管理中的独立孩子档案可修改并统一提交，没有单独保存备注',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();
- h.host.current.setData({loading:false,error:'',archiveOnly:true,appointment:{status:'孩子档案',child_info:{name:'合成孩子'},provider:{display_name:'负责老师'},concerns:'不应重复展示的摘要',staff_note:'不应展示的录入说明'},canEditRemarks:true,remarksDraft:'已有备注',answeredChildSections:[],feedbacks:[],record:null,canReply:true});await tick();
- const page=h.document.getElementById('page');assert.doesNotMatch(page.textContent,/咨询时间|预约安排|不应重复展示的摘要|不应展示的录入说明|还没有沟通记录/);
- assert.match(page.textContent,/合成孩子的孩子档案|保存备注/);assert.equal(page.querySelector('.archive-remarks-editor textarea').value,'已有备注');
- h.host.current.setData({canEditRemarks:false});await tick();assert.equal(page.querySelector('.archive-remarks-editor'),null);
+ h.host.current.setData({loading:false,error:'',archiveOnly:true,appointment:{status:'孩子档案',child_info:{name:'合成孩子'},provider:{display_name:'负责老师'},concerns:'不应重复展示的摘要',staff_note:'不应展示的录入说明'},canEditArchive:true,editingArchive:false,childForm:{name:'合成孩子',age:11,remarks:'原备注'},childSections:require('../../utils/childArchive').formSections({name:'合成孩子',age:11,remarks:'原备注'}),answeredChildSections:[],feedbacks:[],record:null,canReply:true});await tick();
+ const page=h.document.getElementById('page');assert.doesNotMatch(page.textContent,/咨询时间|预约安排|不应重复展示的摘要|不应展示的录入说明|还没有沟通记录|保存备注/);assert.match(page.textContent,/合成孩子的孩子档案|修改档案/);assert.doesNotMatch(page.textContent,/提交档案/);
+ h.host.current.editArchive();await tick();assert.match(page.textContent,/提交档案|取消修改/);assert.doesNotMatch(page.textContent,/保存备注/);assert.ok(page.querySelector('textarea[data-key="remarks"]'));assert.ok(page.querySelector('input[data-key="name"]'));
+ h.host.current.setData({canEditArchive:false,editingArchive:false});await tick();assert.doesNotMatch(page.textContent,/修改档案|提交档案/);
  h.host.current.setData({archiveOnly:false});await tick();assert.match(page.textContent,/预约安排|不应重复展示的摘要/);
 });

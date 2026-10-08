@@ -11,19 +11,19 @@ test('采用AI草稿后刷新任务状态仍保留待检查的正文',async()=>{
 test('保存成功才允许后端回读替换表单，保存失败保留编辑',async()=>{const {page,response,service}=consultationHarness();await page.refresh();page.inputRecord({currentTarget:{dataset:{key:'summary'}},detail:{value:'新内容'}});service.call=async op=>{if(op==='SAVE_RECORD')throw new Error('保存失败');return structuredClone(response);};assert.equal(await page.run('SAVE_RECORD',{}),false);assert.equal(page.dirtyRecord,true);assert.equal(page.data.recordForm.summary,'新内容');service.call=async op=>{if(op==='SAVE_RECORD'){response.record.summary='新内容';return {id:41};}return structuredClone(response);};assert.equal(await page.run('SAVE_RECORD',{}),true);assert.equal(page.dirtyRecord,false);assert.equal(page.data.recordForm.summary,'新内容');});
 test('保存等待期间继续输入的内容不会被旧保存结果覆盖',async()=>{const {page,response,service}=consultationHarness();await page.refresh();page.inputRecord({currentTarget:{dataset:{key:'summary'}},detail:{value:'第一版'}});let saved;service.call=op=>op==='SAVE_RECORD'?new Promise(resolve=>saved=resolve):Promise.resolve(structuredClone(response));const request=page.run('SAVE_RECORD',{summary:'第一版'});assert.equal(page.data.busy,true);page.inputRecord({currentTarget:{dataset:{key:'summary'}},detail:{value:'第一版之后的补充'}});response.record.summary='第一版';saved({id:41});await request;assert.equal(page.data.recordForm.summary,'第一版之后的补充');assert.equal(page.dirtyRecord,true);assert.equal(page.data.busy,false);});
 
-test('孩子档案隐藏预约区块并将备注提供给负责老师编辑',async()=>{
- const {page,response}=consultationHarness();response.appointment.status='孩子档案';response.appointment.child_info.remarks='原备注';
- await page.refresh();assert.equal(page.data.archiveOnly,true);assert.equal(page.data.canEditRemarks,true);assert.equal(page.data.remarksDraft,'原备注');
- assert.ok(page.data.answeredChildSections.every(section=>section.fields.every(field=>field.key!=='remarks')));
- page.inputRemarks({detail:{value:'未保存的备注'}});await page.refresh();assert.equal(page.data.remarksDraft,'未保存的备注');assert.equal(page.data.remarksBaseline,'原备注');
- response.isStaff=false;await page.refresh();assert.equal(page.data.canEditRemarks,false);
+test('服务管理中修改整份档案，备注随档案统一提交',async()=>{
+ const {page,response,service}=consultationHarness();response.appointment.status='孩子档案';response.appointment.updated_at='2026-10-08T03:00:00Z';response.appointment.child_info.remarks='原备注';
+ await page.refresh();assert.equal(page.data.archiveOnly,true);assert.equal(page.data.canEditArchive,true);assert.equal(page.data.editingArchive,false);page.editArchive();assert.equal(page.data.editingArchive,true);
+ page.updateChild('remarks','新备注');page.updateChild('grade','新年级');let submitted;
+ service.call=async(op,p)=>{if(op==='SAVE_CHILD_ARCHIVE'){submitted=p;response.appointment.child_info=p.childInfo;response.appointment.updated_at='2026-10-08T03:01:00Z';return {updatedAt:response.appointment.updated_at};}return structuredClone(response);};
+ await page.saveChild();assert.equal(submitted.childInfo.remarks,'新备注');assert.equal(submitted.childInfo.grade,'新年级');assert.equal(submitted.previousUpdatedAt,'2026-10-08T03:00:00Z');assert.equal(page.data.editingArchive,false);assert.equal(page.dirtyChild,false);assert.equal(page.data.childForm.remarks,'新备注');
+ response.isStaff=false;await page.refresh();assert.equal(page.data.canEditArchive,false);
 });
-test('备注保存失败保留输入，成功后回读，保存期间新输入继续保留',async()=>{
- const {page,response,service}=consultationHarness();response.appointment.child_info.remarks='原备注';await page.refresh();page.inputRemarks({detail:{value:'第一版'}});
- service.call=async op=>{if(op==='SAVE_CHILD_REMARKS')throw new Error('保存失败');return structuredClone(response);};await page.saveRemarks();assert.equal(page.data.remarksDraft,'第一版');assert.equal(page.dirtyRemarks,true);
- let saved;service.call=op=>op==='SAVE_CHILD_REMARKS'?new Promise(resolve=>saved=resolve):Promise.resolve(structuredClone(response));
- const saving=page.saveRemarks();page.inputRemarks({detail:{value:'继续补充'}});response.appointment.child_info.remarks='第一版';saved({remarks:'第一版'});await saving;
- assert.equal(page.data.remarksDraft,'继续补充');assert.equal(page.data.remarksBaseline,'第一版');assert.equal(page.dirtyRemarks,true);
- service.call=async(op,p)=>{if(op==='SAVE_CHILD_REMARKS'){assert.equal(p.previousRemarks,'第一版');response.appointment.child_info.remarks=p.remarks;return {remarks:p.remarks};}return structuredClone(response);};
- await page.saveRemarks();assert.equal(page.data.remarksDraft,'继续补充');assert.equal(page.dirtyRemarks,false);
+test('提交档案失败或提交期间继续修改都保留表单，取消修改恢复已提交资料',async()=>{
+ const {page,response,service}=consultationHarness();response.appointment.updated_at='version-1';response.appointment.child_info.remarks='原备注';await page.refresh();page.editArchive();page.updateChild('remarks','第一版');
+ service.call=async op=>{if(op==='SAVE_CHILD_ARCHIVE')throw new Error('提交失败');return structuredClone(response);};await page.saveChild();assert.equal(page.data.childForm.remarks,'第一版');assert.equal(page.data.editingArchive,true);
+ let saved;service.call=op=>op==='SAVE_CHILD_ARCHIVE'?new Promise(resolve=>saved=resolve):Promise.resolve(structuredClone(response));
+ const saving=page.saveChild();page.updateChild('remarks','继续补充');response.appointment.child_info.remarks='第一版';response.appointment.updated_at='version-2';saved({updatedAt:'version-2'});await saving;
+ assert.equal(page.data.childForm.remarks,'继续补充');assert.equal(page.data.childUpdatedAt,'version-2');assert.equal(page.data.editingArchive,true);assert.equal(page.dirtyChild,true);
+ await page.cancelArchiveEdit();assert.equal(page.data.childForm.remarks,'第一版');assert.equal(page.data.editingArchive,false);assert.equal(page.dirtyChild,false);
 });

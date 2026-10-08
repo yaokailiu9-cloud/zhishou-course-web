@@ -29,15 +29,22 @@ if (op === "CANCEL_APPOINTMENT") {
   if (["PENDING","CONFIRMED"].indexOf(a.status)<0) fail("当前预约不能取消");
   update("offline_appointment",and(eq("id",a.id),eq("status",a.status,"text")),{status:"CANCELED"});result(s,{id:a.id});
 }
-if (op === "SAVE_CHILD_INFO") {
-  var a=appointment(s,p.appointmentId,"owner"), c=p.childInfo || {};
-  if (a.status!=="CONFIRMED") fail("预约确认后、咨询完成前可以填写孩子基础信息");
+if (op === "SAVE_CHILD_INFO" || op === "SAVE_CHILD_ARCHIVE") {
+  var managed=op==="SAVE_CHILD_ARCHIVE";
+  if (managed) staff(s,"canReply");
+  var a=appointment(s,p.appointmentId,managed ? "staff" : "owner"), c=p.childInfo || {};
+  if (!c || typeof c!=="object" || Array.isArray(c)) fail("档案格式无效");
+  if (managed) {
+    if (!a.child_info || typeof a.child_info!=="object" || Array.isArray(a.child_info)) fail("请先录入孩子档案");
+    if (typeof p.previousUpdatedAt!=="string" || p.previousUpdatedAt!==a.updated_at) fail("档案已被更新，请重新打开后再修改");
+  } else if (a.status!=="CONFIRMED") fail("预约确认后、咨询完成前可以填写孩子基础信息");
   if (c.age === "" || c.age === null || c.age === undefined) fail("请填写年龄");
   var age=Number(c.age);if (!Number.isInteger(age)||age<0||age>30) fail("请填写有效年龄");
-  var child={name:text(c.name,"孩子姓名或称呼",60,true),age:age,grade:text(c.grade,"年级",60,false),guardian:text(c.guardian,"家长姓名",60,true),relationship:text(c.relationship,"与孩子关系",60,true),phone:phone(c.phone),concerns:text(c.concerns,"主要困扰",4000,true),goals:text(c.goals,"沟通期待",2000,false)};
+  var child={name:text(c.name,"孩子姓名或称呼",60,true),age:age,grade:text(c.grade,"年级",60,false),guardian:text(c.guardian,"家长姓名",60,!managed),relationship:text(c.relationship,"与孩子关系",60,!managed),phone:managed&&!c.phone?"":phone(c.phone),concerns:text(c.concerns,"主要困扰",4000,!managed),goals:text(c.goals,"沟通期待",2000,false)};
   // The archive lives in the verified child_info JSONB column. Accept only paper-form keys.
   // Preserve these keys when an older client saves the original eight-field form.
   var previous=a.child_info && typeof a.child_info==="object" ? a.child_info : {};
+  if (managed) child=Object.assign({},previous,child);
   var plain={gender:20,wechatNickname:60,filledAt:10,fatherName:120,fatherOccupation:120,motherName:120,motherOccupation:120,familyMembers:2000,fatherDisrespectResponse:2000,motherDisrespectResponse:2000,paternalAttitude:2000,maternalAttitude:2000,otherFactors:2000,hobbies:2000,personality:2000,specificProblems:4000,influences:4000,opposeTeacherMethod:120,opposeParentsMethod:120,opposeRelativesMethod:120,fightingMethod:120,moneyAmount:30,moneySource:2000,signatureName:120,signatureDate:10,remarks:2000};
   var choices={parentsDivorced:["是","否"],fatherCognition:["不管","控制","配合","自我"],motherCognition:["不管","控制","配合","自我"],fatherPlanSupport:["反对","无所谓","赞同"],fatherDiscipline:["严格","可共情","时严时松"],motherPlanSupport:["反对","无所谓","赞同"],motherDiscipline:["严格","可共情","时严时松"],paternalNearby:["是","否"],paternalInterference:["从不","偶尔","经常"],maternalNearby:["是","否"],maternalInterference:["从不","偶尔","经常"],obedience:["听话","一般","不听话"],ruleAwareness:["强","一般","弱"],socialAbility:["强","一般","弱"],runsAway:["是","否"],badFriends:["是","否"],overnightAbsent:["是","否"],opposeTeacher:["是","否"],opposeTeacherDegree:["轻微","一般","严重"],opposeParents:["是","否"],opposeParentsDegree:["轻微","一般","严重"],opposeRelatives:["是","否"],opposeRelativesDegree:["轻微","一般","严重"],fighting:["是","否"],fightingDegree:["轻微","一般","严重"]};
   var multi={dailyTraits:["虚荣心强","好静乖巧","花钱无度","不乱花钱","义气忠义","敏感胆小","争强好胜","特善交际","积极阳光","圆润可爱","毅力不足","心思灵活","嫉妒心强","不爱学习","自觉性强","朋友特多","善良重情","疑心甚重"],readConfirmed:["基本纲要","郑重声明","特训营","天性辨别"],issues:["拖沓","扯皮","焦躁","日夜颠倒","辍学","无情","挑食","消极","厌学","撒泼摆烂","自残","抑郁","推诿","贪玩","胡乱花钱","爱讲公平","暴力","自我封闭","懒惰","马虎","爱讲道理","对抗","沉默","沉迷游戏"]};
@@ -46,7 +53,9 @@ if (op === "SAVE_CHILD_INFO") {
   Object.keys(multi).forEach(function(key){var v=Object.prototype.hasOwnProperty.call(c,key)?c[key]:previous[key];if(v==null||v==="")v=[];if(!Array.isArray(v)||v.length>multi[key].length||v.some(function(item){return typeof item!=="string"||multi[key].indexOf(item)<0;})||new Set(v).size!==v.length) fail("档案多选项无效："+key);child[key]=v;});
   if(child.gender && ["男","女","其他"].indexOf(child.gender)<0) fail("性别选项无效");
   ["filledAt","signatureDate"].forEach(function(key){if(child[key]&&!/^\d{4}-\d{2}-\d{2}$/.test(child[key])) fail("请按年-月-日填写日期");});
-  update("offline_appointment",and(eq("id",a.id),eq("status","CONFIRMED","text")),{child_info:child});result(s,{id:a.id});
+  var scope=managed ? and(eq("id",a.id),eq("provider_id",s.actor.providerId),eq("updated_at",a.updated_at,"timestamptz")) : and(eq("id",a.id),eq("status","CONFIRMED","text"));
+  update("offline_appointment",scope,{child_info:child});
+  result(s,managed ? {id:a.id,updatedAt:one("offline_appointment",a.id,"id updated_at").updated_at} : {id:a.id});
 }
 if (op === "SAVE_CHILD_REMARKS") {
   staff(s,"canReply"); var a=appointment(s,p.appointmentId,"staff");

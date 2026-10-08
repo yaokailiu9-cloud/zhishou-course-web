@@ -8,8 +8,9 @@
   </view>
   <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.child_info}}" class="card record-section archive-card">
    <text class="section-title">孩子家庭档案</text>
-   <block wx:if="{{!isStaff && appointment.status === 'CONFIRMED'}}">
-    <text class="muted">请在到店前填写。可先保存已填写的内容，之后继续补充；资料仅用于本次咨询。</text>
+   <button wx:if="{{canEditArchive && !editingArchive}}" class="secondary" disabled="{{busy}}" bindtap="editArchive">修改档案</button>
+   <block wx:if="{{(!isStaff && appointment.status === 'CONFIRMED') || (canEditArchive && editingArchive)}}">
+    <text wx:if="{{!isStaff}}" class="muted">请在到店前填写。可先提交已填写的内容，之后继续补充；资料仅用于本次咨询。</text>
     <view wx:for="{{childSections}}" wx:for-item="section" wx:key="title" class="archive-section">
      <text class="archive-section-title">{{section.title}}</text>
      <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" class="archive-field">
@@ -23,7 +24,8 @@
       <input wx:else placeholder="请填写{{field.label}}" type="{{field.key === 'age' || field.key === 'phone' ? 'number' : 'text'}}" value="{{field.value}}" data-key="{{field.key}}" bindinput="inputChild" maxlength="{{field.maxLength}}"/>
      </view>
     </view>
-    <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveChild">保存家庭档案</button>
+    <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveChild">提交档案</button>
+    <button wx:if="{{canEditArchive}}" class="text-button" disabled="{{busy}}" bindtap="cancelArchiveEdit">取消修改</button>
    </block>
    <block wx:elif="{{appointment.child_info}}">
     <view wx:for="{{answeredChildSections}}" wx:for-item="section" wx:key="title" class="archive-section">
@@ -32,11 +34,6 @@
     </view>
    </block>
    <text wx:else class="muted">等待家长填写家庭档案。</text>
-  </view>
-  <view wx:if="{{canEditRemarks}}" class="card record-section archive-remarks-editor">
-   <text class="section-title">备注</text>
-   <textarea placeholder="填写或修改孩子档案备注" value="{{remarksDraft}}" bindinput="inputRemarks" maxlength="2000"/>
-   <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveRemarks">保存备注</button>
   </view>
   <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.status === 'COMPLETED'}}" class="card record-section"><text class="section-title">沟通总结</text><text class="muted">本页本次咨询的留言、反馈与老师回复可生成文字草稿，也支持经同意录制面谈。由老师检查确认后形成正式记录。</text><button class="secondary" disabled="{{summaryBusy || recording}}" loading="{{summaryBusy}}" bindtap="summarizeText">总结本次文字沟通</button><button wx:if="{{!recording}}" class="secondary" disabled="{{summaryBusy}}" bindtap="startRecording">经同意录制面谈</button><button wx:else class="primary" bindtap="stopRecording">录音中 {{recordingSeconds}} 秒 · 停止并总结</button><text wx:if="{{recording}}" class="muted">单段最长10分钟，可分段录制。离开页面会停止录音。</text>
    <view wx:for="{{summaryJobs}}" wx:key="id" class="task"><text class="muted">{{item.source === 'AUDIO' ? '面谈录音' : '文字聊天'}} · {{item.statusText}} · {{item.createdText}}</text><text class="body" wx:if="{{item.draft}}">{{item.draft}}</text><text class="error" wx:if="{{item.error_message}}">{{item.error_message}}</text><button wx:if="{{item.status === 'FAILED'}}" class="text-button" data-id="{{item.id}}" bindtap="retrySummary" disabled="{{busy}}">重新生成</button><button wx:if="{{item.status === 'UPLOADING'}}" class="text-button" data-id="{{item.id}}" bindtap="processRecording" disabled="{{busy}}">处理已上传录音</button><button wx:if="{{canReply && item.draft && (!record || record.status !== 'CONFIRMED')}}" class="text-button" data-id="{{item.id}}" bindtap="useSummary">填入老师记录，继续编辑</button></view><button wx:if="{{summaryJobs.length}}" class="text-button" bindtap="refreshSummary">刷新总结进度</button><text wx:if="{{summaryJobs.length}}" class="muted">{{nextSummaryCursor ? '已加载' : '共'}} {{summaryJobs.length}} 条总结</text><button wx:if="{{nextSummaryCursor}}" class="secondary" data-kind="summary" bindtap="moreHistory" disabled="{{moreLoading || loading}}">查看更多总结</button>
