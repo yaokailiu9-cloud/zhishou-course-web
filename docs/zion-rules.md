@@ -443,3 +443,9 @@ Conclusion: current frontend GraphQL can write a login audit record, but it does
 - 代理只能读取该次预约的姓名、电话、困扰、时间和状态，不返回孩子档案、老师记录或反馈。普通客户不能调用代理代约操作。
 - 本次没有改动客户自行预约或咨询付费规则；付费后客户自约流程留待后续实施。
 - 后台单独追加预约节点逻辑，保留读取到的线上其他节点代码；已同步部署 schema `0ELZbD10jBk`。真实合成账号完成代约、重复提交、老师确认、代理查状态及客户拒绝测试，合成业务记录已清理。
+
+### 2026-10-08 孩子档案备注编辑
+
+- `offline_appointment` 中状态为“孩子档案”或 `child_info._archive.recordType = CHILD_ARCHIVE_ONLY` 的独立档案，详情页只展示孩子资料和备注，不显示咨询安排、录入说明和空的咨询反馈区域。
+- 已分配且有回复权限的工作人员可通过 `SAVE_CHILD_REMARKS` 修改 `child_info.remarks`。后端按真实登录工作人员和 `provider_id` 校验归属，保留其余孩子资料及关系；备注可清空，最多 2000 字。
+- 保存带上读取时的 `previousRemarks`，并使用 `updated_at` 条件防止覆盖并发更新；失败或保存过程中继续输入时，页面保留未保存的内容。家长及其他工作人员无此编辑权限。

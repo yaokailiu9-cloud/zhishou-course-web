@@ -48,6 +48,18 @@ if (op === "SAVE_CHILD_INFO") {
   ["filledAt","signatureDate"].forEach(function(key){if(child[key]&&!/^\d{4}-\d{2}-\d{2}$/.test(child[key])) fail("请按年-月-日填写日期");});
   update("offline_appointment",and(eq("id",a.id),eq("status","CONFIRMED","text")),{child_info:child});result(s,{id:a.id});
 }
+if (op === "SAVE_CHILD_REMARKS") {
+  staff(s,"canReply"); var a=appointment(s,p.appointmentId,"staff");
+  var latest=one("offline_appointment",a.id,"id updated_at child_info");
+  if (!latest.child_info || typeof latest.child_info!=="object" || Array.isArray(latest.child_info)) fail("请先录入孩子档案");
+  if (typeof p.remarks!=="string" || typeof p.previousRemarks!=="string") fail("备注请求格式无效");
+  var previous=String(latest.child_info.remarks || "");
+  if (p.previousRemarks!==previous) fail("备注已被更新，请重新打开档案后再修改");
+  var remarks=text(p.remarks,"备注",2000,false);
+  var child=Object.assign({},latest.child_info,{remarks:remarks});
+  update("offline_appointment",and(eq("id",a.id),eq("provider_id",s.actor.providerId),eq("updated_at",latest.updated_at,"timestamptz")),{child_info:child});
+  result(s,{id:a.id,remarks:remarks});
+}
 if (op === "GET_APPOINTMENT") {
   var a=appointment(s,p.appointmentId);
   var assigned=!!s.actor.providerId && String(a.provider_id)===String(s.actor.providerId);

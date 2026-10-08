@@ -202,3 +202,24 @@ test('仅管理人员可直接绑定未归属客户，同代理重复绑定幂�
 });
 
 test('代理首次免费咨询校验归属、到课、重复提交与老师确认',()=>{const db=fixture();db.service_provider.push({id:3,account_id:203,service_kind:'AGENT',service_status:'ACTIVE'});db.course_referral.push({id:51,referrer_id:203,referred_account_id:201});db.offline_appointment=[];db.public_class_enrollment[0].registrant_name='家长';db.public_class_enrollment[0].phone='13800000000';const e=engine(db),payload={referralId:51,enrollmentId:21,name:'家长',phone:'13800000000',concerns:'沟通困难',requestedTime:'2099-01-01T14:00:00+08:00'};assert.throws(()=>e.run(201,'CREATE_AGENT_APPOINTMENT',payload),/代理预约权限/);assert.throws(()=>e.run(101,'CREATE_AGENT_APPOINTMENT',payload),/自己推荐/);assert.throws(()=>e.run(203,'CREATE_AGENT_APPOINTMENT',{...payload,enrollmentId:22}),/不属于/);const r=e.run(203,'CREATE_AGENT_APPOINTMENT',payload).data;assert.equal(db.offline_appointment.length,1);assert.equal(db.offline_appointment[0].customer_id,201);assert.equal(db.offline_appointment[0].status,'PENDING');assert.equal(e.run(203,'CREATE_AGENT_APPOINTMENT',payload).data.id,r.id);assert.equal(db.offline_appointment.length,1);e.run(101,'CONFIRM_APPOINTMENT',{appointmentId:r.id,confirmedAt:payload.requestedTime});assert.equal(e.run(203,'GET_AGENT_APPOINTMENT',payload).data.appointment.status,'CONFIRMED');});
+
+test('负责老师可编辑独立孩子档案备注，保留资料和空的家长关联',()=>{
+ const db=fixture();db.offline_appointment[0]={id:31,provider_id:1,customer_id:null,enrollment_id:null,status:'孩子档案',updated_at:'2026-10-08T03:00:00Z',child_info:{name:'合成孩子',remarks:'原备注',issues:['拖沓'],_archive:{recordType:'CHILD_ARCHIVE_ONLY'}}};
+ const e=engine(db),before=structuredClone(e.db.offline_appointment[0]);
+ const r=e.run(101,'SAVE_CHILD_REMARKS',{appointmentId:31,remarks:'新备注',previousRemarks:'原备注',childInfo:{name:'伪造',customer_id:201},providerId:2});
+ assert.equal(r.data.remarks,'新备注');assert.deepEqual(e.db.offline_appointment[0],{...before,child_info:{...before.child_info,remarks:'新备注'}});
+ e.run(101,'SAVE_CHILD_REMARKS',{appointmentId:31,remarks:'',previousRemarks:'新备注'});assert.equal(e.db.offline_appointment[0].child_info.remarks,'');
+});
+test('备注仅负责老师可修改，拒绝其他老师、客户与游客',()=>{
+ for(const account of [102,201,null]){
+  const e=engine(fixture()),before=JSON.stringify(e.db);
+  assert.throws(()=>e.run(account,'SAVE_CHILD_REMARKS',{appointmentId:31,remarks:'伪造',previousRemarks:''}),/工作人员|其他客户|登录/);
+  assert.equal(JSON.stringify(e.db),before);
+ }
+});
+test('备注冲突、格式或长度不合法时不会覆盖档案',()=>{
+ for(const payload of [{remarks:'新备注',previousRemarks:'旧版本'},{remarks:'x'.repeat(2001),previousRemarks:'原备注'},{remarks:123,previousRemarks:'原备注'}]){
+  const db=fixture();db.offline_appointment[0].child_info.remarks='原备注';const e=engine(db),before=JSON.stringify(e.db);
+  assert.throws(()=>e.run(101,'SAVE_CHILD_REMARKS',{appointmentId:31,...payload}),/已被更新|过长|格式无效/);assert.equal(JSON.stringify(e.db),before);
+ }
+});
