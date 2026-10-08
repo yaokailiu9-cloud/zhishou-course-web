@@ -38,6 +38,7 @@ if(op==='PREPARE_COURSE_PAYMENT'){
     if(pending)result(s,{order:payPublic(pending),resume:true});
     else {
       var view=classView(c,false);if(!view.canEnroll||!c.organizer_id)fail(view.closedReason||'课程未开放报名');
+      if(c.product_kind==='CONSULT_PACKAGE'&&!list('offline_appointment',and(eq('customer_id',s.actor.accountId),{_or:[eq('status','COMPLETED','text'),and(eq('status','CONFIRMED','text'),compare('_lt','confirmed_at',new Date().toISOString(),'timestamptz'))]}),'id child_info',50).some(function(a){return !!a.child_info&&typeof a.child_info==='object'&&!Array.isArray(a.child_info);}))fail('首次咨询建立档案后才能购买5次咨询');
       var candidate=p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?payReferrer(p.referrerId):null;
       if(c.product_kind==='QUESTIONNAIRE'&&!candidate)fail('请使用管理或代理发出的问卷二维码进入');
       var cents=payCents(c.registration_fee),deadline=new Date(c.registration_closes_at||c.starts_at).getTime();

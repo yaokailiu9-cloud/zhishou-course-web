@@ -40,6 +40,6 @@ function call(operation, payload = {}) {
 }
 function requestKey() { return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12); }
 function formatTime(value) { if (!value) return '待安排'; const d=new Date(value); return isNaN(d.getTime()) ? value : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-function decorate(item) { return {...item,statusText:labels[item.status]||item.status,attendanceText: item.attendance_status==='PENDING'?'待参加/待核实':labels[item.attendance_status],groupText:item.group_status==='PENDING'?'待联系':labels[item.group_status],timeText:formatTime(item.confirmed_at||item.starts_at),createdText:formatTime(item.created_at)}; }
+function decorate(item) { return {...item,...(item.requested_time?{requested_time:formatTime(item.requested_time)}:{}),statusText:labels[item.status]||item.status,attendanceText: item.attendance_status==='PENDING'?'待参加/待核实':labels[item.attendance_status],groupText:item.group_status==='PENDING'?'待联系':labels[item.group_status],timeText:formatTime(item.confirmed_at||item.starts_at),createdText:formatTime(item.created_at)}; }
 function error(page, e) { page.setData({error:readableError(e && e.message)}); if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:0,duration:200}); }
 module.exports={call,requestKey,formatTime,decorate,labels,error};

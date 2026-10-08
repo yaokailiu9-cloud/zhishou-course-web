@@ -47,7 +47,7 @@ if(op==='LIST_CLASSES'||op==='STAFF_CLASSES') {
 }
 if(op==='GET_CLASS') {
   var c=one('public_class',p.classId,CLASS_FIELDS),own=s.actor.accountId?list('public_class_enrollment',and(eq('public_class_id',c.id),eq('customer_id',s.actor.accountId)),ENROLL_FIELDS,1)[0]:null;
-  if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');
+  if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');if(c.product_kind==='CONSULT_PACKAGE')fail('5次咨询请在“我的线下咨询”中购买');
   if(c.status!=='PUBLISHED' && c.status!=='CLOSED' && !(s.actor.providerId&&String(c.organizer_id)===String(s.actor.providerId)))fail('本场课程暂未开放');
   result(s,{classInfo:classView(c,!!own&&own.status==='REGISTERED'),enrollment:own||null,canManage:!!s.actor.canAccept&&String(c.organizer_id)===String(s.actor.providerId)});
 }
@@ -64,7 +64,7 @@ if(op==='GENERATE_CLASS_SHARE_CODE') {
 }
 if(op==='SAVE_CLASS') {
   staff(s,'canAccept');var previous=p.id?ownedClass(p.id):null;
-  if(isQuestionnaire(previous))fail('系统问卷不能在课程管理中修改');
+  if(isQuestionnaire(previous))fail('系统问卷不能在课程管理中修改');if(previous&&previous.product_kind==='CONSULT_PACKAGE')fail('5次咨询不能在课程管理中修改');
   var status=p.status;
   if(['PUBLISHED','CLOSED','DRAFT'].indexOf(status)<0)fail('课程状态无效');
   var capacity=Number(p.capacity||0);
@@ -91,7 +91,7 @@ if(op==='SAVE_CLASS') {
 }
 if(op==='ENROLL') {
   login(s);var c=one('public_class',p.classId,CLASS_FIELDS);
-  if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');
+  if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');if(c.product_kind==='CONSULT_PACKAGE')fail('5次咨询请在“我的线下咨询”中购买');
   var key=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
   var existing=list('public_class_enrollment',key,ENROLL_FIELDS,1)[0];
   if(existing&&existing.status==='REGISTERED')result(s,{enrollment:existing});

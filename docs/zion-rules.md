@@ -440,6 +440,10 @@ Conclusion: current frontend GraphQL can write a login audit record, but it does
 - `GET_AGENT_APPOINTMENT` / `CREATE_AGENT_APPOINTMENT` 使用现有公开课与线下咨询服务动作流，在后端校验启用中的代理/管理身份、推荐归属、报名归属、实际到课及负责老师接单能力。
 - 首次代约无需支付，保存到 `offline_appointment`，状态为 `PENDING`；咨询主管通过现有 `CONFIRM_APPOINTMENT` 确认具体时间。期望时间不代表已占用老师时段。
 - 咨询主管路由（2026-10-08）：客户自约 `CREATE_APPOINTMENT` 与代理代约 `CREATE_AGENT_APPOINTMENT` 的 `provider_id` 统一写入咨询主管程思琦 `service_provider.id = 15`（常量 `CONSULTATION_SUPERVISOR_ID`），不再按公开课 `organizer_id` 分配；她负责确认时间并查看全部预约资料与孩子档案。主管停用或关闭接单时报错，不回落给公开课老师。线上节点 `g3oknp94t` 用 `scripts/stage-supervisor-routing.js` 做最小替换。
+- 后续5次咨询（2026-10-08）：流程为 公开课到课 → 代理代约首次免费咨询 → 首次咨询发生并建立 `child_info` 档案（`COMPLETED`，或 `CONFIRMED` 且 `confirmed_at` 已过）→ 家长在“我的线下咨询”购买5次咨询（3999元）→ 家长自行预约，咨询主管确认。家长不能再自助申请首次免费咨询。
+  - 商品是 `public_class.product_kind = CONSULT_PACKAGE` 的一行（价格取 `registration_fee`），沿用课程支付链路 `PREPARE_COURSE_PAYMENT` / `CONFIRM_COURSE_PAYMENT`；支付成功生成该商品的 `public_class_enrollment` 作为权益。`PREPARE_COURSE_PAYMENT` 校验首次咨询档案；`ENROLL` / `GET_CLASS` / `SAVE_CLASS` 拒绝该商品；`COURSE_SCOPE` 让它不出现在课程列表和名册。每位家长仅能购买一次（报名唯一约束）。
+  - `GET_PACKAGE` 返回商品、资格、已约/剩余次数；`CREATE_APPOINTMENT` 只接受已购家长，`request_key = package:<权益报名id>:<1..5>` 由唯一约束防止超约，取消的场次可重约；同时只能有一条待确认。新预约 `enrollment_id` 仍指向已核实的公开课报名（沿用 `CONFIRM_APPOINTMENT` 校验），`child_info` 复制最近档案，`staff_note = 5次咨询 · 第N次`，`provider_id` 为咨询主管。
+  - 线上节点 `g3oknp94t`、`sui9sl3ko` 用 `scripts/stage-consultation-package.js` 做断言替换。
 - 确定性 `request_key = agent-first:<客户账号>` 使用已核实的唯一约束防止重复提交；已有其他有效咨询记录不能再次申请首次免费咨询。取消后可重新提交该次预约。
 - 代理只能读取该次预约的姓名、电话、困扰、时间和状态，不返回孩子档案、老师记录或反馈。普通客户不能调用代理代约操作。
 - 本次没有改动客户自行预约或咨询付费规则；付费后客户自约流程留待后续实施。
