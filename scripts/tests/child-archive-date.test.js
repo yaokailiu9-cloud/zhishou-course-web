@@ -15,3 +15,9 @@ test('家长提交档案时把未补零日期整理后再发送，无效日期�
   ctx.data.childForm={...ctx.data.childForm,signatureDate:'10月8日'};calls.length=0;await ctx.saveChild();
   assert.equal(calls.length,0);assert.match(ctx.data.error,/签字日期请按年-月-日填写/);
 });
+test('家庭档案不再显示纲要确认多选项，已有档案也不展示',()=>{
+  const text=JSON.stringify(archive.sections);
+  for(const value of ['纲要','基本纲要','郑重声明','特训营','天性辨别','readConfirmed'])assert.ok(!text.includes(value),value);
+  const shown=JSON.stringify(archive.answeredSections({readConfirmed:['基本纲要'],issues:['厌学']}));
+  assert.ok(!shown.includes('基本纲要'));assert.ok(shown.includes('厌学'));
+});
