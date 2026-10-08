@@ -9,7 +9,7 @@
   <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.child_info}}" class="card record-section archive-card">
    <text class="section-title">孩子家庭档案</text>
    <button wx:if="{{canEditArchive && !editingArchive}}" class="secondary" disabled="{{busy}}" bindtap="editArchive">修改档案</button>
-   <block wx:if="{{(!isStaff && appointment.status === 'CONFIRMED') || (canEditArchive && editingArchive)}}">
+   <block wx:if="{{!isStaff && appointment.status === 'CONFIRMED'}}">
     <text wx:if="{{!isStaff}}" class="muted">请在到店前填写。可先提交已填写的内容，之后继续补充；资料仅用于本次咨询。</text>
     <view wx:for="{{childSections}}" wx:for-item="section" wx:key="title" class="archive-section">
      <text class="archive-section-title">{{section.title}}</text>
@@ -30,8 +30,9 @@
    <block wx:elif="{{appointment.child_info}}">
     <view wx:for="{{answeredChildSections}}" wx:for-item="section" wx:key="title" class="archive-section">
      <text class="archive-section-title">{{section.title}}</text>
-     <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" class="archive-answer"><text class="muted">{{field.label}}</text><text class="body">{{field.value}}</text></view>
+     <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" class="archive-answer"><text class="muted">{{field.label}}</text><textarea wx:if="{{canEditArchive && editingArchive && field.key === 'remarks'}}" placeholder="填写或修改备注" value="{{childForm.remarks}}" data-key="remarks" bindinput="inputChild" maxlength="2000"/><text wx:else class="body">{{field.value}}</text></view>
     </view>
+    <block wx:if="{{canEditArchive && editingArchive}}"><button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveChild">提交档案</button><button class="text-button" disabled="{{busy}}" bindtap="cancelArchiveEdit">取消修改</button></block>
    </block>
    <text wx:else class="muted">等待家长填写家庭档案。</text>
   </view>

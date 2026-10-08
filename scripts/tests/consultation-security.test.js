@@ -224,15 +224,15 @@ test('备注冲突、格式或长度不合法时不会覆盖档案',()=>{
  }
 });
 
-test('负责老师统一提交孩子档案含备注，保留来源元数据及空家长关联',()=>{
+test('管理人员提交档案只改备注，保留全部其他资料及关系',()=>{
  const db=fixture();const previous={name:'原姓名',age:11,remarks:'原备注',_archive:{recordType:'CHILD_ARCHIVE_ONLY'}};
- db.offline_appointment[0]={id:31,provider_id:1,customer_id:null,enrollment_id:null,status:'孩子档案',updated_at:'2026-10-08T03:00:00Z',child_info:previous};const e=engine(db);
- e.run(101,'SAVE_CHILD_ARCHIVE',{appointmentId:31,previousUpdatedAt:'2026-10-08T03:00:00Z',childInfo:{name:'修改姓名',age:11,grade:'六年级',remarks:'修改备注',issues:['拖沓'],_archive:{recordType:'forged'},provider_id:2,customer_id:201}});
- const a=e.db.offline_appointment[0];assert.equal(a.child_info.name,'修改姓名');assert.equal(a.child_info.remarks,'修改备注');assert.equal(a.child_info.phone,'');assert.deepEqual(a.child_info._archive,previous._archive);assert.equal(a.customer_id,null);assert.equal(a.enrollment_id,null);assert.equal(a.provider_id,1);assert.equal(a.status,'孩子档案');assert.equal(a.child_info.provider_id,undefined);
+ db.offline_appointment[0]={id:31,provider_id:1,customer_id:null,enrollment_id:null,status:'孩子档案',updated_at:'v1',child_info:previous};const e=engine(db),before=structuredClone(e.db.offline_appointment[0]);
+ e.run(101,'SAVE_CHILD_ARCHIVE',{appointmentId:31,previousUpdatedAt:'v1',remarks:'修改备注',childInfo:{name:'伪造姓名',age:99,issues:['伪造'],customer_id:201},provider_id:2});
+ assert.deepEqual(e.db.offline_appointment[0],{...before,child_info:{...previous,remarks:'修改备注'}});
 });
-test('整份档案提交拒绝其他老师、客户、游客、过期版本和非法选项',()=>{
- for(const [account,version,childInfo] of [[102,'v1',{name:'孩子',age:11}],[201,'v1',{name:'孩子',age:11}],[null,'v1',{name:'孩子',age:11}],[101,'stale',{name:'孩子',age:11}],[101,'v1',{name:'孩子',age:11,issues:['不存在']}],[101,'v1',{name:'孩子',age:11,phone:'123'}]]){
+test('提交备注拒绝其他老师、客户、游客、过期版本及非法备注',()=>{
+ for(const [account,version,remarks] of [[102,'v1','备注'],[201,'v1','备注'],[null,'v1','备注'],[101,'stale','备注'],[101,'v1',123],[101,'v1','x'.repeat(2001)]]){
   const db=fixture();db.offline_appointment[0].updated_at='v1';const e=engine(db),before=JSON.stringify(e.db);
-  assert.throws(()=>e.run(account,'SAVE_CHILD_ARCHIVE',{appointmentId:31,previousUpdatedAt:version,childInfo}),/工作人员|其他客户|登录|已被更新|选项无效|手机号/);assert.equal(JSON.stringify(e.db),before);
+  assert.throws(()=>e.run(account,'SAVE_CHILD_ARCHIVE',{appointmentId:31,previousUpdatedAt:version,remarks}),/工作人员|其他客户|登录|已被更新|格式无效|过长/);assert.equal(JSON.stringify(e.db),before);
  }
 });
