@@ -64,4 +64,15 @@ function formSections(form) {
 function answeredSections(form) {
   return formSections(form).map(section => ({ ...section, fields: section.fields.filter(field => field.value) })).filter(section => section.fields.length);
 }
-module.exports = { sections, fields, fieldByKey, empty, formSections, answeredSections };
+// Parents often type 2026-10-8 or 2026/10/8; the backend accepts only zero-padded YYYY-MM-DD.
+function normalizeDate(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const m = raw.match(/^(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})\s*日?$/);
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])], date = new Date(Date.UTC(y, mo - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) return null;
+  return `${m[1]}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+const dateKeys = ['filledAt', 'signatureDate'];
+module.exports = { sections, fields, fieldByKey, empty, formSections, answeredSections, normalizeDate, dateKeys };
