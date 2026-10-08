@@ -7,9 +7,7 @@ if (op === "CREATE_APPOINTMENT") {
     var eligible=list("public_class_enrollment",and(eq("customer_id",s.actor.accountId),eq("status","REGISTERED","text"),eq("attendance_status","ATTENDED","text")),ENROLL_FIELDS,100);
     var e=eligible.filter(function(e){return !p.enrollmentId || String(e.id)===String(p.enrollmentId);})[0];
     if (!e || !e.verified_at || !e.verified_by_id) fail("请先参加免费公开课，待工作人员核实到课后再申请");
-    var providerId=e.public_class && e.public_class.organizer_id;
-    var provider=providerId && list("service_provider",and(eq("id",providerId),eq("service_status","ACTIVE","text")),"id can_accept_order",1)[0];
-    if (!provider || !provider.can_accept_order) fail("负责老师暂未开放预约，请联系工作人员");
+    var provider=consultationSupervisor();
     var object={request_key:key,customer_id:s.actor.accountId,enrollment_id:e.id,provider_id:provider.id,requested_time:text(p.requestedTime,"期望时间",160,true),contact_name:text(p.name || e.registrant_name,"家长姓名",60,true),phone:phone(p.phone || e.phone),concerns:text(p.concerns,"本次困扰",4000,true),status:"PENDING"};
     insert("offline_appointment",object,"offline_appointment_request_key");
     result(s,{id:list("offline_appointment",eq("request_key",key,"text"),"id",1)[0].id});

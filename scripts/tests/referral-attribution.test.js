@@ -6,7 +6,7 @@ test('推荐客户仅代理本人可见，管理可查看全部，并携带课�
  assert.equal(own.total,1);assert.equal(own.items.length,1);assert.equal(own.items[0].customerName,'家长甲');assert.equal(own.items[0].referrerName,'家长丙');assert.equal(own.items[0].enrollments[0].attendanceStatus,'ATTENDED');assert.equal(own.items[0].enrollments[0].courseTitle,'甲公开课');assert.equal(own.items[0].enrollments[0].phone,undefined);
  assert.throws(()=>e.run(203,'REFERRAL_CLIENTS',{scope:'all'}),/管理人员/);assert.throws(()=>e.run(201,'REFERRAL_CLIENTS'),/权限/);assert.throws(()=>e.run(null,'REFERRAL_CLIENTS'),/登录/);
  assert.equal(e.run(101,'REFERRAL_CLIENTS',{scope:'all'}).data.items.length,2);
- e.db.service_provider[2].service_status='INACTIVE';assert.throws(()=>e.run(203,'REFERRAL_CLIENTS'),/权限/);
+ e.db.service_provider.find(x=>x.id===3).service_status='INACTIVE';assert.throws(()=>e.run(203,'REFERRAL_CLIENTS'),/权限/);
 });
 test('推荐预览不产生关系；新链接不能替换已记录来源；老客户不会显示待绑定',()=>{
  const e=engine(data());assert.equal(e.run(203,'REFERRAL_OVERVIEW').data.canInvite,true);

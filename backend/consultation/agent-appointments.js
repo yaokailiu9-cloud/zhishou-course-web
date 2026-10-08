@@ -8,8 +8,7 @@ if (op === 'GET_AGENT_APPOINTMENT' || op === 'CREATE_AGENT_APPOINTMENT') {
   var enrollment=one('public_class_enrollment',p.enrollmentId,ENROLL_FIELDS);
   if (String(enrollment.customer_id)!==String(referral.referred_account_id)) fail('报名记录不属于该客户');
   if (enrollment.status!=='REGISTERED' || enrollment.attendance_status!=='ATTENDED' || !enrollment.verified_at || !enrollment.verified_by_id || isQuestionnaire(enrollment.public_class)) fail('请先由工作人员核实客户参加公开课');
-  var teacher=one('service_provider',enrollment.public_class.organizer_id,'id service_kind service_status can_accept_order');
-  if (teacher.service_status!=='ACTIVE' || teacher.service_kind==='AGENT' || !teacher.can_accept_order) fail('负责老师暂未开放预约，请联系工作人员');
+  var teacher=consultationSupervisor();
   var bookingFields='id requested_time confirmed_at status contact_name phone concerns';
   var firstKey='agent-first:'+referral.referred_account_id;
   var first=list('offline_appointment',eq('request_key',firstKey,'text'),bookingFields,1)[0];

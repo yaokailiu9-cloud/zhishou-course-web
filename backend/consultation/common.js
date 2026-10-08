@@ -63,6 +63,13 @@ function update(table, where, object) {
   if (!r.affected_rows) fail("状态已变化，请刷新后重试");
   return r.returning[0].id;
 }
+// All consultation bookings are routed to the supervisor 程思琦 (service_provider.id = 15), who confirms times and sees every intake.
+var CONSULTATION_SUPERVISOR_ID = 15;
+function consultationSupervisor() {
+  var p = list("service_provider", and(eq("id", CONSULTATION_SUPERVISOR_ID), eq("service_status", "ACTIVE", "text"), eq("service_kind", "STAFF", "text")), "id can_accept_order", 1)[0];
+  if (!p || !p.can_accept_order) fail("咨询主管暂未开放预约，请联系工作人员");
+  return p;
+}
 function login(s) { if (!s.actor.accountId) fail("请先微信登录"); }
 function staff(s, capability) { login(s); if (!s.actor.providerId || !s.actor[capability || "canReply"]) fail("当前账号没有这项工作人员权限"); }
 function requestKey(s, prefix) { return prefix + ":" + s.actor.accountId + ":" + text(s.payload.requestKey, "请求标识", 100, true); }

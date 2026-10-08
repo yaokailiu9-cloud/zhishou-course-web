@@ -438,7 +438,8 @@ Conclusion: current frontend GraphQL can write a login audit record, but it does
 
 - 推荐客户页面为已核实到课的公开课报名提供代约入口；代理只能为 `course_referral.referrer_id` 等于本人账号的客户提交。
 - `GET_AGENT_APPOINTMENT` / `CREATE_AGENT_APPOINTMENT` 使用现有公开课与线下咨询服务动作流，在后端校验启用中的代理/管理身份、推荐归属、报名归属、实际到课及负责老师接单能力。
-- 首次代约无需支付，保存到 `offline_appointment`，状态为 `PENDING`；负责老师通过现有 `CONFIRM_APPOINTMENT` 确认具体时间。期望时间不代表已占用老师时段。
+- 首次代约无需支付，保存到 `offline_appointment`，状态为 `PENDING`；咨询主管通过现有 `CONFIRM_APPOINTMENT` 确认具体时间。期望时间不代表已占用老师时段。
+- 咨询主管路由（2026-10-08）：客户自约 `CREATE_APPOINTMENT` 与代理代约 `CREATE_AGENT_APPOINTMENT` 的 `provider_id` 统一写入咨询主管程思琦 `service_provider.id = 15`（常量 `CONSULTATION_SUPERVISOR_ID`），不再按公开课 `organizer_id` 分配；她负责确认时间并查看全部预约资料与孩子档案。主管停用或关闭接单时报错，不回落给公开课老师。线上节点 `g3oknp94t` 用 `scripts/stage-supervisor-routing.js` 做最小替换。
 - 确定性 `request_key = agent-first:<客户账号>` 使用已核实的唯一约束防止重复提交；已有其他有效咨询记录不能再次申请首次免费咨询。取消后可重新提交该次预约。
 - 代理只能读取该次预约的姓名、电话、困扰、时间和状态，不返回孩子档案、老师记录或反馈。普通客户不能调用代理代约操作。
 - 本次没有改动客户自行预约或咨询付费规则；付费后客户自约流程留待后续实施。
