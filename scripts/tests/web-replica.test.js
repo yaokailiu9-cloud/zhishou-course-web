@@ -388,3 +388,23 @@ test('客户页按首次咨询档案与购买状态显示5次咨询购买或预�
     }
   }
 });
+
+test('咨询完成后双方从详情打开文字对话并发送，未完成的咨询没有入口',async()=>{
+ for(const isStaff of [false,true]){
+  const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:isStaff?101:201});
+  const calls=[],messages=[{id:10,content:'老师主动询问近况',senderRole:'teacher',isMine:isStaff,createdAt:'2026-10-09T10:00:00Z'}];
+  h.host.requireModule('utils/consultationService').call=async(op,p)=>{
+   calls.push([op,p]);if(op==='GET_APPOINTMENT')return {appointment:{id:31,status:'COMPLETED',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}},canTalk:true,isStaff,canReply:isStaff,feedbacks:[],summaryJobs:[]};
+   if(op==='GET_CONSULTATION_DIALOGUE')return {messages,nextCursor:null};
+   if(op==='SEND_CONSULTATION_MESSAGE')return {message:{id:11,content:p.content,senderRole:isStaff?'teacher':'customer',isMine:true,createdAt:'2026-10-09T10:01:00Z'}};
+   return {};
+  };
+  h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();
+  const page=h.document.querySelector('#page');assert.match(page.textContent,/咨询对话/);
+  const open=[...page.querySelectorAll('button')].find(b=>b.textContent===(isStaff?'与学生沟通':'与老师沟通'));assert.ok(open);open.dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师主动询问近况/);
+  const input=page.querySelector('.dialogue-input');assert.ok(input);input.value=isStaff?'老师可以直接发消息':'学生可以直接发消息';input.dispatchEvent(new h.Event('input'));await tick();
+  [...page.querySelectorAll('button')].find(b=>b.textContent==='发送消息').dispatchEvent(new h.Event('click'));await tick();
+  assert.ok(calls.some(([op])=>op==='SEND_CONSULTATION_MESSAGE'));assert.match(page.textContent,isStaff?/老师可以直接发消息/:/学生可以直接发消息/);assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');assert.equal(page.querySelectorAll('.dialogue-message').length,2);
+  h.host.current.setData({canTalk:false,appointment:{status:'CONFIRMED',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}}});await tick();assert.equal(page.querySelector('.dialogue-card'),null);
+ }
+});

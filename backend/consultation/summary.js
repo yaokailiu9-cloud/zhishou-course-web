@@ -22,7 +22,7 @@ if (["SUMMARIZE_TEXT","PREPARE_RECORDING","PROCESS_RECORDING","RETRY_SUMMARY"].i
         var rows=list("consultation_feedback",eq("appointment_id",a.id),FEEDBACK_FIELDS,501);
         if (!rows.length) fail("本次咨询还没有文字沟通，请先在下方留言或反馈");
         var hasMore=rows.length>500;rows=rows.slice(0,500).reverse();
-        var lines=[];rows.forEach(function(f){lines.push("家长："+f.content);(f.replies||[]).slice().sort(function(x,y){return Number(x.id)-Number(y.id);}).forEach(function(r){lines.push("老师："+r.content);});});
+        var lines=[];rows.forEach(function(f){var dialogue=f.advice_key==="__consultation_dialogue__",teacher=dialogue && String(f.author_id)!==String(a.customer_id);lines.push((teacher?"老师：":dialogue?"学生/家长：":"家长：")+f.content);(f.replies||[]).slice().sort(function(x,y){return Number(x.id)-Number(y.id);}).forEach(function(r){lines.push("老师："+r.content);});});
         var transcript=lines.join("\n");if(transcript.length>60000) fail("文字较多，请联系老师分段整理");
         object.transcript=transcript;object.source_range={firstFeedbackId:rows[0].id,lastFeedbackId:rows[rows.length-1].id,count:rows.length,hasEarlier:hasMore};
       }

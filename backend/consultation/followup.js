@@ -6,7 +6,7 @@ if (op === "SAVE_RECORD") {
   if (old && old.status==="CONFIRMED") fail("该记录已确认，后续内容请通过反馈回复或下次咨询补充");
   var advice=Array.isArray(p.advice) ? p.advice : [];
   if (advice.length>30) fail("单次最多30条执行建议");
-  advice=advice.map(function(item,index){return {key:text(item.key || ("step-"+(index+1)),"建议标识",100,true),content:text(item.content,"执行建议",2000,true)};});
+  advice=advice.map(function(item,index){var key=text(item.key || ("step-"+(index+1)),"建议标识",100,true);if(key==="__consultation_dialogue__")fail("建议标识无效");return {key:key,content:text(item.content,"执行建议",2000,true)};});
   if (new Set(advice.map(function(i){return i.key;})).size !== advice.length) fail("建议标识不能重复");
   var confirm=p.confirm===true;
   if (confirm && (!a.child_info || !a.child_info.name)) fail("请先请家长补充孩子基础信息");
@@ -39,8 +39,41 @@ if (op === "SEND_FEEDBACK") {
   result(s,{id:a.id});
 }
 if (op === "REPLY_FEEDBACK") {
-  staff(s,"canReply");var f=one("consultation_feedback",p.feedbackId,"id appointment_id");var a=appointment(s,f.appointment_id,"staff");
+  staff(s,"canReply");var f=one("consultation_feedback",p.feedbackId,"id appointment_id advice_key");var a=appointment(s,f.appointment_id,"staff");
+  if(f.advice_key==="__consultation_dialogue__")fail("请在咨询对话中发送消息");
   insert("consultation_feedback_reply",{request_key:requestKey(s,"reply"),feedback_id:f.id,author_id:s.actor.providerId,content:text(p.content,"回复",6000,true)},"consultation_feedback_reply_request_key");
   update("consultation_feedback",eq("id",f.id),{status:"REPLIED"});result(s,{id:a.id});
+}
+// A completed consultation has its own text dialogue, independent of paid chat sessions.
+function dialogueAppointment() {
+  var a=appointment(s,p.appointmentId);
+  if(a.status!=="COMPLETED" || !a.customer_id || !a.provider_id)fail("本次咨询完成后才能开启咨询对话");
+  if(String(a.customer_id)!==String(s.actor.accountId)){
+    staff(s,"canReply");
+    if(String(a.provider_id)!==String(s.actor.providerId))fail("只能与本人负责的咨询客户对话");
+  }
+  return a;
+}
+function dialogueMessage(a,row) {
+  return {id:row.id,content:row.content,createdAt:row.created_at,senderRole:String(row.author_id)===String(a.customer_id)?"customer":"teacher",isMine:String(row.author_id)===String(s.actor.accountId)};
+}
+if(op==="GET_CONSULTATION_DIALOGUE") {
+  var a=dialogueAppointment(),scope=and(eq("appointment_id",a.id),eq("advice_key","__consultation_dialogue__","text")),fields="id created_at author_id content";
+  if(p.afterId && p.beforeId)fail("对话分页参数无效");
+  if(p.afterId) {
+    var newer=gql("query DialogueNewRows($where:consultation_feedback_bool_exp!){rows: consultation_feedback(where:$where,order_by:{id:asc},limit: 21){"+fields+"}}",{where:and(scope,compare("_gt","id",id(p.afterId)))}).rows||[];
+    var more=newer.length>20;newer=newer.slice(0,20);
+    result(s,{messages:newer.map(function(row){return dialogueMessage(a,row);}),hasMoreNewer:more});
+  } else {
+    var page=pageRows("consultation_feedback",scope,fields,p.beforeId,20,true);
+    result(s,{messages:page.items.reverse().map(function(row){return dialogueMessage(a,row);}),nextCursor:page.nextCursor});
+  }
+}
+if(op==="SEND_CONSULTATION_MESSAGE") {
+  var a=dialogueAppointment(),key=requestKey(s,"dialogue:"+a.id),content=text(p.content,"消息",6000,true);
+  insert("consultation_feedback",{request_key:key,appointment_id:a.id,author_id:s.actor.accountId,advice_key:"__consultation_dialogue__",content:content,status:"REPLIED"},"consultation_feedback_request_key");
+  var saved=list("consultation_feedback",and(eq("request_key",key,"text"),eq("appointment_id",a.id),eq("author_id",s.actor.accountId)),"id created_at author_id content",1)[0];
+  if(!saved)fail("消息发送失败，请重试");
+  result(s,{message:dialogueMessage(a,saved)});
 }
 context.setReturn("state",s);

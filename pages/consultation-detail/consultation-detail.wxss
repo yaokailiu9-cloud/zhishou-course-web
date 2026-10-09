@@ -15,3 +15,14 @@
 .archive-error { margin: 24rpx 0 12rpx; }
 .picker-field.placeholder { color: #9a9a92; }
 .archive-field.has-error input, .archive-field.has-error textarea, .archive-field.has-error .picker-field { border-color: #d93025; }
+
+.dialogue-card .section-title { margin-bottom: 0; }
+.dialogue-messages { margin: 24rpx 0; }
+.dialogue-message { display: flex; flex-direction: column; align-items: flex-start; margin: 20rpx 0; }
+.dialogue-message.mine { align-items: flex-end; }
+.dialogue-meta { color: #717878; font-size: 24rpx; margin-bottom: 8rpx; }
+.dialogue-bubble { max-width: 85%; padding: 20rpx 24rpx; border-radius: 20rpx; background: #f1f3ef; color: #002727; white-space: pre-wrap; word-break: break-word; }
+.dialogue-message.mine .dialogue-bubble { background: #003b39; color: #fff; }
+.dialogue-actions { display: flex; align-items: center; gap: 16rpx; }
+.dialogue-actions .primary { margin: 0 0 0 auto; min-width: 180rpx; }
+.dialogue-input { min-height: 140rpx; }
