@@ -79,6 +79,7 @@ def css(path):
     source=re.sub(r'(?<![-\w.])image(?=[\s{,.:>\[])','img',source)
     return source.rstrip()+"\n"
 config=json.loads((ROOT/'app.json').read_text());pages={};manifest={}
+config['webFeatures']=json.loads((ROOT/'web'/'features.json').read_text())
 for route in config['pages']:
     path=ROOT/route;parser=Wxml();parser.feed(path.with_suffix('.wxml').read_text())
     patch_web_tree(route,parser.root)
