@@ -199,15 +199,8 @@
       if(values['scroll-into-view'])requestAnimationFrame(()=>{const target=document.getElementById(values['scroll-into-view']);if(target)target.scrollIntoView({block:'nearest'})});
     }
   }
-  function updateTabAccess(){
-    if(current?.route==='pages/profile/profile' && current.data.isLoggedIn && !current.data.managerAccessLoading && referralContext?.identity===session){
-      referralContext.canInvite=current.data.canInvite===true;
-    }
-    const allowed=!!(session && referralContext?.identity===session && referralContext.canInvite===true);
-    for(const button of $('#tabbar').children)button.hidden=button.dataset.route==='pages/chat/chat' && !allowed;
-  }
   function render() {
-    renderPending=false;if(!current)return;updateTabAccess();
+    renderPending=false;if(!current)return;
     const focused=document.activeElement,focusKey=focused?.dataset.focusKey,start=focused?.selectionStart,end=focused?.selectionEnd;
     const scrollers=[...root.querySelectorAll('scroll-view')].map(el=>({id:el.id,top:el.scrollTop}));
     const canvases=renderedPage===current?new Map([...root.querySelectorAll('canvas[id]')].map(el=>[el.id,el])):new Map();
@@ -228,7 +221,7 @@
     }
     if(current.route==='pages/profile/profile'){
       const subtitle=root.querySelector('.login-subtitle');if(subtitle)subtitle.textContent='在微信内打开，通过公众号授权登录';
-      const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可报名公开课、查看自己的方案；昵称和头像可在个人资料中修改。';
+      const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可报名公开课、查看自己的方案和聊天记录；昵称和头像可在个人资料中修改。';
       const avatar=root.querySelector('.login-avatar-picker');if(avatar){avatar.disabled=true;avatar.setAttribute('aria-label','知守头像')}
     }
     if(focusKey!=null){const next=root.querySelector('[data-focus-key="'+focusKey+'"]');if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
@@ -486,7 +479,7 @@
     }
     try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载报名页面';}
     if(session)try{await getReferralContext();}catch(_){/* Retry explicitly when sharing; public browsing remains available. */}
-    for(const item of source.config.tabBar.list){const button=document.createElement('button');button.dataset.route=item.pagePath;button.hidden=item.pagePath==='pages/chat/chat' && !(session && referralContext?.identity===session && referralContext.canInvite===true);button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');$('#tabbar').append(button)}
+    for(const item of source.config.tabBar.list){const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');$('#tabbar').append(button)}
     $('#back-button').onclick=back;
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};
     const initial=location.hash.slice(1);

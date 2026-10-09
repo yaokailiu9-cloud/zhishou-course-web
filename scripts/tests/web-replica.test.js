@@ -426,7 +426,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
  page=h.document.querySelector('#page');assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/继续反馈/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
 
- test('普通用户返回我的页不会再查询推荐或签到，也不会显示聊天页签',async()=>{
+ test('普通用户返回我的页不查询推荐或签到，始终保留聊天页签',async()=>{
   const requests=[];
   const h=await host({fetch:async(url,options={})=>{
    if(String(url).includes('action=graphql')){const input=JSON.parse(options.body);requests.push(input);return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:201,wechat_nickname:'合成客户'}}})};}
@@ -437,7 +437,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    const text=h.document.querySelector('#page').textContent;
    assert.match(text,/报名公开课/);assert.match(text,/我的方案/);
    assert.doesNotMatch(text,/进入客户端|简易方案梳理|推荐客户|扫码进场|工作台|累计消费/);
-   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true);
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false);
    h.host.current.onShow();await tick();
   }
   assert.equal(requests.filter(r=>r.query.includes('GetServiceProviderByAccount')).length,6,'只在onShow校验身份，onLoad不重复请求');
@@ -467,7 +467,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
     assert.doesNotMatch(text,/简易方案梳理|推荐客户|扫码进场|工作台/,'普通账号'+record.id);
     assert.equal(h.host.current.data.canInvite,false);assert.equal(h.host.current.data.isServiceProvider,false);
     assert.equal(requests.filter(r=>r.variables?.args).length,0);
-    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true);
+    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false);
    }else {
     assert.match(text,/简易方案梳理/);assert.match(text,/推荐客户/);
     assert.equal(h.host.current.data.isServiceProvider,record.identity==='MANAGER');
@@ -476,7 +476,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
   }
  });
 
- test('同一浏览器管理退出或被降为用户后，聊天与管理入口立即清除',async()=>{
+ test('同一浏览器管理退出或被降为用户后只清除特权入口，保留聊天',async()=>{
   for(const mode of ['logout','revoke']){
    let manager=true;
    const provider={id:14,account_id:19,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true};
@@ -488,10 +488,10 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false);
    manager=false;
    if(mode==='logout')await h.host.current.logout();else await h.host.current.loadManagerAccess(h.host.current.data.userInfo);
-   await tick();assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true,mode);
+   await tick();assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false,mode);
    assert.doesNotMatch(h.document.querySelector('#page').textContent,/简易方案梳理|推荐客户|扫码进场|进入工作台/,mode);
    h.host.wx.switchTab({url:'/pages/index/index'});await tick();
-   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true,mode);
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false,mode);
   }
  });
 
@@ -517,3 +517,18 @@ test('推荐客户显示预备学员，只有后台核实资格的客户能代�
  assert.equal(calls.at(-1).op,'CREATE_AGENT_APPOINTMENT');assert.equal(String(calls.at(-1).p.referralId),'51');assert.equal(calls.at(-1).p.requestedTime,'2099-01-01T14:00:00+08:00');
  assert.equal(h.host.current.data.booking.appointment.status,'PENDING');assert.ok(h.document.querySelector('#page').textContent.includes('等待负责人老师确认时间'));assert.ok(!h.document.querySelector('#page').textContent.includes('确认时间：'));
 });
+ test('没有管理或服务开通权限的普通用户仍可进入聊天并查看既有消息',async()=>{
+  const h=await host();
+  h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:'201',nickName:'普通用户'});
+  const zion=h.host.requireModule('utils/zion');
+  zion.getServiceProviderByAccount=async()=>null;
+  zion.ensureCustomerBoundSession=async()=>null;
+  h.document.querySelector('[data-route="pages/chat/chat"]').onclick();await tick();
+  assert.equal(h.host.current.route,'pages/chat/chat');
+  assert.equal(h.host.current.data.canOpenSessionDrawer,false);
+  h.host.current.setData({hasAccess:false,canRenew:false,serviceEnded:true,messages:[{id:'existing',role:'assistant',content:'既有聊天记录仍可查看'}]});await tick();
+  assert.match(h.document.querySelector('#page').textContent,/既有聊天记录仍可查看/);
+  assert.equal(h.document.querySelector('.chat-composer'),null,'未开通服务不授予发送权限');
+  assert.equal(h.document.querySelector('.session-drawer-root'),null,'普通用户没有管理会话面板权限');
+  assert.equal(h.document.querySelector('.renew-action'),null);
+ });
