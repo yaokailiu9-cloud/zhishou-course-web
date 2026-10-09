@@ -5,6 +5,8 @@ const viewSession = require("../../utils/viewSession");
 const chatContext = require("../../utils/chatContext");
 const managerUnread = require("../../utils/managerUnread");
 
+const serviceChat = require("../../utils/serviceChat");
+
 let messageId = 1;
 let countdownTimer = null;
 let managerSessionCountdownTimer = null;
@@ -25,11 +27,13 @@ function isManagerChatView() {
 }
 
 Page({
+  ...serviceChat.methods,
   goOfflineConsultation() {
     chatContext.enterCustomerView();
     wx.navigateTo({url:"/pages/customer/customer"});
   },
   data: {
+    ...serviceChat.data,
     statusBarHeight: 54,
     navHeight: 100,
     navPaddingRight: 190,
@@ -119,6 +123,7 @@ Page({
       chatContext.preserveManagerChatContext();
     }
     wx.showTabBar({ animation: false });
+    this.loadServiceChat();
     this.hydrateChatIdentity();
     this.ensureCustomerBoundSession().finally(() => {
       if (!viewSession.current(identity) || this.hidden || this.unloaded) return;
@@ -156,6 +161,7 @@ Page({
 
   onHide() {
     this.hidden = true;
+    this.stopServiceChat();
     this.viewEpoch = (this.viewEpoch || 0) + 1;
     this.messageRequest = null;
     this.timingRequest = null;
@@ -168,6 +174,7 @@ Page({
 
   onUnload() {
     this.unloaded = true;
+    this.stopServiceChat();
     this.chatDrafts = {};
     this.stopCountdown();
     this.stopManagerSessionCountdown();
@@ -186,7 +193,7 @@ Page({
     const hasAccess = timerStarted ? activeUntil > Date.now() : hasPaidSession;
     const remainingText = timerStarted
       ? (activeUntil ? this.formatRemaining(activeUntil) : "00:00")
-      : (hasPaidSession ? "待开始" : "00:00");
+      : (hasPaidSession ? "待回复" : "00:00");
     if (!serviceEnded) {
       serviceEndNoticeShown = false;
     }
@@ -196,8 +203,8 @@ Page({
         hasAccess,
         serviceEnded,
         paidUntilText: "",
-        remainingText: timerStarted ? remainingText : (hasPaidSession ? "待开始" : "--:--"),
-        serviceLabel: serviceEnded ? "已结束" : (timerStarted ? "服务中" : "待开始"),
+        remainingText: timerStarted ? remainingText : (hasPaidSession ? "待回复" : "--:--"),
+        serviceLabel: serviceEnded ? "已结束" : (timerStarted ? "服务中" : "待回复"),
         serviceDesc: serviceEnded ? "客户续费后可继续聊天" : (timerStarted ? "正在回复客户的咨询消息" : "回复客户后开始 1 小时计时"),
         composerPlaceholder: serviceEnded ? "服务已结束" : "回复客户"
       };
@@ -212,7 +219,7 @@ Page({
       serviceEnded,
       paidUntilText,
       remainingText,
-      serviceLabel: serviceEnded ? "已结束" : (timerStarted ? "服务中" : (hasPaidSession ? "待开始" : "未开通")),
+      serviceLabel: serviceEnded ? "已结束" : (timerStarted ? "服务中" : (hasPaidSession ? "待回复" : "未开通")),
       serviceDesc: serviceEnded ? "您的服务聊天时间已经结束" : (timerStarted ? "1 小时文字服务正在进行" : (hasPaidSession ? "等待经理回复，回复后开始计时" : "聊天服务尚未创建")),
       composerPlaceholder: serviceEnded ? "服务已结束" : (hasAccess ? "输入想聊的问题" : "暂时还没有创建相应的聊天")
     };
@@ -624,7 +631,7 @@ Page({
     });
     const remainingText = expiresTimestamp
       ? (expiresTimestamp > Date.now() ? this.formatRemaining(expiresTimestamp) : "00:00")
-      : (session.startedAt ? "00:00" : "待开始");
+      : (session.startedAt ? "00:00" : "待回复");
     const { displayStatus, statusLabel } = this.resolveManagerSessionDisplay(session, expiresTimestamp);
     return {
       id: session.id,

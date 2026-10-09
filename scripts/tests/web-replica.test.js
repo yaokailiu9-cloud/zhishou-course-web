@@ -314,7 +314,7 @@ test('推荐客户页实际显示推荐人、报名课程和到课状态，普�
   h.host.current.setData({loading:true});await tick();assert.equal(h.document.getElementById('referral-code'),canvas,'刷新名单不清空已绘制二维码');
 });
 
-test('文字聊天空状态在用户和管理端统一展示，开通后恢复计时与输入区',async()=>{
+test('文字聊天保留空状态和既有输入权限，移除倒计时与待开始',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();
   h.host.current.setData({hasAccess:false,serviceEnded:false,isManagerView:false,messages:[]});await tick();
   assert.equal(h.document.querySelectorAll('.chat-empty').length,1);
@@ -328,7 +328,8 @@ test('文字聊天空状态在用户和管理端统一展示，开通后恢复�
   assert.match(h.document.getElementById('page').textContent,/暂时还没有创建相应的聊天。/);
   h.host.current.setData({hasAccess:true,remainingText:'59:59',messages:[{id:'demo',role:'assistant',content:'已创建聊天'}]});await tick();
   assert.equal(h.document.querySelectorAll('.chat-empty').length,0);
-  assert.equal(h.document.querySelectorAll('.service-card').length,1);
+  assert.equal(h.document.querySelectorAll('.service-card').length,0);
+  assert.doesNotMatch(h.document.getElementById('page').textContent,/59:59|待开始|剩余/);
   assert.equal(h.document.querySelectorAll('.chat-composer').length,1);
 });
 
@@ -531,4 +532,14 @@ test('推荐客户显示预备学员，只有后台核实资格的客户能代�
   assert.equal(h.document.querySelector('.chat-composer'),null,'未开通服务不授予发送权限');
   assert.equal(h.document.querySelector('.session-drawer-root'),null,'普通用户没有管理会话面板权限');
   assert.equal(h.document.querySelector('.renew-action'),null);
+ });
+
+ test('服务反馈左上角展开孩子列表，等级与危险因素可读，普通家长不显示审核按钮',async()=>{
+  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();
+  const active={id:31,childName:'小知',parentName:'家长甲',pending:1,latest:'每天执行情况',metadata:{level:'A',danger:'合成风险'}};
+  h.host.current.setData({serviceMode:true,serviceLoading:false,serviceActive:active,serviceCases:[active],serviceDetail:{owner:true,staff:false,appointment:{contact_name:'家长甲',provider:{display_name:'老师'}}},serviceFeedback:[{id:1,content:'每天执行情况',reply:{id:2,stage:'DIRECTOR',stageText:'总监复核'},timeText:'今天'}],serviceMeta:active.metadata});await tick();
+  h.document.querySelector('.service-profile').click();await tick();
+  assert.ok(h.document.querySelector('.service-drawer'));assert.match(h.document.querySelector('.service-drawer').textContent,/孩子档案|小知|家长甲|合成风险/);
+  assert.equal(h.document.querySelector('.review-actions'),null);assert.equal(h.document.querySelector('.service-permission-entry'),null);
+  assert.doesNotMatch(h.document.querySelector('#page').textContent,/待开始|剩余/);
  });

@@ -1,4 +1,92 @@
-<view class="chat-page">
+<view wx:if="{{serviceMode}}" class="service-chat-page">
+ <view class="service-chat-nav" style="padding-top: {{statusBarHeight}}px;">
+  <button class="service-profile" aria-label="展开孩子档案列表" bindtap="toggleServiceDrawer"><text>{{serviceActive.childName ? serviceActive.childName[0] : '知'}}</text><text class="service-profile-chevron">⌄</text></button>
+  <view class="service-chat-title"><text>{{serviceActive.childName || '学员反馈'}}</text><text>{{serviceRoleLabel}} · 孩子档案与方案反馈</text></view>
+  <button class="service-nav-history" bindtap="showLegacyServiceChat">历史</button>
+  <button class="service-nav-refresh" aria-label="刷新服务反馈" bindtap="refreshServiceCase">↻</button>
+ </view>
+ <view wx:if="{{serviceError}}" class="service-error"><text>{{serviceError}}</text><button bindtap="loadServiceChat">重新加载</button></view>
+ <view wx:if="{{serviceLoading && !serviceDetail}}" class="service-empty">正在读取孩子档案…</view>
+ <view wx:elif="{{!serviceActive}}" class="service-empty"><text class="service-empty-mark">知</text><text>暂无可查看的孩子档案</text><text>档案关联后，家长反馈与工作人员回复会保留在这里。</text><button bindtap="toggleServiceDrawer">查看档案列表</button><button wx:if="{{serviceCanManage}}" bindtap="openServicePermissions">管理用户权限</button></view>
+ <block wx:if="{{serviceDetail}}">
+  <view class="service-case-strip"><view><text class="service-case-name">{{serviceActive.childName}}</text><text wx:if="{{serviceMeta.level}}" class="service-grade">{{serviceMeta.level}}{{serviceMeta.subLevel}}</text><text wx:if="{{serviceMeta.priority}}" class="service-priority">重点</text></view><text>{{serviceDetail.appointment.contact_name}} · {{serviceRoleLabel}}</text><button bindtap="openServiceArchive">孩子档案 ›</button></view>
+  <view wx:if="{{serviceMeta.danger}}" class="service-danger">危险因素：{{serviceMeta.danger}}</view>
+  <view class="service-content-tabs"><button class="{{serviceTab === 'feedback' ? 'active' : ''}}" data-tab="feedback" bindtap="switchServiceTab">家长反馈</button><button class="{{serviceTab === 'plan' ? 'active' : ''}}" data-tab="plan" bindtap="switchServiceTab">方案审核</button><button wx:if="{{serviceCanManage}}" bindtap="openServiceAssignment">服务管理</button></view>
+  <scroll-view scroll-y class="service-chat-content">
+   <block wx:if="{{serviceAssignOpen}}">
+    <view class="service-panel"><text class="service-section-title">人员分配与方案信息</text>
+     <text>监护专员</text><picker range="{{serviceGuardians}}" range-key="display_name" value="{{serviceGuardianIndex}}" data-field="serviceGuardianIndex" bindchange="changeServiceAssignment"><view class="service-select">{{serviceGuardians[serviceGuardianIndex].display_name || '请先授权监护专员'}} ⌄</view></picker>
+     <text>总监</text><picker range="{{serviceDirectors}}" range-key="display_name" value="{{serviceDirectorIndex}}" data-field="serviceDirectorIndex" bindchange="changeServiceAssignment"><view class="service-select">{{serviceDirectors[serviceDirectorIndex].display_name || '请先授权总监'}} ⌄</view></picker>
+     <button bindtap="openServicePermissions">为微信登录用户设置权限 ›</button>
+     <text>方案等级</text><picker range="{{serviceLevelOptions}}" bindchange="changeServiceMetaLevel"><view class="service-select">{{serviceMeta.level || '选择等级'}} ⌄</view></picker>
+     <input placeholder="副等级" value="{{serviceMeta.subLevel}}" data-field="subLevel" bindinput="changeServiceMeta" />
+     <input placeholder="方案阶段" value="{{serviceMeta.phase}}" data-field="phase" bindinput="changeServiceMeta" />
+     <textarea placeholder="危险因素" value="{{serviceMeta.danger}}" data-field="danger" bindinput="changeServiceMeta" maxlength="2000" />
+     <textarea placeholder="方案备忘录" value="{{serviceMeta.memo}}" data-field="memo" bindinput="changeServiceMeta" maxlength="4000" />
+     <view class="service-switch"><text>标记重点</text><switch checked="{{serviceMeta.priority}}" bindchange="changeServicePriority" /></view>
+     <button class="service-primary" disabled="{{serviceBusy}}" bindtap="saveServiceAssignment">保存服务分配</button>
+    </view>
+   </block>
+   <block wx:elif="{{serviceTab === 'feedback'}}">
+    <view wx:if="{{serviceFeedbackCursor}}" class="service-more"><button bindtap="moreServiceFeedback">查看更早反馈</button></view>
+    <view wx:if="{{!serviceFeedback.length}}" class="service-empty">暂未收到家长反馈</view>
+    <view wx:for="{{serviceFeedback}}" wx:key="id" class="service-feedback-card">
+     <view class="service-message-head"><text>家长反馈</text><text>{{item.timeText}}</text></view><text class="service-message-body">{{item.content}}</text>
+     <view wx:if="{{item.reply}}" class="service-reply"><text class="service-message-head">{{item.reply.body ? '老师回复' : '老师正在处理'}}</text><text wx:if="{{item.reply.body}}" class="service-message-body">{{item.reply.body.content}}</text>
+     <view class="review-flow"><text>监护专员整理</text><text>›</text><text>总监复核</text><text>›</text><text>总管终审</text></view>
+<view class="review-status"><text>{{item.reply.stageText}}</text><text wx:if="{{item.reply.availableText}}">{{item.reply.availableText}} 可见</text></view>
+<block wx:if="{{serviceDetail.staff}}">
+ <view class="review-actions">
+  <button wx:if="{{item.reply.stage === 'DRAFT'}}" data-id="{{item.reply.id}}" data-action="SUBMIT" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">提交总监复核</button>
+  <button wx:if="{{item.reply.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || item.reply.stage === 'GENERAL' && serviceCanManage}}" data-id="{{item.reply.id}}" data-action="APPROVE" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">{{item.reply.stage === 'GENERAL' ? '终审通过' : '复核通过'}}</button>
+  <button wx:if="{{item.reply.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || item.reply.stage === 'GENERAL' && serviceCanManage}}" data-id="{{item.reply.id}}" data-action="RETURN" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">退回修改</button>
+  <button wx:if="{{item.reply.kind === 'PLAN' && (item.reply.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || item.reply.stage === 'GENERAL' && serviceCanManage)}}" data-id="{{item.reply.id}}" data-action="SUPPLEMENT" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">让家长补充信息</button>
+ </view>
+ <view wx:for="{{item.reply.history}}" wx:for-item="log" wx:key="at" class="review-history"><text>{{log.roleText}} · {{log.actionText}} · {{log.timeText}}</text><text wx:if="{{log.note}}">{{log.note}}</text></view>
+</block>
+     </view>
+     <button wx:if="{{serviceDetail.canDraft && (!item.reply || item.reply.stage === 'DRAFT')}}" class="service-reply-button" data-id="{{item.id}}" bindtap="selectServiceReply">{{item.reply ? '编辑回复草稿' : '回复这条反馈'}}</button>
+    </view>
+   </block>
+   <block wx:elif="{{serviceTab === 'archive'}}"><view class="service-panel"><text class="service-section-title">孩子家庭档案</text><view wx:for="{{serviceArchiveSections}}" wx:for-item="section" wx:key="title" class="service-archive-section"><text class="service-section-title">{{section.title}}</text><view wx:for="{{section.fields}}" wx:for-item="field" wx:key="key" class="service-archive-answer"><text>{{field.label}}</text><text class="service-message-body">{{field.value}}</text></view></view></view></block>
+   <block wx:else>
+    <view class="service-panel"><text class="service-section-title">方案审核详情</text><text>学生：{{serviceActive.childName}} · 家长：{{serviceDetail.appointment.contact_name}}</text><text>监护专员：{{serviceDetail.appointment.guardian.display_name || serviceDetail.appointment.provider.display_name || '待分配'}}</text><text>总监：{{serviceDetail.appointment.director.display_name || '待分配'}}</text><text wx:if="{{serviceMeta.phase}}">方案阶段：{{serviceMeta.phase}}</text><text wx:if="{{serviceDetail.staff && serviceMeta.memo}}">备忘录：{{serviceMeta.memo}}</text>
+     <block wx:if="{{servicePlan}}"><text wx:if="{{servicePlan.body}}" class="service-message-body">{{servicePlan.body.summary}}</text><text wx:if="{{servicePlan.body.advice}}" class="service-message-body">执行建议：{{servicePlan.body.advice}}</text>
+      <view wx:if="{{servicePlan.supplementNote || servicePlan.body.supplementNote}}" class="service-supplement">补充要求：{{servicePlan.supplementNote || servicePlan.body.supplementNote}}</view><text wx:if="{{servicePlan.body.parentSupplement}}">家长补充：{{servicePlan.body.parentSupplement}}</text>
+      <view class="review-flow"><text>监护专员整理</text><text>›</text><text>总监复核</text><text>›</text><text>总管终审</text></view>
+<view class="review-status"><text>{{servicePlan.stageText}}</text><text wx:if="{{servicePlan.availableText}}">{{servicePlan.availableText}} 可见</text></view>
+<block wx:if="{{serviceDetail.staff}}">
+ <view class="review-actions">
+  <button wx:if="{{servicePlan.stage === 'DRAFT'}}" data-id="{{servicePlan.id}}" data-action="SUBMIT" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">提交总监复核</button>
+  <button wx:if="{{servicePlan.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || servicePlan.stage === 'GENERAL' && serviceCanManage}}" data-id="{{servicePlan.id}}" data-action="APPROVE" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">{{servicePlan.stage === 'GENERAL' ? '终审通过' : '复核通过'}}</button>
+  <button wx:if="{{servicePlan.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || servicePlan.stage === 'GENERAL' && serviceCanManage}}" data-id="{{servicePlan.id}}" data-action="RETURN" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">退回修改</button>
+  <button wx:if="{{servicePlan.kind === 'PLAN' && (servicePlan.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || servicePlan.stage === 'GENERAL' && serviceCanManage)}}" data-id="{{servicePlan.id}}" data-action="SUPPLEMENT" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">让家长补充信息</button>
+ </view>
+ <view wx:for="{{servicePlan.history}}" wx:for-item="log" wx:key="at" class="review-history"><text>{{log.roleText}} · {{log.actionText}} · {{log.timeText}}</text><text wx:if="{{log.note}}">{{log.note}}</text></view>
+</block>
+     </block><text wx:else>方案尚未提交</text>
+     <block wx:if="{{serviceDetail.canDraft && (!servicePlan || servicePlan.stage === 'DRAFT' || servicePlan.stage === 'SUPPLEMENT')}}"><button bindtap="editServicePlan">{{servicePlan ? '编辑方案草稿' : '整理方案'}}</button><block wx:if="{{servicePlanEditing}}"><textarea maxlength="16000" placeholder="方案内容" value="{{servicePlanSummary}}" data-field="servicePlanSummary" bindinput="inputService" /><textarea maxlength="10000" placeholder="执行建议" value="{{servicePlanAdvice}}" data-field="servicePlanAdvice" bindinput="inputService" /><button class="service-primary" disabled="{{serviceBusy}}" bindtap="saveServiceDraft">保存方案草稿</button></block></block>
+     <block wx:if="{{serviceDetail.owner && servicePlan.stage === 'SUPPLEMENT'}}"><textarea maxlength="6000" placeholder="按老师要求补充信息" value="{{serviceInput}}" bindinput="inputService" /><button class="service-primary" disabled="{{serviceBusy}}" bindtap="supplementServiceCase">提交补充信息</button></block>
+    </view>
+   </block>
+   <view wx:if="{{serviceDetail.staff && !serviceAssignOpen}}" class="service-panel service-review-settings"><textarea placeholder="退回原因或需家长补充的信息（退回时必填）" value="{{serviceNote}}" data-field="serviceNote" bindinput="inputService" maxlength="2000" /><view wx:if="{{serviceCanManage}}" class="service-release"><text>终审通过后</text><input type="digit" value="{{serviceReleaseHours}}" data-field="serviceReleaseHours" bindinput="inputService" /><text>小时对家长可见（0为立即）</text></view></view>
+  </scroll-view>
+  <view wx:if="{{serviceTab === 'feedback' && !serviceAssignOpen}}" class="service-composer">
+   <text wx:if="{{serviceDetail.staff}}" class="service-composer-label">{{serviceDraftFeedbackId ? '正在整理所选反馈的回复草稿' : '选择一条家长反馈进行回复'}}</text>
+   <textarea auto-height maxlength="6000" value="{{serviceInput}}" placeholder="{{serviceDetail.owner ? '填写执行情况或想向老师反馈的问题' : '输入回复内容，保存后提交审核'}}" bindinput="inputService" disabled="{{serviceBusy || serviceDetail.staff && !serviceDraftFeedbackId}}" />
+   <button class="service-primary" disabled="{{serviceBusy || !serviceInput || serviceDetail.staff && !serviceDraftFeedbackId}}" bindtap="{{serviceDetail.owner ? 'sendServiceFeedback' : 'saveServiceDraft'}}">{{serviceDetail.owner ? '发送反馈' : '保存回复草稿'}}</button>
+  </view>
+ </block>
+ <view wx:if="{{serviceDrawer}}" class="service-drawer-root"><view class="service-drawer-mask" bindtap="closeServiceDrawer"></view><view class="service-drawer">
+  <view class="service-drawer-heading"><view><text>孩子档案</text><text>{{serviceRoleLabel}} · 共 {{serviceCases.length}} 个档案</text></view><button aria-label="关闭档案列表" bindtap="closeServiceDrawer">×</button></view>
+  <view class="service-search-row"><input placeholder="查找孩子、家长或反馈" value="{{serviceSearch}}" bindinput="searchServiceCases" /><button bindtap="sortServiceCases">{{serviceSortNewest ? '最新' : '最早'}} ↕</button><picker range="{{serviceLevels}}" value="{{serviceLevelFilter}}" bindchange="changeServiceLevel"><view class="service-filter-picker">等级 ⌄</view></picker></view>
+  <view class="service-list-tabs"><button class="{{serviceFilter === 'ALL' ? 'active' : ''}}" data-filter="ALL" bindtap="changeServiceFilter">全部</button><button data-filter="PENDING" bindtap="changeServiceFilter">待回复</button><button data-filter="PRIORITY" bindtap="changeServiceFilter">重点</button><button wx:if="{{serviceStaff}}" data-filter="DIRECTOR" bindtap="changeServiceFilter">总监审核</button><button wx:if="{{serviceCanManage}}" data-filter="GENERAL" bindtap="changeServiceFilter">总管审核</button></view>
+  <scroll-view scroll-y class="service-drawer-list"><view wx:for="{{serviceCases}}" wx:key="id" class="service-case-item {{serviceActive.id === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="selectServiceCase"><view class="service-list-avatar">{{item.childName[0]}}</view><view class="service-list-main"><view><text class="service-case-name">{{item.childName}}</text><text wx:if="{{item.metadata.level}}" class="service-grade">{{item.metadata.level}}{{item.metadata.subLevel}}</text><text wx:if="{{item.metadata.priority}}" class="service-priority">重点</text><text wx:if="{{item.pending}}" class="service-pending">{{item.pending}}</text></view><text class="service-list-preview">{{item.latest}}</text><text class="service-list-owner">{{item.parentName}} · {{item.guardianName || '待分配监护专员'}}</text><text wx:if="{{item.metadata.danger}}" class="service-list-danger">危险因素：{{item.metadata.danger}}</text></view></view><view wx:if="{{!serviceCases.length}}" class="service-empty">没有符合条件的档案</view><button wx:if="{{serviceCaseCursor}}" bindtap="moreServiceCases">加载更多档案</button></scroll-view>
+  <button wx:if="{{serviceCanManage}}" class="service-permission-entry" bindtap="openServicePermissions">微信用户权限管理 ›</button>
+ </view></view>
+</view>
+
+<view wx:if="{{!serviceMode}}" class="chat-page">
   <view class="chat-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
     <button aria-label="返回" class="nav-back" bindtap="goBack">‹</button>
     <view class="nav-title">
@@ -24,30 +112,7 @@
     </view>
   </view>
 
-  <view wx:if="{{isManagerView || hasAccess || serviceEnded || messages.length}}" class="service-card {{serviceCardCollapsed ? 'is-collapsed' : ''}}">
-    <view class="service-card-handle" catchtap="toggleServiceCard">
-      <view class="service-handle-arrow {{serviceCardCollapsed ? 'is-down' : 'is-up'}}"></view>
-    </view>
-    <block wx:if="{{serviceCardCollapsed}}">
-      <view class="service-time service-time-only">
-        <text class="time-value">{{remainingText}}</text>
-        <text class="time-label">剩余</text>
-      </view>
-    </block>
-    <block wx:else>
-      <view>
-        <text class="service-label">{{serviceLabel}}</text>
-        <text class="service-desc">{{serviceDesc}}</text>
-      </view>
-      <view class="service-time">
-        <text class="time-label">剩余</text>
-        <text class="time-value">{{remainingText}}</text>
-      </view>
-      <button wx:if="{{serviceEnded && canRenew}}" class="renew-action" loading="{{renewing}}" disabled="{{renewing}}" bindtap="renewService">
-        续费 ¥200/小时
-      </button>
-    </block>
-  </view>
+  <button class="service-return-entry" bindtap="showServiceFeedback">孩子档案与方案反馈 ›</button>
 
   <scroll-view class="chat-scroll" scroll-y scroll-with-animation scroll-into-view="{{scrollIntoView}}">
     <view wx:if="{{!messages.length}}" class="chat-empty">
@@ -124,7 +189,7 @@
           <view class="session-drawer-body">
             <view class="session-drawer-row">
               <text class="session-drawer-name">{{item.name}}</text>
-              <text class="session-drawer-time">{{item.remainingText}}</text>
+
             </view>
             <text class="session-drawer-preview">{{item.topic}}</text>
             <view class="session-drawer-meta">

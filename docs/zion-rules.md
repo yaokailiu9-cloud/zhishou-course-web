@@ -488,3 +488,32 @@ Conclusion: current frontend GraphQL can write a login audit record, but it does
 - `REFERRAL_CLIENTS` 只返回派生布尔值 `canBookConsultation`，不向代理额外披露核实人员、孩子档案和咨询记录。线上以 `scripts/stage-prospective-student.js` 和 `scripts/stage-invitation-binding.js` 断言替换现有节点的对应片段，保留同期线上改动；无新增表、字段或默认直接表权限。
 - 本次后台发布版本为 `GMw1d6yblP8`，编辑与已部署版本回读一致。真实合成账号验证了邀请绑定、未参课拒绝、参课核实后代约、重复提交、代理不能确认、老师确认时再核实及家长读回；六条合成业务记录已清理。三条合成测试账号因平台凭证约束保留，已用核实存在的 `fz_deleted` 字段停用。
 - 本地验证：网页构建与静态产物构建完成，合并并发入口更新后455项全量测试中450项通过；其余5项在未修改的远程版本也复现（课程文案忽略文件缺失、咨询对话模块在旧测试替身中的方法缺失），本次相关功能测试通过。
+
+## 聊天区的服务管理与三级审核（2026-10-09）
+
+参考项目 `bZ7yl9DZ4YY` 的小程序客户端 `EQZNvBENo6k` 已只读检查：学员反馈-总管、学员反馈-总监、学员反馈-监护专员、方案审核详情、信息补充、审核通过、方案反馈回复页面的组件、绑定与动作。目标数据仍在本项目 `JmAxbl1MMe4`；没有复制参考项目客户数据。
+
+```mermaid
+flowchart LR
+  账户[微信登录账户] -->|显式一对一| 人员[服务人员]
+  人员 -->|显式一对多：监护专员| 档案[线下咨询与孩子档案]
+  人员 -->|显式一对多：总监| 档案
+  档案 -->|显式一对多| 审核[服务审核记录]
+  反馈[家长反馈] -->|显式一对多| 审核
+  人员 -->|显式一对多：草稿作者| 审核
+  审核 --> 整理[监护专员整理]
+  整理 --> 复核[总监复核]
+  复核 --> 终审[总管终审]
+  终审 --> 可见[到可见时间后家长读取]
+```
+
+- `service_provider`（服务人员）：新增 `review_role`（TEXT），GENERAL 总管、DIRECTOR 总监、GUARDIAN 监护专员。既有启用 STAFF 且同时具备回复及接单能力的管理兼容为总管。监护专员的业务类型为 GUARDIAN，允许回复但不授予接单、身份管理能力；总监也不因审核身份获得接单或身份管理能力。授权由现有 `SET_ACCOUNT_IDENTITY` 动作写入，继续保留身份变更审计。
+- `offline_appointment`（线下咨询与孩子档案）：新增 `guardian_id` 与 `director_id`，分别由服务人员的 `guardian_cases → guardian`、`director_cases → director` 显式一对多关联生成；保留原客户、负责老师和报名关系。新增 `service_metadata`（JSONB）：level（A/B/C/D）、subLevel、danger、memo、phase、priority。分配使用 `updated_at` 条件更新，避免覆盖并发修改。
+- `service_review_item`（服务审核记录）：`request_key` 审核幂等键；`kind` 为 PLAN 或 REPLY；`body`（JSONB）保存方案 summary/advice、回复 content、补充要求 supplementNote 和家长补充 parentSupplement；`stage` 为 DRAFT、DIRECTOR、GENERAL、APPROVED、SUPPLEMENT；`revision`（BIGINT）用于并发保护；`available_at`（TIMESTAMPTZ）为终审设置的家长可见时间；`history`（JSONB）记录服务端确认的操作人、角色、动作、时间与说明。
+- `service_review_item.appointment_id`、`feedback_id`、`author_id` 都由 Zion 显式关联生成，分别关联 `offline_appointment`、`consultation_feedback`、`service_provider`。`service_review_item_request_key` 是唯一约束：方案用 `plan:<档案id>`，每条反馈回复用 `reply:<反馈id>`，阻止并发重复草稿。历史内的 actorAccountId 是审计快照，属于业务记录，未声明数据库外键。
+- 家长文字仍保存在 `consultation_feedback`，新增业务标识 `advice_key = __service_feedback__`，与原方案详情对话及执行反馈区分。家长提交使用已有反馈唯一约束防止重试重复；旧直接反馈回复动作不能处理这个标识。
+- 所有读写走已有主服务动作流 `9f60a0be-4628-4268-a769-661264846cf4`。本次只替换授权节点的对应片段，并在反馈节点追加处理器，保留其他同期节点和线上配置。游客、登录用户对服务审核记录、执行反馈、线下咨询预约的直接全部操作均关闭；服务人员的直接写入关闭。家长只能访问本人档案，服务人员只访问分配范围，总管可管理所有有效档案。草稿正文和操作记录不返回家长，终审通过且 `available_at` 已到才返回正文；补充阶段只公开补充要求。
+- 聊天页左上角展开档案列表，支持姓名/反馈搜索、等级、重点、待回复、总监/总管审核筛选与分页；正文提供反馈、方案审核、档案查看和总管服务分配。历史文字会话继续保留入口；移除聊天页面的计时卡、会话列表倒计时和“待开始”。
+- 一致性建议：保持唯一幂等键、审核版本条件更新、服务端角色核验和直接表权限关闭。不要将新草稿写入本地缓存作为持久存储；不要把审核动作改为直接表 mutation。
+
+验证：实际合成账号完成管理授权、人员分配、家长反馈幂等、监护专员提交、总监复核、总管终审、家长读回、方案补充回到草稿及游客/登录用户直接读取拒绝。合成业务记录及授权审计已删除，平台凭证账号以 `fz_deleted` 停用。最终正式后台版本 `dxRk62Xj72z`；部署回读与编辑版本一致。

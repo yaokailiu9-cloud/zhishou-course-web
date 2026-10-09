@@ -39,3 +39,5 @@ dialog{border:1px solid #e6e1da;border-radius:18px;background:#fbf9f8;color:#002
 .web-time{height:42px;border-radius:10px;background:#fff;border:1px solid #e8e3df;font-size:15px;color:#002727;font-variant-numeric:tabular-nums}.web-time.on{background:#002727;border-color:#002727;color:#fff;font-weight:600}.web-time:disabled{color:#c4c9c8;opacity:1}
 @keyframes web-sheet-up{from{transform:translateY(100%)}to{transform:none}}@keyframes web-sheet-fade{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.web-sheet,.web-sheet-mask{animation:none}}
+
+#page .service-chat-page{height:calc(100dvh - 66px - env(safe-area-inset-bottom))}#page .service-drawer{max-width:390px}#page .service-drawer-root{left:50%;width:min(100%,430px);transform:translateX(-50%)}

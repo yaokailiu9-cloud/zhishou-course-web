@@ -40,7 +40,7 @@ if (op === "SEND_FEEDBACK") {
 }
 if (op === "REPLY_FEEDBACK") {
   staff(s,"canReply");var f=one("consultation_feedback",p.feedbackId,"id appointment_id advice_key");var a=appointment(s,f.appointment_id,"staff");
-  if(f.advice_key==="__consultation_dialogue__")fail("请在咨询对话中发送消息");
+  if(["__consultation_dialogue__","__service_feedback__"].indexOf(f.advice_key)>=0)fail("请在咨询对话中发送消息");
   insert("consultation_feedback_reply",{request_key:requestKey(s,"reply"),feedback_id:f.id,author_id:s.actor.providerId,content:text(p.content,"回复",6000,true)},"consultation_feedback_reply_request_key");
   update("consultation_feedback",eq("id",f.id),{status:"REPLIED"});result(s,{id:a.id});
 }
@@ -76,4 +76,5 @@ if(op==="SEND_CONSULTATION_MESSAGE") {
   if(!saved)fail("消息发送失败，请重试");
   result(s,{message:dialogueMessage(a,saved)});
 }
+// SERVICE_REVIEW_HANDLERS: build script inserts service-review.js here.
 context.setReturn("state",s);

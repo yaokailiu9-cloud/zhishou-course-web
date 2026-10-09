@@ -4,6 +4,8 @@ const service = require("../../utils/consultationService");
 
 const identityOptions = [
   { value: "MANAGER", label: "管理" },
+  { value: "DIRECTOR", label: "总监" },
+  { value: "GUARDIAN", label: "监护专员" },
   { value: "AGENT", label: "代理" },
   { value: "USER", label: "用户" }
 ];

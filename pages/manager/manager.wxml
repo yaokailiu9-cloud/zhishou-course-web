@@ -91,7 +91,7 @@
   <block wx:elif="{{activeView === 'identities'}}">
     <view class="hero-line compact">
       <text class="hero-title">身份管理</text>
-      <text class="hero-copy">为已登录用户设置管理、代理或用户身份。每次变更都会写入后台审计记录。</text>
+      <text class="hero-copy">为已登录用户设置管理（总管）、总监、监护专员、代理或用户权限。每次变更都会写入后台审计记录。</text>
     </view>
 
     <view class="identity-search-wrap">
