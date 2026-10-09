@@ -9,9 +9,9 @@
   const HOME = 'pages/index/index';
   const INVITE_LOGIN = 'pages/invite-login/invite-login';
   let invitation=null,invitationError='';
-  const webChatEnabled = source.config.webFeatures?.chatEnabled === true;
-  const tabItems = source.config.tabBar.list.filter(item => webChatEnabled || item.pagePath !== 'pages/chat/chat');
-  const tabRoutes = tabItems.map(item => item.pagePath);
+  const chatEntryVisible = source.config.webFeatures?.chatEntryVisible === true;
+  const tabItems = source.config.tabBar.list.filter(item => chatEntryVisible || item.pagePath !== 'pages/chat/chat');
+  const tabRoutes = source.config.tabBar.list.map(item => item.pagePath);
   const $ = selector => document.querySelector(selector);
   const clone = value => JSON.parse(JSON.stringify(value));
   function resolve(from, name) {
@@ -247,7 +247,7 @@
     for(const button of $('#tabbar').children)button.setAttribute('aria-current',button.dataset.route===page.route?'page':'false');
     render();window.scrollTo(0,page._scroll||0);
   }
-  function parseRoute(url){const raw=String(url||'').replace(/^#?\/?/,'');const [path,query]=raw.split('?');if(path==='pages/chat/chat'&&!webChatEnabled)return{route:HOME,options:{}};return{route:source.pages[path]?path:HOME,options:Object.fromEntries(new URLSearchParams(query))}}
+  function parseRoute(url){const raw=String(url||'').replace(/^#?\/?/,'');const [path,query]=raw.split('?');return{route:source.pages[path]?path:HOME,options:Object.fromEntries(new URLSearchParams(query))}}
   function navigate(url,mode='push',fromHistory=false){
     let {route,options}=parseRoute(url);
     if(invitationError||(invitation&&!storage.get('zionJwt'))){route=INVITE_LOGIN;options={};}

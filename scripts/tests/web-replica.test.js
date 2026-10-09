@@ -22,21 +22,21 @@ async function host(options={}){
   context.history.replaceState=(_state,_title,url)=>replacements.push(url);
   context.window=context;vm.createContext(context);
   vm.runInContext(read('web/replica/source.js'),context);
-  // Preserve coverage of the retained chat implementation with the feature enabled.
-  // Closure coverage below uses the actual disabled website configuration.
-  if(options.chatEnabled!==false)context.MiniSource.config.webFeatures.chatEnabled=true;
+  // Retain visible-entry coverage; the test below uses the actual hidden-entry configuration.
+  if(options.chatEntryVisible!==false)context.MiniSource.config.webFeatures.chatEntryVisible=true;
   vm.runInContext(read('web/replica/runtime.js'),context);
   await tick();return{context,document,Event,host:context.MiniHost,errors,replacements};
 }
-test('网站关闭聊天后隐藏入口并阻止旧链接，咨询反馈页面仍可打开',async()=>{
-  assert.equal(JSON.parse(read('web/features.json')).chatEnabled,false);
-  const h=await host({chatEnabled:false,location:{hash:'#/pages/chat/chat?appointmentId=31'}});
-  assert.equal(h.host.current.route,'pages/index/index');
-  assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null);
+test('网站只隐藏聊天入口，旧链接和聊天导航仍可使用，咨询反馈页面保留',async()=>{
+  assert.equal(JSON.parse(read('web/features.json')).chatEntryVisible,false);
+  const h=await host({chatEntryVisible:false,location:{hash:'#/pages/chat/chat?appointmentId=31'}});
+  assert.equal(h.host.current.route,'pages/chat/chat');
+  assert.equal(h.host.current.options.appointmentId,'31');
+  assert.equal(h.document.querySelector('#tabbar [data-route="pages/chat/chat"]'),null);
   assert.equal(h.document.querySelectorAll('#tabbar button').length,3);
   for(const method of ['navigateTo','switchTab','redirectTo','reLaunch']){
     h.host.wx[method]({url:'/pages/chat/chat'});await tick();
-    assert.equal(h.host.current.route,'pages/index/index');
+    assert.equal(h.host.current.route,'pages/chat/chat');
   }
   h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();
   assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');
@@ -411,7 +411,7 @@ test('客户页按首次咨询档案与购买状态显示5次咨询购买或预�
 
 test('已绑定的独立档案双方从方案详情继续反馈并发送，未绑定时隐藏反馈',async()=>{
  for(const isStaff of [false,true]){
-  const h=await host({chatEnabled:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:isStaff?101:201});
+  const h=await host({chatEntryVisible:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:isStaff?101:201});
   const calls=[],messages=[{id:10,content:'老师主动询问近况',senderRole:'teacher',isMine:isStaff,createdAt:'2026-10-09T10:00:00Z'}];
   h.host.requireModule('utils/consultationService').call=async(op,p)=>{
    calls.push([op,p]);if(op==='GET_APPOINTMENT')return {appointment:{id:31,status:'孩子档案',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}},canTalk:true,isStaff,canReply:isStaff,feedbacks:[],summaryJobs:[]};
@@ -430,7 +430,7 @@ test('已绑定的独立档案双方从方案详情继续反馈并发送，未�
 });
 
 test('独立孩子档案通过现有我的方案进入并在原详情反馈，不添加聊天入口',async()=>{
- const h=await host({chatEnabled:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:201,nickName:'合成客户'});
+ const h=await host({chatEntryVisible:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:201,nickName:'合成客户'});
  const archive={id:31,status:'孩子档案',customer_id:201,provider_id:1,child_info:{name:'合成孩子',remarks:'老师给出的方案内容'},provider:{display_name:'负责老师'}};
  h.host.requireModule('utils/consultationService').call=async op=>{
   if(op==='GET_QUESTIONNAIRE')return {enrollment:null};
