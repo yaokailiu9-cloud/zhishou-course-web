@@ -78,6 +78,10 @@ function date(v, label) { var d = new Date(v); if (!v || isNaN(d.getTime())) fai
 function result(s, data) { s.result = {ok: true, data: data}; }
 var CLASS_FIELDS = "id title description starts_at status product_kind group_guide signup_url group_qr { id url } organizer_id cover { id url } city contact_phone notice capacity reserved_count revision registration_fee registration_closes_at checkin_closes_at share_code { id url }";
 var ENROLL_FIELDS = "id created_at registrant_name phone status attendance_status group_status verified_at customer_id public_class_id verified_by_id entry_code checkin_method canceled_at public_class { " + CLASS_FIELDS + " }";
+// Prospective-student eligibility is derived from the verified course record, never a client role.
+function verifiedPublicClass(e) {
+  return !!(e && e.status === 'REGISTERED' && e.attendance_status === 'ATTENDED' && e.verified_at && e.verified_by_id && e.public_class && (!e.public_class.product_kind || e.public_class.product_kind === 'COURSE'));
+}
 var APPOINTMENT_FIELDS = "id created_at updated_at requested_time confirmed_at status contact_name phone concerns child_info staff_note completed_at provider_id customer_id enrollment_id provider { id display_name }";
 var RECORD_FIELDS = "id appointment_id author_id summary advice status confirmed_at updated_at";
 var FEEDBACK_FIELDS = "id created_at appointment_id author_id advice_key content status replies { id content created_at author { display_name } }";

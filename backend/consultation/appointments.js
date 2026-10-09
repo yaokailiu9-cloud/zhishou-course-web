@@ -4,8 +4,8 @@ if (op === "CONFIRM_APPOINTMENT") {
   staff(s,"canAccept"); var a=appointment(s,p.appointmentId,"staff");
   var confirmed=date(p.confirmedAt,"咨询时间");
   if (new Date(confirmed).getTime()<=Date.now()) fail("请选择未来的咨询时间");
-  var e=one("public_class_enrollment",a.enrollment_id,"id attendance_status status verified_at");
-  if (e.attendance_status!=="ATTENDED" || e.status!=="REGISTERED" || !e.verified_at) fail("请先核实该客户实际参加公开课");
+  var e=one("public_class_enrollment",a.enrollment_id,ENROLL_FIELDS);
+  if (!verifiedPublicClass(e) || String(e.customer_id)!==String(a.customer_id)) fail("请先核实该客户实际参加公开课");
   update("offline_appointment",and(eq("id",a.id),eq("status","PENDING","text")),{status:"CONFIRMED",confirmed_at:confirmed,provider_id:s.actor.providerId,staff_note:text(p.note,"预约说明",2000,false)}); result(s,{id:a.id});
 }
 if (op === "CANCEL_APPOINTMENT") {

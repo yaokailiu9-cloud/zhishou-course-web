@@ -404,9 +404,10 @@ async function handleApi(req, res) {
       const previous=readInvitation(req,current), safeTarget=invitationReturn(input.returnTo);
       // Refreshing the login gate must not replace the original course with the plaza.
       const returnTo=safeTarget===input.returnTo?safeTarget:String(previous?.referrerId)===referrerId?invitationReturn(previous.returnTo):safeTarget;
+      const binding=current ? await invoke(current.jwt, 'BIND_INVITATION', {referrerId}) : null;
       const invitation=setInvitation(res,{referrerId,returnTo,accountId:current?.account?.id||previous?.accountId||null});
       if(current)setSession(res,{...current,referrerId,referralReturn:invitation.returnTo});
-      return json(res,200,{ok:true,data:{invitation:{returnTo:invitation.returnTo}}});
+      return json(res,200,{ok:true,data:{invitation:{returnTo:invitation.returnTo},binding:binding?.binding||null}});
     }
     if (action === "graphql") {
       const input = await body(req);
@@ -492,10 +493,11 @@ async function handleOauthCallback(req, res) {
     const code = url.searchParams.get("code");
     if (!code) throw new Error("AUTH:未获得微信授权");
     const login = await authenticateWechatAccount(code);
-    // Keep the invitation through login; Zion binds ownership only after enrollment.
+    // Bind the authenticated customer from the verified invitation before returning to the course.
     const sameAccount=!state.invitationAccountId||String(state.invitationAccountId)===String(login.account.id);
     const referrerId = sameAccount && state.referrerId && String(state.referrerId) !== String(login.account.id) ? state.referrerId : null;
     const returnTo=referrerId?invitationReturn(state.returnTo):'/web/#/pages/index/index';
+    if(referrerId)await invoke(login.jwt, 'BIND_INVITATION', {referrerId});
     setSession(res, {jwt:login.jwt, account:login.account, referrerId, referralReturn:returnTo, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
     if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:login.account.id});
     else appendCookie(res,`${INVITATION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);

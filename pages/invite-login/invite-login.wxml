@@ -1,4 +1,4 @@
 <view class="service-page course-page">
- <view class="service-hero"><text class="eyebrow">知守 · 课程报名</text><text class="page-title">登录后继续报名</text><text class="muted">登录后会回到你扫码进入的课程。</text></view>
+ <view class="service-hero"><text class="eyebrow">知守 · 课程报名</text><text class="page-title">登录后继续报名</text><text class="muted">登录后完成邀请绑定，并回到你扫码进入的课程。</text></view>
  <view class="card"><text class="section-title">课程报名</text><text class="body">请使用自己的微信账号登录，查看课程并填写本人资料。</text><text wx:if="{{loading}}" class="muted">正在确认报名入口…</text><text wx:if="{{error}}" class="error">{{error}}</text><button class="primary" bindtap="login" disabled="{{loading}}">{{error ? '重新加载报名入口' : '微信登录，继续报名'}}</button><text class="muted">请在微信内打开，或用微信扫一扫 / 长按识别收到的报名二维码。</text></view>
 </view>

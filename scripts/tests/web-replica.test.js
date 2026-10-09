@@ -309,6 +309,7 @@ test('推荐客户页实际显示推荐人、报名课程和到课状态，普�
   const text=h.document.querySelector('#page').textContent;
   for(const value of ['家长甲','推荐人：代理乙','亲子课堂','已到课','报名人甲'])assert.ok(text.includes(value),value);
   assert.ok(!text.includes('全部推荐客户'));assert.equal(h.host.current.data.allowed,true);
+  let copied;h.host.wx.setClipboardData=({data})=>{copied=data;};[...h.document.querySelectorAll('button')].find(b=>b.textContent==='复制邀请链接').dispatchEvent(new h.Event('click',{bubbles:true}));await tick();assert.equal(copied,'https://example.test/web/?ref=signed#/pages/plaza/plaza');
   const canvas=h.document.getElementById('referral-code');assert.ok(canvas);
   h.host.current.setData({loading:true});await tick();assert.equal(h.document.getElementById('referral-code'),canvas,'刷新名单不清空已绘制二维码');
 });
@@ -493,3 +494,26 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true,mode);
   }
  });
+
+test('推荐客户显示预备学员，只有后台核实资格的客户能代约，提交后仍等待老师确认',async()=>{
+ const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:18});
+ h.host.wx.createCanvasContext=()=>({setFillStyle(){},fillRect(){},draw(_,cb){cb();}});
+ h.host.wx.getReferralContext=async()=>({canInvite:true,isManager:false,shareUrl:''});
+ const calls=[];h.host.requireModule('utils/consultationService').call=async(op,p)=>{
+  calls.push({op,p});
+  if(op==='REFERRAL_CLIENTS')return {total:2,items:[{id:51,customerName:'核实家长',referrerName:'顾欣',enrollments:[{id:21,name:'核实家长',courseTitle:'公开课',status:'REGISTERED',attendanceStatus:'ATTENDED',canBookConsultation:true}]},{id:52,customerName:'待核实家长',referrerName:'顾欣',enrollments:[{id:22,courseTitle:'公开课',status:'REGISTERED',attendanceStatus:'ATTENDED',canBookConsultation:false}]}]};
+  if(op==='GET_AGENT_APPOINTMENT')return {name:'核实家长',phone:'13800000000',appointment:null};
+  if(op==='CREATE_AGENT_APPOINTMENT')return {id:91,appointment:{id:91,contact_name:p.name,requested_time:p.requestedTime,status:'PENDING'}};
+  throw new Error(op);
+ };
+ h.host.wx.navigateTo({url:'/pages/referrals/referrals'});await tick();await tick();
+ assert.ok(h.document.querySelector('#page').textContent.includes('预备学员'));
+ const buttons=[...h.document.querySelectorAll('button')].filter(b=>b.textContent.includes('代约咨询 / 查看预约'));assert.equal(buttons.length,1);
+ assert.ok(h.document.querySelector('#page').textContent.includes('尚未核实参加公开课，暂不能预约咨询'));
+ buttons[0].dispatchEvent(new h.Event('click',{bubbles:true}));await tick();
+ assert.equal(calls.at(-1).op,'GET_AGENT_APPOINTMENT');assert.equal(String(calls.at(-1).p.enrollmentId),'21');
+ h.host.current.setData({bookingForm:{name:'核实家长',phone:'13800000000',date:'2099-01-01',time:'14:00',concerns:'亲子沟通'}});await tick();
+ [...h.document.querySelectorAll('button')].find(b=>b.textContent.includes('提交咨询预约')).dispatchEvent(new h.Event('click',{bubbles:true}));await tick();
+ assert.equal(calls.at(-1).op,'CREATE_AGENT_APPOINTMENT');assert.equal(String(calls.at(-1).p.referralId),'51');assert.equal(calls.at(-1).p.requestedTime,'2099-01-01T14:00:00+08:00');
+ assert.equal(h.host.current.data.booking.appointment.status,'PENDING');assert.ok(h.document.querySelector('#page').textContent.includes('等待负责人老师确认时间'));assert.ok(!h.document.querySelector('#page').textContent.includes('确认时间：'));
+});

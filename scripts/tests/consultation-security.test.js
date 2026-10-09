@@ -85,7 +85,7 @@ test('旧的异步结果不能覆盖重试中的新任务',()=>{const e=engine(f
 
 function courseFixture(){const db=fixture();db.public_class_enrollment=[];db.public_class.forEach(c=>Object.assign(c,{revision:0,reserved_count:0,capacity:1,city:'成都',starts_at:new Date(Date.now()+3600000).toISOString()}));return db;}
 function signup(e,account=201,classId=11){return e.run(account,'ENROLL',{classId,name:'合成家长',phone:'13800000000'}).data.enrollment;}
-test('登录不锁定，首次成功报名锁定，取消及新链接不改绑',()=>{
+test('旧登录调用保持兼容，报名回退可绑定，取消及新链接不改绑',()=>{
  const e=engine(courseFixture());assert.equal(e.run(202,'LOCK_REFERRER',{referrerId:101}).data.locked,false);assert.equal(e.db.course_referral.length,0);
  const first=e.run(202,'ENROLL',{classId:11,name:'家长',phone:'13800000000',referrerId:101}).data.enrollment;
  assert.equal(e.db.course_referral[0].referrer_id,101);e.run(202,'CANCEL_ENROLLMENT',{enrollmentId:first.id});
@@ -282,4 +282,26 @@ test('对话限制空白与超长消息，旧反馈回复入口不能绕过对�
 test('咨询文字总结正确区分老师主动消息与学生消息',()=>{
  const e=completedDialogue();e.run(101,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,content:'老师问候',requestKey:'one'});e.run(201,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,content:'学生近况',requestKey:'two'});
  e.run(201,'SUMMARIZE_TEXT',{appointmentId:31,requestKey:'summary'});assert.match(e.db.consultation_summary_job[0].transcript,/老师：老师问候\n学生\/家长：学生近况/);
+});
+
+test('预备学员资格只取核实的公开课记录，代理不能伪造资格或确认时间',()=>{
+ const make=()=>{const db=fixture();db.service_provider.push({id:3,account_id:203,service_kind:'AGENT',service_status:'ACTIVE'});db.course_referral.push({id:51,referrer_id:203,referred_account_id:201});db.offline_appointment=[];return engine(db);};
+ const payload={referralId:51,enrollmentId:21,name:'家长',phone:'13800000000',concerns:'沟通困难',requestedTime:'2099-01-01T14:00:00+08:00',eligible:true,canBookConsultation:true,role:'预备学员'};
+ const checks=[e=>{e.attendance_status='PENDING';},e=>{e.attendance_status='ABSENT';},e=>{e.status='CANCELED';},e=>{e.verified_at=null;},e=>{e.verified_by_id=null;}];
+ for(const change of checks){const e=make();change(e.db.public_class_enrollment[0]);assert.equal(e.run(203,'REFERRAL_CLIENTS').data.items[0].enrollments[0].canBookConsultation,false);const before=JSON.stringify(e.db);assert.throws(()=>e.run(203,'CREATE_AGENT_APPOINTMENT',payload),/核实客户参加公开课/);assert.equal(JSON.stringify(e.db),before);}
+ for(const kind of ['QUESTIONNAIRE','CONSULT_PACKAGE']){const e=make();e.db.public_class[0].product_kind=kind;assert.equal(e.run(203,'REFERRAL_CLIENTS').data.items[0].enrollments[0].canBookConsultation,false);assert.throws(()=>e.run(203,'CREATE_AGENT_APPOINTMENT',payload),/核实客户参加公开课/);}
+ const e=make();assert.equal(e.run(203,'REFERRAL_CLIENTS').data.items[0].enrollments[0].canBookConsultation,true);const r=e.run(203,'CREATE_AGENT_APPOINTMENT',payload).data;assert.throws(()=>e.run(203,'CONFIRM_APPOINTMENT',{appointmentId:r.id,confirmedAt:payload.requestedTime}),/工作人员/);assert.equal(e.db.offline_appointment[0].status,'PENDING');
+ e.db.public_class_enrollment[0].verified_by_id=null;assert.throws(()=>e.run(121,'CONFIRM_APPOINTMENT',{appointmentId:r.id,confirmedAt:payload.requestedTime}),/核实该客户/);assert.equal(e.db.offline_appointment[0].status,'PENDING');
+ e.db.public_class_enrollment[0].verified_by_id=1;e.db.public_class_enrollment[0].customer_id=202;assert.throws(()=>e.run(121,'CONFIRM_APPOINTMENT',{appointmentId:r.id,confirmedAt:payload.requestedTime}),/核实该客户/);
+ e.db.public_class_enrollment[0].customer_id=201;e.run(121,'CONFIRM_APPOINTMENT',{appointmentId:r.id,confirmedAt:payload.requestedTime});assert.equal(e.run(203,'GET_AGENT_APPOINTMENT',payload).data.appointment.status,'CONFIRMED');
+});
+
+test('邀请链接立即绑定当前登录客户，无需报名；旧归属不改绑，绑定不等于预约资格',()=>{
+ const db=fixture();db.service_provider.push({id:3,account_id:203,service_kind:'AGENT',service_status:'ACTIVE'});const e=engine(db);
+ const r=e.run(202,'BIND_INVITATION',{referrerId:203,customerId:201,accountId:201}).data;assert.equal(r.locked,true);assert.equal(db.course_referral[0].referred_account_id,202);assert.equal(db.course_referral[0].referrer_id,203);assert.equal(db.course_referral[0].source,'INVITATION_LINK');
+ assert.equal(e.run(203,'REFERRAL_CLIENTS').data.items[0].enrollments[0].canBookConsultation,false);assert.equal(e.run(202,'BIND_INVITATION',{referrerId:203}).data.locked,false);assert.equal(db.course_referral.length,1);
+ assert.equal(e.run(202,'BIND_INVITATION',{referrerId:101}).data.locked,false);assert.equal(db.course_referral[0].referrer_id,203);
+ const noEnrollment=e.run(201,'BIND_INVITATION',{referrerId:203}).data;assert.equal(noEnrollment.locked,true,'历史报名但未绑定的客户也可通过链接绑定');
+ assert.throws(()=>e.run(null,'BIND_INVITATION',{referrerId:203}),/登录/);assert.equal(e.run(203,'BIND_INVITATION',{referrerId:203}).data.locked,false);assert.equal(e.run(101,'BIND_INVITATION',{referrerId:203}).data.locked,false);
+ const d=fixture();d.public_class_enrollment=[];d.course_referral=[];d.service_provider.push({id:3,account_id:203,service_kind:'AGENT',service_status:'INACTIVE'});const x=engine(d);assert.throws(()=>x.run(202,'BIND_INVITATION',{referrerId:203}),/邀请权限/);assert.equal(d.course_referral.length,0);d.service_provider.at(-1).service_status='ACTIVE';assert.equal(x.run(202,'BIND_INVITATION',{referrerId:203}).data.locked,true);assert.equal(d.public_class_enrollment.length,0);
 });

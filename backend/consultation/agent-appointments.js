@@ -7,7 +7,7 @@ if (op === 'GET_AGENT_APPOINTMENT' || op === 'CREATE_AGENT_APPOINTMENT') {
   if (String(referral.referred_account_id)===String(s.actor.accountId)) fail('不能为自己预约免费咨询');
   var enrollment=one('public_class_enrollment',p.enrollmentId,ENROLL_FIELDS);
   if (String(enrollment.customer_id)!==String(referral.referred_account_id)) fail('报名记录不属于该客户');
-  if (enrollment.status!=='REGISTERED' || enrollment.attendance_status!=='ATTENDED' || !enrollment.verified_at || !enrollment.verified_by_id || isQuestionnaire(enrollment.public_class)) fail('请先由工作人员核实客户参加公开课');
+  if (!verifiedPublicClass(enrollment)) fail('请先由工作人员核实客户参加公开课');
   var teacher=consultationSupervisor();
   var bookingFields='id requested_time confirmed_at status contact_name phone concerns';
   var firstKey='agent-first:'+referral.referred_account_id;
