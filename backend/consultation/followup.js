@@ -44,10 +44,10 @@ if (op === "REPLY_FEEDBACK") {
   insert("consultation_feedback_reply",{request_key:requestKey(s,"reply"),feedback_id:f.id,author_id:s.actor.providerId,content:text(p.content,"回复",6000,true)},"consultation_feedback_reply_request_key");
   update("consultation_feedback",eq("id",f.id),{status:"REPLIED"});result(s,{id:a.id});
 }
-// A completed consultation has its own text dialogue, independent of paid chat sessions.
+// Bound customers can continue feedback inside their plan, independent of paid chat sessions.
 function dialogueAppointment() {
   var a=appointment(s,p.appointmentId);
-  if(a.status!=="COMPLETED" || !a.customer_id || !a.provider_id)fail("本次咨询完成后才能开启咨询对话");
+  if(["PENDING","CONFIRMED","COMPLETED","孩子档案"].indexOf(a.status)<0 || !a.customer_id || !a.provider_id)fail("方案需绑定客户和负责老师后才能继续反馈");
   if(String(a.customer_id)!==String(s.actor.accountId)){
     staff(s,"canReply");
     if(String(a.provider_id)!==String(s.actor.providerId))fail("只能与本人负责的咨询客户对话");

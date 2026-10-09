@@ -4,14 +4,14 @@ const chatContext=require('../../utils/chatContext');
 const payment=require('../../utils/coursePayment');
 Page({
  data:{loading:false,busy:false,error:'',isLoggedIn:false,eligible:false,hasMyPlan:false,myPlanSubmitted:false,enrollments:[],appointments:[],nextAppointmentCursor:null,moreLoading:false,showForm:false,form:{name:'',phone:'',date:'',time:'',concerns:''},pkg:null,payBusy:false},
- onLoad(){if(require("../../utils/loginReturn").restore(this,"customer",""))this.bookingKey=service.requestKey();},
+ onLoad(options){this.focusPlans=!!(options&&options.plans);if(require("../../utils/loginReturn").restore(this,"customer",""))this.bookingKey=service.requestKey();},
  onShow(){chatContext.enterCustomerView();this.refresh();},
  refresh(){const generation=this.listGeneration=(this.listGeneration||0)+1;this.setData({moreLoading:false});
   const user=auth.getLoggedInUser();this.setData({isLoggedIn:!!user,error:''});if(!user){this.setData({enrollments:[],appointments:[],eligible:false,hasMyPlan:false,myPlanSubmitted:false,pkg:null});return;}
   this.setData({loading:true});
   service.call('GET_QUESTIONNAIRE').then(data=>{if(generation===this.listGeneration)this.setData({hasMyPlan:!!data.enrollment,myPlanSubmitted:!!(data.enrollment&&data.enrollment.child_submitted_at)});}).catch(()=>{if(generation===this.listGeneration)this.setData({hasMyPlan:false,myPlanSubmitted:false});});
   service.call('GET_PACKAGE').then(data=>{if(generation===this.listGeneration)this.setData({pkg:data});}).catch(()=>{if(generation===this.listGeneration)this.setData({pkg:null});});
-  service.call('MY_OVERVIEW',{paginate:true}).then(data=>generation===this.listGeneration && this.setData({eligible:data.eligible,enrollments:(data.enrollments||[]).map(service.decorate),appointments:(data.appointments||[]).map(service.decorate),nextAppointmentCursor:data.nextAppointmentCursor||null})).catch(e=>{if(generation===this.listGeneration)service.error(this,e);}).finally(()=>{if(generation===this.listGeneration)this.setData({loading:false});});
+  service.call('MY_OVERVIEW',{paginate:true}).then(data=>generation===this.listGeneration && this.setData({eligible:data.eligible,enrollments:(data.enrollments||[]).map(service.decorate),appointments:(data.appointments||[]).map(service.decorate),nextAppointmentCursor:data.nextAppointmentCursor||null})).catch(e=>{if(generation===this.listGeneration)service.error(this,e);}).finally(()=>{if(generation===this.listGeneration){this.setData({loading:false});if(this.focusPlans&&wx.pageScrollTo){this.focusPlans=false;wx.pageScrollTo({selector:'#my-plans',duration:0});}}});
  },
  async moreAppointments(){if(this.data.loading||this.data.moreLoading||!this.data.nextAppointmentCursor)return;const generation=this.listGeneration||0;this.setData({moreLoading:true});try{const r=await service.call('MY_OVERVIEW',{paginate:true,appointmentCursor:this.data.nextAppointmentCursor});if(generation!==(this.listGeneration||0))return;this.setData({appointments:this.data.appointments.concat((r.appointments||[]).map(service.decorate)),nextAppointmentCursor:r.nextAppointmentCursor||null});}catch(e){if(generation===(this.listGeneration||0))service.error(this,e);}finally{if(generation===(this.listGeneration||0))this.setData({moreLoading:false});}},
  login(){auth.requireLogin('登录后查看自己的报名、预约和咨询记录。');},

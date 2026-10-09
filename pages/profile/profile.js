@@ -118,14 +118,17 @@ Page({
     const identity=viewSession.capture();
     this.setData({hasMyPlan:false,myPlanSubmitted:false});
     try {
-      const result=await checkinService.call('GET_QUESTIONNAIRE');
-      if(viewSession.current(identity))this.setData({hasMyPlan:!!result.enrollment,myPlanSubmitted:!!(result.enrollment&&result.enrollment.child_submitted_at)});
+      const results=await Promise.allSettled([checkinService.call('GET_QUESTIONNAIRE'),checkinService.call('MY_OVERVIEW',{paginate:true})]);
+      const questionnaire=results[0].status==='fulfilled'?results[0].value:{};
+      const overview=results[1].status==='fulfilled'?results[1].value:{};
+      const hasArchive=!!(overview.appointments&&overview.appointments.length);
+      if(viewSession.current(identity))this.setData({hasMyPlan:!!questionnaire.enrollment||hasArchive,myPlanSubmitted:hasArchive||!!(questionnaire.enrollment&&questionnaire.enrollment.child_submitted_at)});
     } catch (_) {
-      // An account without a paid questionnaire has no personal plan entry.
+      // Keep the personal plan entry hidden if its ownership cannot be checked.
     }
   },
 
-  goMyPlan() { wx.navigateTo({url:'/pages/questionnaire/questionnaire'}); },
+  goMyPlan() { wx.navigateTo({url:'/pages/customer/customer?plans=1'}); },
 
   async loadReferralAccess() {
     const identity=viewSession.capture();this.setData({canInvite:false});

@@ -257,10 +257,11 @@ test('完成咨询后学生与负责老师均可主动发文字，身份由服�
  assert.deepEqual(fromStudent.map(m=>m.isMine),[false,true]);assert.equal(e.run(201,'GET_APPOINTMENT',{appointmentId:31}).data.canTalk,true);
  assert.equal(e.run(201,'GET_APPOINTMENT',{appointmentId:31}).data.feedbacks.length,0);assert.equal(e.run(102,'GET_APPOINTMENT',{appointmentId:31}).data.canTalk,false);
 });
-for(const op of ['GET_CONSULTATION_DIALOGUE','SEND_CONSULTATION_MESSAGE'])test('咨询对话拒绝游客、其他学生、未分配老师及尚未完成的咨询 '+op,()=>{
+for(const op of ['GET_CONSULTATION_DIALOGUE','SEND_CONSULTATION_MESSAGE'])test('方案反馈拒绝游客、其他学生、未分配老师及无有效绑定的方案 '+op,()=>{
  const payload={appointmentId:31,content:'消息',requestKey:'key',role:'teacher',providerId:1,account_id:101};
  for(const account of [null,202,102]){const e=completedDialogue(),before=JSON.stringify(e.db);assert.throws(()=>e.run(account,op,payload),/登录|其他客户|本人负责/);assert.equal(JSON.stringify(e.db),before);}
- for(const status of ['PENDING','CONFIRMED','CANCELED','孩子档案']){const e=completedDialogue();e.db.offline_appointment[0].status=status;assert.throws(()=>e.run(201,op,payload),/完成后/);assert.equal(e.run(201,'GET_APPOINTMENT',{appointmentId:31}).data.canTalk,false);}
+ for(const status of ['PENDING','CONFIRMED','孩子档案']){const e=completedDialogue();e.db.offline_appointment[0].status=status;assert.doesNotThrow(()=>e.run(201,op,payload));assert.equal(e.run(201,'GET_APPOINTMENT',{appointmentId:31}).data.canTalk,true);assert.equal(e.db.offline_appointment[0].status,status);}
+ for(const patch of [{status:'CANCELED'},{status:'UNKNOWN'},{provider_id:null}]){const e=completedDialogue();Object.assign(e.db.offline_appointment[0],patch);assert.throws(()=>e.run(201,op,payload),/绑定/);assert.equal(e.run(201,'GET_APPOINTMENT',{appointmentId:31}).data.canTalk,false);}
  const e=completedDialogue();e.db.service_provider.find(p=>p.id===1).can_reply=false;assert.throws(()=>e.run(101,op,payload),/工作人员权限/);assert.equal(e.run(101,'GET_APPOINTMENT',{appointmentId:31}).data.canTalk,false);
 });
 test('对话分页仅返回本次咨询；补拉新增消息按递增编号避免大量新消息丢失',()=>{

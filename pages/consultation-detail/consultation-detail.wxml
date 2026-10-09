@@ -42,9 +42,9 @@
    <text wx:else class="muted">等待家长填写家庭档案。</text>
   </view>
   <view wx:if="{{canTalk}}" class="card record-section dialogue-card">
-   <view class="row"><text class="section-title">咨询对话</text><button wx:if="{{dialogueOpen}}" class="text-button" bindtap="closeDialogue">收起</button></view>
-   <text class="muted">本次咨询已完成，可在这里与{{isStaff ? '学生及家长' : '负责老师'}}继续沟通。</text>
-   <button wx:if="{{!dialogueOpen}}" class="secondary" bindtap="openDialogue">{{isStaff ? '与学生沟通' : '与老师沟通'}}</button>
+   <view class="row"><text class="section-title">方案反馈</text><button wx:if="{{dialogueOpen}}" class="text-button" bindtap="closeDialogue">收起</button></view>
+   <text class="muted">可在这里向{{isStaff ? '学生及家长' : '负责老师'}}提问、反馈执行情况，并查看回复。</text>
+   <button wx:if="{{!dialogueOpen}}" class="secondary" bindtap="openDialogue">{{isStaff ? '回复与沟通' : '继续反馈'}}</button>
    <block wx:else>
     <button wx:if="{{dialogueCursor}}" class="text-button" loading="{{dialogueLoading}}" disabled="{{dialogueLoading}}" bindtap="moreDialogue">查看更早消息</button>
     <view class="dialogue-messages" aria-live="polite">
