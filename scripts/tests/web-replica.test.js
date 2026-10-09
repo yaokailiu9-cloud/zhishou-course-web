@@ -418,9 +418,78 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
   if(op==='GET_APPOINTMENT')return {appointment:archive,canTalk:true,isStaff:false,feedbacks:[],summaryJobs:[]};
   return {};
  };
- h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();await h.host.current.loadMyPlan();await tick();
+ h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();
  let page=h.document.querySelector('#page');const plan=[...page.querySelectorAll('.settings-row')].find(row=>row.textContent.includes('我的方案'));assert.ok(plan);plan.dispatchEvent(new h.Event('click'));await tick();
- assert.equal(h.host.current.route,'pages/customer/customer');page=h.document.querySelector('#page');assert.match(page.textContent,/我的方案/);assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/查看方案与继续反馈/);
+ assert.equal(h.host.current.route,'pages/customer/customer');page=h.document.querySelector('#page');assert.match(page.textContent,/我的方案/);assert.doesNotMatch(page.textContent,/购买|预约下一次咨询|我的公开课报名|客户中心/);assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/查看方案与继续反馈/);
  const card=[...page.querySelectorAll('.card')].find(row=>row.textContent.includes('合成孩子'));card.dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');
  page=h.document.querySelector('#page');assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/继续反馈/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
+
+ test('普通用户返回我的页不会再查询推荐或签到，也不会显示聊天页签',async()=>{
+  const requests=[];
+  const h=await host({fetch:async(url,options={})=>{
+   if(String(url).includes('action=graphql')){const input=JSON.parse(options.body);requests.push(input);return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:201,wechat_nickname:'合成客户'}}})};}
+   return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:201,name:'合成客户'}}:{canInvite:false}})};
+  }});
+  for(let i=0;i<3;i++){
+   h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();
+   const text=h.document.querySelector('#page').textContent;
+   assert.match(text,/报名公开课/);assert.match(text,/我的方案/);
+   assert.doesNotMatch(text,/进入客户端|简易方案梳理|推荐客户|扫码进场|工作台|累计消费/);
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true);
+   h.host.current.onShow();await tick();
+  }
+  assert.equal(requests.filter(r=>r.query.includes('GetServiceProviderByAccount')).length,6,'只在onShow校验身份，onLoad不重复请求');
+  assert.equal(requests.filter(r=>r.variables?.args).length,0,'普通用户不请求推荐、签到、会话或方案入口权限');
+ });
+
+ test('不同后台身份登录后的入口严格隔离，包括旧user_type不一致的账号',async()=>{
+  const records=process.env.PROFILE_IDENTITY_FIXTURES ? JSON.parse(fs.readFileSync(process.env.PROFILE_IDENTITY_FIXTURES,'utf8')) : [
+   {id:'201',identity:'USER',user_type:'manager',service_provider:null},
+   {id:'202',identity:'USER',user_type:'agent',service_provider:{id:17,account_id:'202',service_kind:'AGENT',service_status:'INACTIVE',can_reply:false,can_accept_order:false}},
+   {id:'203',identity:'AGENT',service_provider:{id:18,account_id:'203',service_kind:'AGENT',service_status:'ACTIVE',can_reply:false,can_accept_order:false}},
+   {id:'204',identity:'MANAGER',service_provider:{id:19,account_id:'204',service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true}}
+  ];
+  for(const record of records){
+   const requests=[],provider=record.service_provider;
+   const h=await host({fetch:async(url,options={})=>{
+    if(String(url).includes('action=graphql')){
+     const input=JSON.parse(options.body);requests.push(input);const result={allowed:record.identity==='MANAGER',appointments:[],enrollments:[],enrollment:null};
+     return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:provider?[provider]:[],account_by_pk:{id:record.id,wechat_nickname:'账号'},consultation_session:[],consultation_order:[],account:[],fz_invoke_action_flow:{result:{ok:true,data:result}}}})};
+    }
+    return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:record.id,name:'账号',role:record.user_type}}:{canInvite:record.identity!=='USER'}})};
+   }});
+   h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();
+   const text=h.document.querySelector('#page').textContent;
+   assert.match(text,/报名公开课/);assert.match(text,/我的方案/);assert.doesNotMatch(text,/进入客户端|累计消费/);
+   if(record.identity==='USER'){
+    assert.doesNotMatch(text,/简易方案梳理|推荐客户|扫码进场|工作台/,'普通账号'+record.id);
+    assert.equal(h.host.current.data.canInvite,false);assert.equal(h.host.current.data.isServiceProvider,false);
+    assert.equal(requests.filter(r=>r.variables?.args).length,0);
+    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true);
+   }else {
+    assert.match(text,/简易方案梳理/);assert.match(text,/推荐客户/);
+    assert.equal(h.host.current.data.isServiceProvider,record.identity==='MANAGER');
+    if(record.identity==='AGENT')assert.doesNotMatch(text,/扫码进场|工作台/);
+   }
+  }
+ });
+
+ test('同一浏览器管理退出或被降为用户后，聊天与管理入口立即清除',async()=>{
+  for(const mode of ['logout','revoke']){
+   let manager=true;
+   const provider={id:14,account_id:19,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true};
+   const h=await host({fetch:async(url,options={})=>{
+    if(String(url).includes('action=graphql'))return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:manager?[provider]:[],account_by_pk:{id:19,wechat_nickname:'账号'},consultation_session:[],consultation_order:[],account:[],fz_invoke_action_flow:{result:{ok:true,data:{allowed:manager}}}}})};
+    return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:19,name:'账号'}}:{canInvite:manager}})};
+   }});
+   h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false);
+   manager=false;
+   if(mode==='logout')await h.host.current.logout();else await h.host.current.loadManagerAccess(h.host.current.data.userInfo);
+   await tick();assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true,mode);
+   assert.doesNotMatch(h.document.querySelector('#page').textContent,/简易方案梳理|推荐客户|扫码进场|进入工作台/,mode);
+   h.host.wx.switchTab({url:'/pages/index/index'});await tick();
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,true,mode);
+  }
+ });

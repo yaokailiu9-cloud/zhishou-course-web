@@ -1,20 +1,9 @@
 const viewSession = require("../../utils/viewSession");
 const checkinService = require("../../utils/consultationService");
 const chatContext = require("../../utils/chatContext");
-const payment = require("../../utils/payment");
 const zion = require("../../utils/zion");
 const testCustomerPreview = require("../../utils/testCustomerPreview");
 const { userPortrait } = require("../../utils/mock");
-
-function formatPaidUntil(timestamp) {
-  if (!timestamp) return "暂无有效服务";
-  const date = new Date(timestamp);
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  const hour = `${date.getHours()}`.padStart(2, "0");
-  const minute = `${date.getMinutes()}`.padStart(2, "0");
-  return `${month}-${day} ${hour}:${minute} 到期`;
-}
 
 Page({
   data: {
@@ -23,8 +12,6 @@ Page({
     isLoggedIn: false,
     canCheckin: false,
     canInvite: false,
-    hasMyPlan: false,
-    myPlanSubmitted: false,
     userInfo: {},
     defaultPortrait: userPortrait,
     avatarText: "客",
@@ -45,14 +32,11 @@ Page({
       nickName: "",
       avatarUrl: ""
     },
-    consultationStatus: "未开通",
-    paidUntilText: "暂无有效服务",
     testCustomerPreviewActive: false
   },
 
   onLoad() {
     this.setCustomNav();
-    this.hydrateUserFromStorage();
   },
 
   onShow() {
@@ -60,7 +44,6 @@ Page({
     this.setCustomNav();
     this.setData({ testCustomerPreviewActive: testCustomerPreview.isActive() });
     this.hydrateUserFromStorage();
-    this.refreshAccess();
   },
 
   setCustomNav() {
@@ -87,12 +70,11 @@ Page({
     const storedUser = wx.getStorageSync("userInfo");
     const zionJwt = wx.getStorageSync("zionJwt");
     if (!storedUser || !storedUser.id || !zionJwt) {
+      this.accessGeneration = (this.accessGeneration || 0) + 1;
       this.setData({
         isLoggedIn: false,
         canCheckin: false,
         canInvite: false,
-        hasMyPlan: false,
-        myPlanSubmitted: false,
         userInfo: {},
         avatarText: "客",
         isServiceProvider: false,
@@ -109,46 +91,18 @@ Page({
     });
     this.refreshBackendUser(storedUser.id);
     this.loadManagerAccess(storedUser);
-    this.loadCheckinAccess();
-    this.loadReferralAccess();
-    this.loadMyPlan();
   },
 
-  async loadMyPlan() {
-    const identity=viewSession.capture();
-    this.setData({hasMyPlan:false,myPlanSubmitted:false});
-    try {
-      const results=await Promise.allSettled([checkinService.call('GET_QUESTIONNAIRE'),checkinService.call('MY_OVERVIEW',{paginate:true})]);
-      const questionnaire=results[0].status==='fulfilled'?results[0].value:{};
-      const overview=results[1].status==='fulfilled'?results[1].value:{};
-      const hasArchive=!!(overview.appointments&&overview.appointments.length);
-      if(viewSession.current(identity))this.setData({hasMyPlan:!!questionnaire.enrollment||hasArchive,myPlanSubmitted:hasArchive||!!(questionnaire.enrollment&&questionnaire.enrollment.child_submitted_at)});
-    } catch (_) {
-      // Keep the personal plan entry hidden if its ownership cannot be checked.
-    }
+  goMyPlan() {
+    chatContext.enterCustomerView();
+    wx.navigateTo({url:'/pages/customer/customer?plans=1'});
   },
 
-  goMyPlan() { wx.navigateTo({url:'/pages/customer/customer?plans=1'}); },
-
-  async loadReferralAccess() {
-    const identity=viewSession.capture();this.setData({canInvite:false});
-    try{const r=await require('../../utils/referral').context();if(viewSession.current(identity))this.setData({canInvite:!!r.canInvite});}catch(_){/* Keep privileged entry hidden on failure. */}
-  },
   goReferrals(){wx.navigateTo({url:'/pages/referrals/referrals'});},
   goQuestionnaireShare(){wx.navigateTo({url:'/pages/questionnaire-share/questionnaire-share'});},
+  goCheckin(){wx.navigateTo({url:'/pages/checkin/checkin'});},
 
-  async loadCheckinAccess() {
-    const identity = viewSession.capture();
-    this.setData({ canCheckin: false });
-    try {
-      const result = await checkinService.call('CHECKIN_ACCESS');
-      if (viewSession.current(identity)) this.setData({ canCheckin: !!result.allowed });
-    } catch (_) {
-      if (viewSession.current(identity)) this.setData({ canCheckin: false });
-    }
-  },
-
-  goCheckin() { wx.navigateTo({ url: '/pages/checkin/checkin' }); },
+  onUnload() { this.accessGeneration = (this.accessGeneration || 0) + 1; },
 
   refreshBackendUser(accountId) {
     const identity=viewSession.capture();
@@ -171,96 +125,43 @@ Page({
       });
   },
 
-  loadManagerAccess(userInfo = this.data.userInfo) {
-    const identity=viewSession.capture();
-    if (!userInfo || !userInfo.id) {
-      this.setData({
-        isServiceProvider: false,
-        serviceProvider: null,
-        managerAccessLoading: false
+  async loadManagerAccess(userInfo = this.data.userInfo) {
+    const identity = viewSession.capture();
+    const generation = this.accessGeneration = (this.accessGeneration || 0) + 1;
+    const current = () => generation === this.accessGeneration && viewSession.current(identity);
+    // No cached role or referral response may expose staff/agent menus.
+    this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,managerAccessLoading:!!(userInfo && userInfo.id)});
+    if (!userInfo || !userInfo.id || String(userInfo.id) !== identity.accountId) return null;
+    try {
+      const provider = await zion.getServiceProviderByAccount(userInfo.id);
+      if (!current()) return null;
+      const active = !!(provider && String(provider.accountId) === String(userInfo.id) && provider.serviceStatus === 'ACTIVE');
+      const manager = active && zion.isManagerProvider(provider);
+      const agent = active && provider.serviceKind === 'AGENT';
+      this.setData({canInvite:agent || manager,isServiceProvider:manager,serviceProvider:manager ? provider : null,managerAccessLoading:false});
+      // Ordinary users have exactly two business entries and make no staff requests.
+      if (!manager) return null;
+      const [checkin, sessionsResult] = await Promise.allSettled([
+        checkinService.call('CHECKIN_ACCESS'),
+        zion.listManagerSessions({serviceProviderId:provider.id,managerAccountId:provider.accountId})
+      ]);
+      if (!current()) return null;
+      let servingCount = 0, completedCount = 0;
+      const sessions = sessionsResult.status === 'fulfilled' ? sessionsResult.value && sessionsResult.value.sessions || [] : [];
+      sessions.forEach(item => {
+        const expiry = zion.resolveEffectiveSessionExpiry(item);
+        const status = String(item.status || '').toLowerCase();
+        if (item.endedAt || expiry > 0 && expiry <= Date.now() || ['closed','completed','finished','ended'].includes(status)) completedCount++;
+        else if (status === 'active' || status === 'waiting') servingCount++;
       });
-      return Promise.resolve(null);
+      this.setData({canCheckin:checkin.status === 'fulfilled' && checkin.value.allowed === true,managerStats:[{label:'服务中',value:servingCount},{label:'已完成',value:completedCount}]});
+      return provider;
+    } catch (error) {
+      if (!current()) return null;
+      console.warn('loadManagerAccess failed', error);
+      this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,managerAccessLoading:false});
+      return null;
     }
-
-    this.setData({ managerAccessLoading: true });
-    return zion.getServiceProviderByAccount(userInfo.id)
-      .then((provider) => {
-        if(!viewSession.current(identity))return null;
-        const allowed = zion.isManagerProvider(provider);
-        if (!allowed) {
-          this.setData({
-            isServiceProvider: false,
-            serviceProvider: null,
-            managerAccessLoading: false
-          });
-          return null;
-        }
-
-        return zion.listManagerSessions({
-          serviceProviderId: provider.id,
-          managerAccountId: provider.accountId
-        }).then((result) => {
-          if(!viewSession.current(identity))return null;
-          const sessions = (result && result.sessions) || [];
-          let servingCount = 0;
-          let completedCount = 0;
-          sessions.forEach((item) => {
-            const expiresTimestamp = zion.resolveEffectiveSessionExpiry({
-              status: item.status,
-              startedAt: item.startedAt,
-              endedAt: item.endedAt,
-              expiresAt: item.expiresAt,
-              durationMinutes: item.durationMinutes,
-              chatAvailableUntil: item.chatAvailableUntil
-            });
-            const expired = expiresTimestamp > 0 && expiresTimestamp <= Date.now();
-            const status = String(item.status || "").toLowerCase();
-            const completed = Boolean(
-              item.endedAt
-              || expired
-              || status === "closed"
-              || status === "completed"
-              || status === "finished"
-              || status === "ended"
-            );
-            if (completed) {
-              completedCount += 1;
-            } else if (status === "active" || status === "waiting") {
-              servingCount += 1;
-            }
-          });
-
-          this.setData({
-            isServiceProvider: true,
-            serviceProvider: provider,
-            managerStats: [
-              { label: "服务中", value: servingCount },
-              { label: "已完成", value: completedCount }
-            ],
-            managerAccessLoading: false
-          });
-          return provider;
-        });
-      })
-      .catch((error) => {
-        if(!viewSession.current(identity))return null;
-        console.warn("loadManagerAccess failed", error);
-        this.setData({
-          isServiceProvider: false,
-          serviceProvider: null,
-          managerAccessLoading: false
-        });
-        return null;
-      });
-  },
-
-  refreshAccess() {
-    const paidUntil = Number(wx.getStorageSync("paidUntil") || 0);
-    const hasActive = payment.hasActiveConsultation();
-    this.setData({
-      consultationStatus: hasActive ? "服务中" : "未开通",
-      paidUntilText: formatPaidUntil(paidUntil)
-    });
   },
 
   onChooseLoginAvatar(event) {
@@ -336,11 +237,6 @@ Page({
       });
   },
 
-  goCustomerPortal() {
-    chatContext.enterCustomerView();
-    wx.navigateTo({ url: "/pages/customer/customer" });
-  },
-
   goPublicClasses() {
     chatContext.enterCustomerView();
     wx.navigateTo({ url: "/pages/public-class/public-class" });
@@ -375,7 +271,6 @@ Page({
       .then(() => {
         this.setData({ testCustomerPreviewActive: false });
         this.hydrateUserFromStorage();
-        this.refreshAccess();
         wx.showToast({ title: "已回到经理身份", icon: "none" });
         wx.navigateTo({ url: "/pages/manager/manager?tab=workbench" });
       })
@@ -390,10 +285,13 @@ Page({
     wx.removeStorageSync("profileDraft");
     wx.removeStorageSync("userInfo");
     wx.removeStorageSync("zionJwt");
+    this.accessGeneration = (this.accessGeneration || 0) + 1;
     chatContext.enterCustomerView();
     ["consultationSessionId", "consultationOrderId", "customerServiceBinding", "paidUntil", "testCustomerPreviewActive", "testCustomerPreviewBackup"].forEach((key) => wx.removeStorageSync(key));
     this.setData({
       isLoggedIn: false,
+      canInvite: false,
+      canCheckin: false,
       userInfo: {},
       avatarText: "客",
       isServiceProvider: false,
