@@ -529,3 +529,10 @@ flowchart LR
 - 底部“聊天”页签先只对管理人员和黄泰铭（账号 `1000000000000039`）显示；其他家长、代理、未登录访客暂不显示。这项要求取代 10 月 10 日“向所有客户显示聊天入口”的版本。
 - 配置在 `web/features.json`：`chatEntryVisible: false`（全员开关）、`chatEntryForManagers: true`（启用中的 STAFF 且可接单、可回复）、`chatEntryAccountIds`（单独开放的账号）。网页启动、退出及切换页签时按当前登录会话重新判断。
 - 这只是展示入口，不是权限：聊天页面、直接链接及后台聊天权限保持不变。对其他人开放时把账号加入 `chatEntryAccountIds`，或把 `chatEntryVisible` 改为 `true`，重新构建后按 GitHub 镜像流程发布。小程序原生底部导航不支持按人隐藏单个页签，未改动。
+
+### 课程观看授权（2026-10-10 用户要求）
+
+- 入口：我的 → 代理与管理 → 课程观看授权（仅管理人员）。选家长、选课程、选 1 天或 2 天后开通，从开通时计时；到期后无论是否看完都关闭。家长端不显示期限或倒计时，过期提示“本课程观看权限已结束，请联系老师”。
+- 后台代码 `backend/consultation/course-access.js`，以 `scripts/stage-course-access.js` 只追加到主动作流最后一个节点 `dv4kpohsg`；线上其他节点不动。工作人员（含监护专员、总监）可直接观看，代理和普通家长需开通。
+- 课程详情页不再直接读取课时视频字段，统一经 `COURSE_VIEW_ACCESS` 返回。新版网页正式生效后，关闭 Anonymous User / Logged-in User 对 `course_lesson.video`、`video_url` 的 select 列，再以 `node scripts/stage-course-access.js --dry-run --require-hidden-video` 核对。
+

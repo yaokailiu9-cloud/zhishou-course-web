@@ -14,8 +14,9 @@ for(const role of snapshot.server.roleConfigs){
  const perms=role.permissionConfig.tablePermissionById;
  for(const op of ['select','insert','update','delete','count','aggregate'])assert.ok(!(perms[grant.id]||{})[op],`${role.name}/course_view_grant/${op} must stay closed`);
  for(const table of [course,lesson])for(const op of ['insert','update','delete'])assert.ok(!(perms[table.id]||{})[op],`${role.name}/${table.name}/${op} must be closed`);
+ // Phase 2 (after the new frontend is live): pass --require-hidden-video to confirm the video columns are closed.
  const columns=((perms[lesson.id]||{}).select||{}).columns||[];
- for(const column of ['video','video_url'])assert.ok(!columns.includes(column),`${role.name} must not read course_lesson.${column}`);
+ if(process.argv.includes('--require-hidden-video'))for(const column of ['video','video_url'])assert.ok(!columns.includes(column),`${role.name} must not read course_lesson.${column}`);
 }
 fs.writeFileSync(path.join(out,'before.json'),JSON.stringify(snapshot));
 const flow=snapshot.server.actionFlows.find(f=>f.uniqueId==='9f60a0be-4628-4268-a769-661264846cf4');assert.ok(flow);
