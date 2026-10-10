@@ -9,8 +9,11 @@
   const HOME = 'pages/index/index';
   const INVITE_LOGIN = 'pages/invite-login/invite-login';
   let invitation=null,invitationError='';
-  const chatEntryVisible = source.config.webFeatures?.chatEntryVisible === true;
-  const tabItems = source.config.tabBar.list.filter(item => chatEntryVisible || item.pagePath !== 'pages/chat/chat');
+  const webFeatures = source.config.webFeatures || {};
+  const chatEntryVisible = webFeatures.chatEntryVisible === true;
+  // Display-only gate: the chat route itself stays reachable; the backend still enforces every chat permission.
+  const chatEntryAccountIds = (webFeatures.chatEntryAccountIds || []).map(String);
+  let chatEntryAllowed = chatEntryVisible;
   const tabRoutes = source.config.tabBar.list.map(item => item.pagePath);
   const $ = selector => document.querySelector(selector);
   const clone = value => JSON.parse(JSON.stringify(value));
@@ -247,12 +250,32 @@
     for(const button of $('#tabbar').children)button.setAttribute('aria-current',button.dataset.route===page.route?'page':'false');
     render();window.scrollTo(0,page._scroll||0);
   }
+  function renderTabbar(){
+    const bar=$('#tabbar');bar.replaceChildren();
+    for(const item of source.config.tabBar.list){
+      if(item.pagePath==='pages/chat/chat'&&!chatEntryAllowed)continue;
+      const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');
+      button.setAttribute('aria-current',current&&current.route===item.pagePath?'page':'false');bar.append(button);
+    }
+  }
+  async function refreshChatEntry(){
+    const accountId=session&&session.user?String(session.user.id):'';let allowed=chatEntryVisible;
+    if(!allowed&&accountId){
+      if(chatEntryAccountIds.includes(accountId))allowed=true;
+      else if(webFeatures.chatEntryForManagers===true){
+        try{const zion=requireModule('utils/zion');const provider=await zion.getServiceProviderByAccount(accountId);allowed=zion.isManagerProvider(provider)&&String(provider.accountId)===accountId;}catch(_){allowed=false}
+      }
+      if(!session||String(session.user.id)!==accountId)return;
+    }
+    if(allowed!==chatEntryAllowed){chatEntryAllowed=allowed;renderTabbar()}
+  }
   function parseRoute(url){const raw=String(url||'').replace(/^#?\/?/,'');const [path,query]=raw.split('?');return{route:source.pages[path]?path:HOME,options:Object.fromEntries(new URLSearchParams(query))}}
   function navigate(url,mode='push',fromHistory=false){
     let {route,options}=parseRoute(url);
     if(invitationError||(invitation&&!storage.get('zionJwt'))){route=INVITE_LOGIN;options={};}
     if(!fromHistory&&unloadMessage){wx.showModal({title:'尚未保存',content:unloadMessage,success:r=>{if(r.confirm){unloadMessage='';navigate(url,mode)}}});return}
     if(current){current._scroll=window.scrollY;lifecycle(current,'onHide')}
+    if(mode==='tab')refreshChatEntry();
     if(mode==='tab'||mode==='replace'){for(const old of (mode==='tab'?stack:stack.slice(-1)))lifecycle(old,'onUnload');stack=mode==='tab'?[]:stack.slice(0,-1)}
     requireModule(route);const page={...definitions[route],data:clone(definitions[route].data||{}),route,options};
     page.setData=(patch,cb)=>setData(page,patch,cb);
@@ -260,7 +283,7 @@
     if(route==='pages/profile/profile'){
       page.loginByWechat=webLogin;
       const originalLogout=page.logout;
-      page.logout=async function(){try{const r=await fetch('/api/h5?action=logout',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});if(!r.ok)throw new Error();session=null;invitation=null;invitationError='';referralContext=null;const clean=new URL(location.href);clean.searchParams.delete('ref');history.replaceState({},'',clean.pathname+clean.search+clean.hash);originalLogout.call(this)}catch(_){wx.showToast({title:'退出未完成，请重试'})}};
+      page.logout=async function(){try{const r=await fetch('/api/h5?action=logout',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});if(!r.ok)throw new Error();session=null;invitation=null;invitationError='';referralContext=null;refreshChatEntry();const clean=new URL(location.href);clean.searchParams.delete('ref');history.replaceState({},'',clean.pathname+clean.search+clean.hash);originalLogout.call(this)}catch(_){wx.showToast({title:'退出未完成，请重试'})}};
     }
     if(route==='pages/consultation-detail/consultation-detail')page.startRecording=()=>wx.showModal({title:'网页录音尚未开放',content:'本次已复刻录音与总结入口。网页录音编码尚待接入，目前可以使用文字沟通总结及手动记录。',showCancel:false});
     page.setCustomNav=function(){this.setData({statusBarHeight:12,navHeight:76,navPaddingRight:0})};
@@ -481,7 +504,7 @@
     }
     try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载报名页面';}
     if(session)try{await getReferralContext();}catch(_){/* Retry explicitly when sharing; public browsing remains available. */}
-    for(const item of tabItems){const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');$('#tabbar').append(button)}
+    renderTabbar();refreshChatEntry();
     $('#back-button').onclick=back;
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};
     const initial=location.hash.slice(1);

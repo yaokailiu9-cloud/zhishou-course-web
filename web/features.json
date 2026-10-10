@@ -1,3 +1,5 @@
 {
-  "chatEntryVisible": true
+  "chatEntryVisible": false,
+  "chatEntryForManagers": true,
+  "chatEntryAccountIds": ["1000000000000039"]
 }

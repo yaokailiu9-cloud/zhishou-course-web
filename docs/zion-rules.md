@@ -523,3 +523,9 @@ flowchart LR
 - 网站只隐藏聊天入口，覆盖家长、代理及管理用户；聊天页面、直接链接、历史数据及原有业务权限保留。不得因隐藏入口而拦截聊天路由或关闭聊天服务。这项要求取代之前关于关闭网站聊天或保持聊天页签可见的描述。
 - 展示开关为 `web/features.json` 的 `chatEntryVisible: false`，通过 `npm run build:web` 写入网页构建配置。用户要求重新显示时改为 `true`，重新构建并按既有 GitHub 镜像流程发布。
 - 咨询详情、我的方案内的反馈和回复照常使用；不关闭 `GET_CONSULTATION_DIALOGUE`、`SEND_CONSULTATION_MESSAGE`，不调整 Zion 后台或小程序权限。
+
+### 网站聊天入口按身份开放（2026-10-10 用户要求）
+
+- 底部“聊天”页签先只对管理人员和黄泰铭（账号 `1000000000000039`）显示；其他家长、代理、未登录访客暂不显示。这项要求取代 10 月 10 日“向所有客户显示聊天入口”的版本。
+- 配置在 `web/features.json`：`chatEntryVisible: false`（全员开关）、`chatEntryForManagers: true`（启用中的 STAFF 且可接单、可回复）、`chatEntryAccountIds`（单独开放的账号）。网页启动、退出及切换页签时按当前登录会话重新判断。
+- 这只是展示入口，不是权限：聊天页面、直接链接及后台聊天权限保持不变。对其他人开放时把账号加入 `chatEntryAccountIds`，或把 `chatEntryVisible` 改为 `true`，重新构建后按 GitHub 镜像流程发布。小程序原生底部导航不支持按人隐藏单个页签，未改动。

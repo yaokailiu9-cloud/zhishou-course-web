@@ -27,17 +27,39 @@ async function host(options={}){
   vm.runInContext(read('web/replica/runtime.js'),context);
   await tick();return{context,document,Event,host:context.MiniHost,errors,replacements};
 }
-test('正式网站向客户显示聊天入口，点击进入聊天页面',async()=>{
-  assert.equal(JSON.parse(read('web/features.json')).chatEntryVisible,true);
-  const h=await host();
+function sessionFetch(user,provider){
+  return async url=>{
+    const body=String(url).includes('action=session')?{ok:true,data:{loggedIn:!!user,user}}:{data:{service_provider:provider?[provider]:[],course:[],advisor:[],course_by_pk:null,fz_invoke_action_flow:{result:{ok:true,data:{classes:[],items:[]}}}}};
+    return {ok:true,status:200,headers:[],json:async()=>body,text:async()=>JSON.stringify(body)};
+  };
+}
+const MANAGER_PROVIDER={id:14,account_id:1000000000000019,service_status:'ACTIVE',service_kind:'STAFF',can_reply:true,can_accept_order:true};
+test('正式网站底部聊天入口只对管理人员和黄泰铭开放，其他人暂不显示',async()=>{
+  const features=JSON.parse(read('web/features.json'));
+  assert.equal(features.chatEntryVisible,false);
+  assert.equal(features.chatEntryForManagers,true);
+  assert.deepEqual(features.chatEntryAccountIds,['1000000000000039']);
+  const chat=h=>h.document.querySelector('#tabbar [data-route="pages/chat/chat"]');
+  const guest=await host();
+  assert.equal(chat(guest),null);assert.equal(guest.document.querySelectorAll('#tabbar button').length,3);
+  const customer=await host({fetch:sessionFetch({id:'1000000000000050',name:'普通家长'},null)});await tick();
+  assert.equal(chat(customer),null);
+  const agent=await host({fetch:sessionFetch({id:'1000000000000051',name:'代理'},{...MANAGER_PROVIDER,account_id:1000000000000051,service_kind:'AGENT'})});await tick();
+  assert.equal(chat(agent),null);
+  const named=await host({fetch:sessionFetch({id:'1000000000000039',name:'黄泰铭'},null)});await tick();
+  assert.equal(chat(named).textContent,'聊天');
+  const manager=await host({fetch:sessionFetch({id:'1000000000000019',name:'刘曜恺'},MANAGER_PROVIDER)});await tick();
+  assert.equal(manager.document.querySelectorAll('#tabbar button').length,4);
+  chat(manager).onclick();await tick();
+  assert.equal(manager.host.current.route,'pages/chat/chat');
+  assert.equal(chat(manager).getAttribute('aria-current'),'page');
+  assert.equal(manager.document.getElementById('tabbar').hidden,false);
+  for(const h of [guest,customer,agent,named,manager])assert.deepEqual(h.errors,[]);
+});
+test('打开全员显示开关时所有人都能看到聊天入口',async()=>{
+  const h=await host({chatEntryVisible:true});
   assert.equal(h.document.querySelectorAll('#tabbar button').length,4);
-  const button=h.document.querySelector('#tabbar [data-route="pages/chat/chat"]');
-  assert.equal(button.textContent,'聊天');
-  button.onclick();await tick();
-  assert.equal(h.host.current.route,'pages/chat/chat');
-  assert.equal(button.getAttribute('aria-current'),'page');
-  assert.equal(h.document.getElementById('tabbar').hidden,false);
-  assert.deepEqual(h.errors,[]);
+  assert.equal(h.document.querySelector('#tabbar [data-route="pages/chat/chat"]').textContent,'聊天');
 });
 test('关闭显示开关时只隐藏聊天入口，旧链接和咨询反馈页面保留',async()=>{
   const h=await host({chatEntryVisible:false,location:{hash:'#/pages/chat/chat?appointmentId=31'}});
@@ -188,7 +210,7 @@ test('微信扫一扫拒绝后网页相机连续识码并释放摄像头',async(
   assert.equal(h.document.querySelector('#live-scanner').open,false);
 });
 test('home renders source content, real tab navigation, and all page modules without JS errors',async()=>{
-  const h=await host();assert.match(h.document.getElementById('page').textContent,/透过现象看本质/);
+  const h=await host({chatEntryVisible:true});assert.match(h.document.getElementById('page').textContent,/透过现象看本质/);
   assert.doesNotMatch(h.document.getElementById('page').textContent,/到课核实后，可申请线下咨询/);
   assert.equal(h.document.querySelectorAll('#tabbar button').length,4);
   const customerRedirects=new Set(['pages/manager/manager','pages/referrals/referrals','pages/questionnaire-share/questionnaire-share']);
@@ -456,7 +478,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
  page=h.document.querySelector('#page');assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/继续反馈/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
 
- test('普通用户返回我的页不查询推荐或签到，始终保留聊天页签',async()=>{
+ test('普通用户返回我的页不查询推荐或签到，也不显示聊天页签',async()=>{
   const requests=[];
   const h=await host({fetch:async(url,options={})=>{
    if(String(url).includes('action=graphql')){const input=JSON.parse(options.body);requests.push(input);return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:201,wechat_nickname:'合成客户'}}})};}
@@ -467,10 +489,11 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    const text=h.document.querySelector('#page').textContent;
    assert.match(text,/报名公开课/);assert.match(text,/我的方案/);
    assert.doesNotMatch(text,/进入客户端|简易方案梳理|推荐客户|扫码进场|工作台|累计消费/);
-   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false);
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null);
    h.host.current.onShow();await tick();
   }
-  assert.equal(requests.filter(r=>r.query.includes('GetServiceProviderByAccount')).length,6,'只在onShow校验身份，onLoad不重复请求');
+  // 我的页只在onShow校验身份；另有启动和每次切换页签时的聊天入口校验各一次。
+  assert.equal(requests.filter(r=>r.query.includes('GetServiceProviderByAccount')).length,10,'只在onShow校验身份，onLoad不重复请求');
   assert.equal(requests.filter(r=>r.variables?.args).length,0,'普通用户不请求推荐、签到、会话或方案入口权限');
  });
 
@@ -497,16 +520,17 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
     assert.doesNotMatch(text,/简易方案梳理|推荐客户|扫码进场|工作台/,'普通账号'+record.id);
     assert.equal(h.host.current.data.canInvite,false);assert.equal(h.host.current.data.isServiceProvider,false);
     assert.equal(requests.filter(r=>r.variables?.args).length,0);
-    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false);
+    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null);
    }else {
     assert.match(text,/简易方案梳理/);assert.match(text,/推荐客户/);
+    assert.equal(!!h.document.querySelector('[data-route="pages/chat/chat"]'),record.identity==='MANAGER','聊天入口只对管理人员开放'+record.id);
     assert.equal(h.host.current.data.isServiceProvider,record.identity==='MANAGER');
     if(record.identity==='AGENT')assert.doesNotMatch(text,/扫码进场|工作台/);
    }
   }
  });
 
- test('同一浏览器管理退出或被降为用户后只清除特权入口，保留聊天',async()=>{
+ test('同一浏览器管理退出或被降为用户后清除特权入口和聊天页签',async()=>{
   for(const mode of ['logout','revoke']){
    let manager=true;
    const provider={id:14,account_id:19,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true};
@@ -518,10 +542,10 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false);
    manager=false;
    if(mode==='logout')await h.host.current.logout();else await h.host.current.loadManagerAccess(h.host.current.data.userInfo);
-   await tick();assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false,mode);
+   await tick();
    assert.doesNotMatch(h.document.querySelector('#page').textContent,/简易方案梳理|推荐客户|扫码进场|进入工作台/,mode);
    h.host.wx.switchTab({url:'/pages/index/index'});await tick();
-   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]').hidden,false,mode);
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null,mode);
   }
  });
 
@@ -553,7 +577,8 @@ test('推荐客户显示预备学员，只有后台核实资格的客户能代�
   const zion=h.host.requireModule('utils/zion');
   zion.getServiceProviderByAccount=async()=>null;
   zion.ensureCustomerBoundSession=async()=>null;
-  h.document.querySelector('[data-route="pages/chat/chat"]').onclick();await tick();
+  assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null,'普通用户暂不显示聊天页签');
+  h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();
   assert.equal(h.host.current.route,'pages/chat/chat');
   assert.equal(h.host.current.data.canOpenSessionDrawer,false);
   h.host.current.setData({hasAccess:false,canRenew:false,serviceEnded:true,messages:[{id:'existing',role:'assistant',content:'既有聊天记录仍可查看'}]});await tick();
