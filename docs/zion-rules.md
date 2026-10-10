@@ -534,5 +534,5 @@ flowchart LR
 
 - 入口：我的 → 代理与管理 → 课程观看授权（仅管理人员）。选家长、选课程、选 1 天或 2 天后开通，从开通时计时；到期后无论是否看完都关闭。家长端不显示期限或倒计时，过期提示“本课程观看权限已结束，请联系老师”。
 - 后台代码 `backend/consultation/course-access.js`，以 `scripts/stage-course-access.js` 只追加到主动作流最后一个节点 `dv4kpohsg`；线上其他节点不动。工作人员（含监护专员、总监）可直接观看，代理和普通家长需开通。
-- 课程详情页不再直接读取课时视频字段，统一经 `COURSE_VIEW_ACCESS` 返回。新版网页正式生效后，关闭 Anonymous User / Logged-in User 对 `course_lesson.video`、`video_url` 的 select 列，再以 `node scripts/stage-course-access.js --dry-run --require-hidden-video` 核对。
+- 课程详情页不再直接读取课时视频字段，统一经 `COURSE_VIEW_ACCESS` 返回。Anonymous User / Logged-in User 对 `course_lesson.video`、`video_url` 的 select 列已于 2026-10-10 关闭（后台 `wPJRLvE4qjR`）；以 `node scripts/stage-course-access.js --dry-run --require-hidden-video` 核对。不得重新开放，否则授权失效。
 
