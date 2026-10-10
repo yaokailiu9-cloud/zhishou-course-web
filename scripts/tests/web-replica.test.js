@@ -22,13 +22,24 @@ async function host(options={}){
   context.history.replaceState=(_state,_title,url)=>replacements.push(url);
   context.window=context;vm.createContext(context);
   vm.runInContext(read('web/replica/source.js'),context);
-  // Retain visible-entry coverage; the test below uses the actual hidden-entry configuration.
-  if(options.chatEntryVisible!==false)context.MiniSource.config.webFeatures.chatEntryVisible=true;
+  // Use the published configuration unless a test explicitly overrides it.
+  if(typeof options.chatEntryVisible==='boolean')context.MiniSource.config.webFeatures.chatEntryVisible=options.chatEntryVisible;
   vm.runInContext(read('web/replica/runtime.js'),context);
   await tick();return{context,document,Event,host:context.MiniHost,errors,replacements};
 }
-test('网站只隐藏聊天入口，旧链接和聊天导航仍可使用，咨询反馈页面保留',async()=>{
-  assert.equal(JSON.parse(read('web/features.json')).chatEntryVisible,false);
+test('正式网站向客户显示聊天入口，点击进入聊天页面',async()=>{
+  assert.equal(JSON.parse(read('web/features.json')).chatEntryVisible,true);
+  const h=await host();
+  assert.equal(h.document.querySelectorAll('#tabbar button').length,4);
+  const button=h.document.querySelector('#tabbar [data-route="pages/chat/chat"]');
+  assert.equal(button.textContent,'聊天');
+  button.onclick();await tick();
+  assert.equal(h.host.current.route,'pages/chat/chat');
+  assert.equal(button.getAttribute('aria-current'),'page');
+  assert.equal(h.document.getElementById('tabbar').hidden,false);
+  assert.deepEqual(h.errors,[]);
+});
+test('关闭显示开关时只隐藏聊天入口，旧链接和咨询反馈页面保留',async()=>{
   const h=await host({chatEntryVisible:false,location:{hash:'#/pages/chat/chat?appointmentId=31'}});
   assert.equal(h.host.current.route,'pages/chat/chat');
   assert.equal(h.host.current.options.appointmentId,'31');
