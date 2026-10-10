@@ -1,0 +1,17 @@
+<view class="service-page course-page"><view class="service-hero"><text class="eyebrow">管理工作台</text><text class="page-title">课程观看授权</text><text class="muted">为指定家长开通一节课，选 1 天或 2 天，从开通时开始计时，到期自动关闭。家长端不显示期限。</text></view>
+<view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重试</button></view>
+<block wx:if="{{allowed}}">
+<view class="card"><text class="access-step">1. 选择家长</text><input value="{{keyword}}" placeholder="输入家长姓名、昵称或手机号" bindinput="inputKeyword" bindconfirm="search" confirm-type="search"/><button class="secondary" bindtap="search" disabled="{{searching}}">{{searching ? '正在查找…' : '查找家长'}}</button>
+<button wx:for="{{candidates}}" wx:key="id" class="secondary access-choice {{viewer.id === item.id ? 'on' : ''}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="pickViewer">{{item.name}}{{item.phoneTail ? ' · 尾号' + item.phoneTail : ''}}{{item.staff ? ' · 工作人员' : ''}}</button>
+<text wx:if="{{searched && !candidates.length}}" class="muted">没有找到匹配的家长，请确认对方已登录过网站。</text>
+<text wx:if="{{viewer.id}}" class="access-picked">已选择：{{viewer.name}}</text></view>
+<view class="card"><text class="access-step">2. 选择课程</text><picker range="{{courseOptions}}" value="{{courseIndex >= 0 ? courseIndex : 0}}" bindchange="pickCourse"><view class="secondary">{{courseIndex >= 0 ? courseOptions[courseIndex] : '点击选择课程'}}</view></picker>
+<text wx:if="{{courseIndex >= 0 && !courses[courseIndex].hasVideo}}" class="muted">这节课还没有上传视频，开通后家长暂时看不到内容。</text></view>
+<view class="card"><text class="access-step">3. 选择时长</text><view class="entry-grid"><button class="secondary {{hours === 24 ? 'access-choice on' : ''}}" data-hours="24" bindtap="pickHours">1 天（24 小时）</button><button class="secondary {{hours === 48 ? 'access-choice on' : ''}}" data-hours="48" bindtap="pickHours">2 天（48 小时）</button></view>
+<button class="primary" bindtap="grant" disabled="{{saving}}">{{saving ? '正在开通…' : '开通观看'}}</button></view>
+<view class="course-section-head"><text class="access-step">开通记录</text></view>
+<view wx:for="{{grants}}" wx:key="id" class="card"><view class="row"><text class="card-title">{{item.viewerName}} · {{item.courseTitle}}</text><text class="pill {{item.status === 'ACTIVE' ? 'active' : 'ended'}}">{{item.statusText}}</text></view>
+<text class="access-grant-meta">时长 {{item.durationText}} · 开通人 {{item.grantedByName || '管理人员'}}</text><text class="access-grant-meta">开通 {{item.grantedText}} · 到期 {{item.expiresText}}</text><text wx:if="{{item.revokedText}}" class="access-grant-meta">收回 {{item.revokedText}}</text>
+<button wx:if="{{item.status === 'ACTIVE'}}" class="text-button" data-id="{{item.id}}" bindtap="revoke">提前收回</button></view>
+<view wx:if="{{!loading && !grants.length}}" class="empty">还没有开通记录。</view><button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loading}}">加载更多</button>
+</block><text wx:if="{{loading}}" class="muted">正在加载…</text><button wx:if="{{!loading && !allowed && !error}}" class="primary" bindtap="refresh">登录并核实管理人员身份</button></view>

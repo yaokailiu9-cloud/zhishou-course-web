@@ -445,14 +445,15 @@ function bindPhoneNumberByCode(telephone, verificationCode) {
   });
 }
 
+// Lesson video addresses are not publicly readable; COURSE_VIEW_ACCESS returns them only to authorised viewers.
 function normalizeCourseLesson(item = {}) {
-  const videoAssetUrl = item.video && item.video.url ? item.video.url : "";
   return {
     id: String(item.id),
     title: item.title || "",
     duration: item.duration_text || "",
     sortOrder: Number(item.sort_order || 0),
-    videoUrl: videoAssetUrl || item.video_url || ""
+    hasVideo: false,
+    videoUrl: ""
   };
 }
 
@@ -860,11 +861,6 @@ function getCourse(id) {
           title
           duration_text
           sort_order
-          video_url
-          video {
-            id
-            url
-          }
         }
       }
     }

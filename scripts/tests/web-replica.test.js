@@ -597,3 +597,27 @@ test('推荐客户显示预备学员，只有后台核实资格的客户能代�
   assert.equal(h.document.querySelector('.review-actions'),null);assert.equal(h.document.querySelector('.service-permission-entry'),null);
   assert.doesNotMatch(h.document.querySelector('#page').textContent,/待开始|剩余/);
  });
+test('家长课程页：未开通或已到期时不能播放且不显示期限，开通后可播放；管理端可进入授权页',async()=>{
+ const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:'201'});
+ const course={id:'14',title:'什么是沟通',description:'',chapters:[{id:'22',title:'什么是沟通',duration:'',sortOrder:1,hasVideo:false,videoUrl:''}]};
+ h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
+ let access={canWatch:false,reason:'ENDED',lessons:[{id:'22',hasVideo:true,videoUrl:''}]};const calls=[];
+ h.host.requireModule('utils/consultationService').call=async(op,p)=>{calls.push({op,p});return structuredClone(access);};
+ h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=14'});await tick();await tick();
+ assert.equal(calls[0].op,'COURSE_VIEW_ACCESS');assert.equal(calls[0].p.courseId,'14');
+ const page=()=>h.document.querySelector('#page').textContent;
+ assert.match(page(),/待开通/);assert.doesNotMatch(page(),/到期|剩余|小时/);
+ h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+ assert.equal(h.document.querySelector('#modal').open,true);assert.match(h.document.querySelector('#modal').textContent,/本课程观看权限已结束，请联系老师/);
+ assert.equal(h.host.current.data.showVideoPlayer,false);h.document.querySelector('#modal').close();
+ access={canWatch:true,reason:'',lessons:[{id:'22',hasVideo:true,videoUrl:'https://cdn.test/comm.mp4'}]};
+ await h.host.current.fetchCourse('14');await tick();
+ assert.match(page(),/可播放/);
+ h.host.current.videoContext={play(){},pause(){},stop(){}};// linkedom has no media playback
+ h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+ assert.equal(h.host.current.data.playingVideoUrl,'https://cdn.test/comm.mp4');
+ h.host.requireModule('utils/consultationService').call=async op=>op==='COURSE_VIEW_ADMIN'?{courses:[{id:'14',title:'什么是沟通',enabled:true,hasVideo:false}],grants:[{id:1,courseId:'14',courseTitle:'什么是沟通',viewerName:'家长甲',grantedByName:'刘老师',durationHours:48,grantedAt:'2026-10-10T10:00:00Z',expiresAt:'2026-10-12T10:00:00Z',status:'ACTIVE'}],nextCursor:null}:{};
+ h.host.wx.navigateTo({url:'/pages/course-access/course-access'});await tick();await tick();
+ assert.match(page(),/课程观看授权/);assert.match(page(),/家长甲 · 什么是沟通/);assert.match(page(),/观看中/);assert.match(page(),/2 天/);assert.match(page(),/提前收回/);
+ assert.deepEqual(h.errors,[]);
+});

@@ -101,6 +101,7 @@ Page({
   goReferrals(){wx.navigateTo({url:'/pages/referrals/referrals'});},
   goQuestionnaireShare(){wx.navigateTo({url:'/pages/questionnaire-share/questionnaire-share'});},
   goCheckin(){wx.navigateTo({url:'/pages/checkin/checkin'});},
+  goCourseAccess(){wx.navigateTo({url:'/pages/course-access/course-access'});},
 
   onUnload() { this.accessGeneration = (this.accessGeneration || 0) + 1; },
 

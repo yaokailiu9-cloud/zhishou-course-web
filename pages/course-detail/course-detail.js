@@ -1,4 +1,11 @@
 const zion = require("../../utils/zion");
+const consultationService = require("../../utils/consultationService");
+// Parents see only whether a course is open now; grant periods stay in the manager console.
+const VIEW_BLOCKED = {
+  LOGIN: { title: "请先登录", content: "登录后才能观看已为你开通的课程。" },
+  ENDED: { title: "暂不能观看", content: "本课程观看权限已结束，请联系老师。" },
+  NOT_GRANTED: { title: "暂不能观看", content: "本课程需要老师为你开通后才能观看，请联系老师。" }
+};
 const { courseSections, isAnswerLibraryCourse } = require("../../utils/courseContent");
 
 Page({
@@ -13,7 +20,8 @@ Page({
     loading: true,
     activeChapterIndex: -1,
     playingVideoUrl: "",
-    showVideoPlayer: false
+    showVideoPlayer: false,
+    viewAccess: { checked: false, canWatch: false, reason: "" }
   },
 
   onLoad(query = {}) {
@@ -43,11 +51,27 @@ Page({
   },
 
   fetchCourse(courseId=this.courseId) {
-    this.setData({loading:true,error:"",course:null,isAnswerLibrary:false});
+    this.setData({loading:true,error:"",course:null,isAnswerLibrary:false,viewAccess:{checked:false,canWatch:false,reason:""}});
     return zion.getCourse(courseId).then(r=>{
       if(!r.course || !r.course.id || !r.course.title){this.setData({error:"这门课程不存在或已下架。"});return;}
       this.setData({course:r.course,isAnswerLibrary:isAnswerLibraryCourse(r.course),contentSections:courseSections(r.course.description)});wx.setNavigationBarTitle({title:r.course.title});
+      return this.loadViewAccess(r.course);
     }).catch(()=>this.setData({error:"课程加载失败，请检查网络后重试。"})).finally(()=>this.setData({loading:false}));
+  },
+  loadViewAccess(course) {
+    const token = wx.getStorageSync("zionJwt");
+    return consultationService.call("COURSE_VIEW_ACCESS", { courseId: course.id }).then((access) => {
+      if (this.data.course !== course || wx.getStorageSync("zionJwt") !== token) return;
+      const lessons = {};
+      (access.lessons || []).forEach((item) => { lessons[String(item.id)] = item; });
+      const chapters = course.chapters.map((chapter) => {
+        const item = lessons[chapter.id] || {};
+        return { ...chapter, hasVideo: !!item.hasVideo, videoUrl: access.canWatch ? item.videoUrl || "" : "" };
+      });
+      this.setData({ "course.chapters": chapters, viewAccess: { checked: true, canWatch: !!access.canWatch, reason: access.reason || "" } });
+    }).catch(() => {
+      if (this.data.course === course) this.setData({ viewAccess: { checked: false, canWatch: false, reason: "" } });
+    });
   },
   retryCourse(){this.fetchCourse();},
   goBack() {
@@ -79,8 +103,24 @@ Page({
       wx.showToast({ title: "课程目录准备中", icon: "none" });
       return;
     }
-    if (!chapter.videoUrl) {
+    if (!this.data.viewAccess.checked) {
+      wx.showToast({ title: "正在确认观看权限，请稍后重试", icon: "none" });
+      this.loadViewAccess(this.data.course);
+      return;
+    }
+    if (!chapter.hasVideo) {
       wx.showToast({ title: "该课时视频准备中", icon: "none" });
+      return;
+    }
+    if (!chapter.videoUrl) {
+      const blocked = VIEW_BLOCKED[this.data.viewAccess.reason] || VIEW_BLOCKED.NOT_GRANTED;
+      wx.showModal({
+        title: blocked.title,
+        content: blocked.content,
+        showCancel: this.data.viewAccess.reason === "LOGIN",
+        confirmText: this.data.viewAccess.reason === "LOGIN" ? "去登录" : "知道了",
+        success: (res) => { if (res.confirm && this.data.viewAccess.reason === "LOGIN") wx.switchTab({ url: "/pages/profile/profile" }); }
+      });
       return;
     }
 

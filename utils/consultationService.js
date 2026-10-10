@@ -5,7 +5,7 @@ const ACTION_FLOW_ID = '9f60a0be-4628-4268-a769-661264846cf4';
 const labels = {QUEUED:'排队中',AUDIO_PROCESSING:'正在转写与总结',PENDING:'待确认',REGISTERED:'已报名',ATTENDED:'已参加',ABSENT:'未到课',INVITED:'已邀请',JOINED:'已进群',CONFIRMED:'已确认',COMPLETED:'已完成',CANCELED:'已取消',DRAFT:'草稿',PUBLISHED:'报名中',CLOSED:'已结束',REPLIED:'已回复',UPLOADING:'待上传',PROCESSING:'正在总结',FAILED:'生成失败',READY:'待老师确认'};
 function call(operation, payload = {}) {
   const token = wx.getStorageSync('zionJwt');
-  if (!['LIST_CLASSES','GET_CLASS'].includes(operation) && !auth.isLoggedIn()) return Promise.reject(new Error('请先微信登录'));
+  if (!['LIST_CLASSES','GET_CLASS','COURSE_VIEW_ACCESS'].includes(operation) && !auth.isLoggedIn()) return Promise.reject(new Error('请先微信登录'));
   // The H5 server verifies the signed invitation and retains it across WeChat login.
   if (wx.isH5 && operation === 'ENROLL') return new Promise((resolve,reject) => wx.request({
     url:'/api/h5?action=enroll', method:'POST', timeout:30000, header:{'content-type':'application/json'},

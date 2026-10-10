@@ -23,7 +23,7 @@
         <image wx:if="{{course.coverUrl}}" class="hero-cover" src="{{course.coverUrl}}" mode="aspectFill"></image>
         <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
         <view wx:if="{{course.coverUrl}}" class="hero-mask"></view>
-        <view wx:if="{{course.chapters[0].videoUrl}}" class="play-button" bindtap="previewCourse">
+        <view wx:if="{{course.chapters[0].hasVideo}}" class="play-button" bindtap="previewCourse">
           <view class="play-triangle"></view>
         </view>
       </block>
@@ -51,7 +51,7 @@
             <text class="chapter-title">{{item.title}}</text>
             <text wx:if="{{item.duration}}" class="chapter-duration">{{item.duration}}</text>
           </view>
-          <text class="chapter-play-tag">{{item.videoUrl ? '可播放' : '准备中'}}</text>
+          <text class="chapter-play-tag">{{item.hasVideo ? (item.videoUrl ? '可播放' : '待开通') : '准备中'}}</text>
         </view>
       </view>
 
