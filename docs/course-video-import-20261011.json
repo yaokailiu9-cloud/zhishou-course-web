@@ -1,0 +1,105 @@
+{
+  "project": "JmAxbl1MMe4",
+  "date": "2026-10-11",
+  "source_directory": "2026规则沙龙/第二阶共修学习/02阶共修营视频2026",
+  "asset_acl": "PRIVATE",
+  "video_codec": "h264",
+  "audio_codec": "aac",
+  "resolution": "1280x720",
+  "courses": [
+    {
+      "course_id": 7,
+      "lesson_id": 23,
+      "title": "奖励的误区",
+      "video_id": 1030000000000008,
+      "duration_text": "71:07",
+      "source_bytes": 10718179000,
+      "encoded_bytes": 744199402,
+      "source_file": "02-1《奖励的陷阱》71分钟.mp4",
+      "source_duration_seconds": 4267.463208,
+      "checksum_verified": true,
+      "three_ranges_verified": true,
+      "anonymous_url_omitted": true
+    },
+    {
+      "course_id": 8,
+      "lesson_id": 16,
+      "title": "倾诉的陷阱",
+      "video_id": 1030000000000006,
+      "duration_text": "62:07",
+      "source_bytes": 9357039146,
+      "encoded_bytes": 638787869,
+      "source_file": "03-1《倾诉的陷阱》62分钟.mp4",
+      "source_duration_seconds": 3726.989938,
+      "checksum_verified": true,
+      "three_ranges_verified": true,
+      "anonymous_url_omitted": true
+    },
+    {
+      "course_id": 9,
+      "lesson_id": 17,
+      "title": "安全感从哪来",
+      "video_id": 1030000000000007,
+      "duration_text": "68:27",
+      "source_bytes": 5013025790,
+      "encoded_bytes": 574511482,
+      "source_file": "06-1《安全感》68分钟.mp4",
+      "source_duration_seconds": 4106.657959,
+      "checksum_verified": true,
+      "three_ranges_verified": true,
+      "anonymous_url_omitted": true
+    },
+    {
+      "course_id": 10,
+      "lesson_id": 18,
+      "title": "为何知错不改",
+      "video_id": 1030000000000005,
+      "duration_text": "59:54",
+      "source_bytes": 9027148295,
+      "encoded_bytes": 574766909,
+      "source_file": "05-2《为何知错不改》59分钟.mp4",
+      "source_duration_seconds": 3594.324067,
+      "checksum_verified": true,
+      "three_ranges_verified": true,
+      "anonymous_url_omitted": true
+    },
+    {
+      "course_id": 11,
+      "lesson_id": 19,
+      "title": "问题从哪里来",
+      "video_id": 1030000000000004,
+      "duration_text": "49:40",
+      "source_bytes": 7478948055,
+      "encoded_bytes": 402094882,
+      "source_file": "04-1《问题从哪里来》50分钟.mp4",
+      "source_duration_seconds": 2979.843542,
+      "checksum_verified": true,
+      "three_ranges_verified": true,
+      "anonymous_url_omitted": true
+    },
+    {
+      "course_id": 12,
+      "lesson_id": 20,
+      "title": "判断准确吗",
+      "video_id": 1030000000000003,
+      "duration_text": "39:19",
+      "source_bytes": 5918365334,
+      "encoded_bytes": 403398743,
+      "source_file": "04-2《判断准确吗》40分钟.mp4",
+      "source_duration_seconds": 2359.2569,
+      "checksum_verified": true,
+      "three_ranges_verified": true,
+      "anonymous_url_omitted": true
+    }
+  ],
+  "pending": [
+    {
+      "course_id": 13,
+      "title": "有没有选择权"
+    },
+    {
+      "course_id": 14,
+      "title": "什么是沟通"
+    }
+  ]
+}
