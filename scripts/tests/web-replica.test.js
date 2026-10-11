@@ -264,6 +264,62 @@ test('网页表单等待中文输入法组词完成后再更新页面',async()=>
   assert.equal(h.host.current.data.form.title,'奖励的误区');
   assert.equal(h.document.querySelector('input[name="title"]').value,'奖励的误区');
 });
+test('家长与工作人员拼音组词期间的自动刷新不能替换输入框，选字后可连续输入并发送',async()=>{
+ for(const owner of [true,false]){
+  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
+  p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {item:{id:52,revision:1}};};
+  p.setData({serviceMode:true,serviceActive:{id:31,childName:'测试孩子'},serviceDetail:{owner,staff:!owner,canDraft:!owner,appointment:{}},serviceLoading:false,serviceTab:'feedback',serviceDraftFeedbackId:owner?null:17,serviceFeedback:[{id:17,content:'反馈'}],serviceInput:''});await tick();
+  const input=h.document.querySelector('.service-composer textarea');assert.ok(input);
+  Object.defineProperty(h.document,'activeElement',{configurable:true,get:()=>input});
+  const ancestors=[];for(let el=input;el&&el.id!=='page';el=el.parentNode)ancestors.push(el);
+  for(const [pinyin,committed]of [['haizi','孩子'],['zuijin','孩子最近']]){
+   input.dispatchEvent(new h.Event('compositionstart',{bubbles:true}));
+   input.value=pinyin;const composing=new h.Event('input',{bubbles:true});composing.isComposing=true;input.dispatchEvent(composing);
+   p.setData({serviceMessages:[{id:'new',content:'刷新收到新回复'}]});await tick();
+   assert.equal(h.document.querySelector('.service-composer textarea')===input,true);assert.equal(input.value,pinyin);assert.ok(input.isConnected);
+   input.value=committed;input.dispatchEvent(new h.Event('compositionend',{bubbles:true}));await tick();
+   assert.equal(p.data.serviceInput,committed);assert.equal(h.document.querySelector('.service-composer textarea')===input,true);
+   input.dispatchEvent(new h.Event('input',{bubbles:true}));await tick();
+   assert.equal(p.data.serviceInput,committed);assert.equal(input.value,committed);
+  }
+  assert.ok(ancestors.every(el=>el.isConnected),'文本框及其父级持续连接，手机键盘和撤销栈不被打断');
+  input.value+='很好';input.dispatchEvent(new h.Event('input',{bubbles:true}));await tick();
+  assert.equal(h.document.querySelector('.service-composer textarea')===input,true);
+  assert.equal(h.document.querySelector('.service-composer .service-primary').disabled,false);
+  h.document.querySelector('.service-composer .service-primary').click();await tick();
+  assert.equal(calls.length,1);assert.equal(calls[0].op,owner?'SEND_SERVICE_FEEDBACK':'SAVE_SERVICE_DRAFT');assert.equal(calls[0].payload.content,'孩子最近很好');
+  assert.equal(input.value,owner?'':'孩子最近很好');assert.equal(p.data.serviceInput,owner?'':'孩子最近很好');assert.deepEqual(h.errors,[]);
+ }
+});
+test('中文输入中的回车只选字，正常回车可确认；切换页面不会被旧输入法锁住',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
+ p.setData({serviceMode:false,chatType:'private',inputText:'',canSend:true,isLoggedIn:true});await tick();
+ // A small compiled-template fixture exercises bindconfirm with real DOM events.
+ h.context.MiniSource.pages[p.route].tree=[{tag:'input',attrs:{bindinput:['imeInput'],bindconfirm:['imeConfirm'],value:['']},children:[]}];
+ let confirms=0;p.imeInput=()=>{};p.imeConfirm=()=>{confirms++};p.setData({});await tick();
+ const input=h.document.querySelector('#page input');
+ const enter=props=>{const event=new h.Event('keydown',{bubbles:true});Object.assign(event,{key:'Enter',...props});input.dispatchEvent(event)};
+ input.dispatchEvent(new h.Event('compositionstart',{bubbles:true}));enter({});assert.equal(confirms,0);
+ input.dispatchEvent(new h.Event('compositionend',{bubbles:true}));enter({isComposing:true});enter({keyCode:229});assert.equal(confirms,0);
+ enter({});assert.equal(confirms,1);
+ input.dispatchEvent(new h.Event('compositionstart',{bubbles:true}));p.setData({poll:true});await tick();
+ h.host.wx.navigateTo({url:'/pages/profile-edit/profile-edit'});await tick();assert.equal(h.document.getElementById('page').dataset.route,'pages/profile-edit/profile-edit');
+ h.host.current.setData({nickName:'新昵称'});await tick();assert.match(h.document.getElementById('page').textContent,/保存/);assert.deepEqual(h.errors,[]);
+});
+test('输入框前增删其他字段不会抢走焦点，保留的父级事件使用最新数据',async()=>{
+ const h=await host();const p=h.host.current,seen=[];
+ h.context.MiniSource.expressions.push(scope=>scope.extra,scope=>scope.draft,scope=>scope.caseId);
+ const end=h.context.MiniSource.expressions.length;
+ const field=name=>({tag:'input',attrs:{name:[name],value:[{e:end-2}],bindinput:['editDraft']},children:[]});
+ h.context.MiniSource.pages[p.route].tree=[{tag:'view',attrs:{bindtap:['readCase'],'data-id':[{e:end-1}]},children:[{...field('extra'),'attrs':{...field('extra').attrs,'wx:if':[{e:end-3}]}},field('message')]}];
+ p.editDraft=e=>p.setData({draft:e.detail.value});p.readCase=e=>seen.push(e.currentTarget.dataset.id);
+ p.setData({extra:false,draft:'中文',caseId:'31'});await tick();const input=h.document.querySelector('input[name="message"]');
+ Object.defineProperty(h.document,'activeElement',{configurable:true,get:()=>input});
+ p.setData({extra:true,caseId:'32'});await tick();assert.equal(h.document.querySelector('input[name="message"]')===input,true);
+ input.dispatchEvent(new h.Event('click',{bubbles:true}));assert.deepEqual(seen,['32']);
+ input.value+='输入';input.dispatchEvent(new h.Event('input',{bubbles:true}));await tick();assert.equal(p.data.draft,'中文输入');assert.equal(h.document.querySelector('input[name="message"]')===input,true);
+ p.setData({extra:false});await tick();assert.equal(h.document.querySelector('input[name="message"]')===input,true);assert.deepEqual(h.errors,[]);
+});
 test('date/selector controls emit mini-program values and protected pages do not grant staff access',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/profile-edit/profile-edit'});await tick();
   const select=h.document.querySelector('select');assert.ok(select);const option=select.querySelectorAll('option')[2];option.selected=true;select.dispatchEvent(new h.Event('change',{bubbles:true}));await tick();assert.equal(h.host.current.data.gender,'男');

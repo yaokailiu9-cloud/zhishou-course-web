@@ -6,6 +6,16 @@
   const modules = {}, definitions = {}, files = new Map(), storage = new Map();
   const app = {globalData:{}};
   let current = null, renderedPage = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null;
+  let composition = null, renderDeferred = false;
+  // A poll or another setData must never detach an editor while the IME owns it.
+  root.addEventListener('compositionstart',event=>{composition={page:current,element:event.target}});
+  const finishComposition=event=>{
+    if(composition?.element!==event.target)return;
+    composition=null;
+    if(renderDeferred){renderDeferred=false;schedule();}
+  };
+  root.addEventListener('compositionend',finishComposition);
+  root.addEventListener('focusout',finishComposition);
   const HOME = 'pages/index/index';
   const INVITE_LOGIN = 'pages/invite-login/invite-login';
   let invitation=null,invitationError='';
@@ -132,7 +142,10 @@
       else branch=false;
       if(node.tag==='block'){children(node.children,scope,parent,page);continue}
       const tag=node.tag==='image'?'img':node.tag==='picker'?'label':node.tag;
-      const el=document.createElement(tag);
+      let el=document.createElement(tag);
+      const listeners=[];
+      const on=(type,handler)=>{listeners.push([type,handler]);el.addEventListener(type,handler)};
+      el._miniListeners=listeners;el._miniRetarget=target=>{el=target};
       const values={};for(const [key,parts]of Object.entries(attrs))values[key]=value(parts,scope);
       for(const [key,val]of Object.entries(values)){
         if(key.startsWith('wx:')||/^(bind|catch)/.test(key)||['range','range-key','mode','value','open-type','form-type','url','scroll-into-view','scroll-top','canvas-id','type'].includes(key))continue;
@@ -144,7 +157,9 @@
       if(tag==='img'){el.alt=values['aria-label']||'';el.style.objectFit=values.mode==='aspectFit'?'contain':'cover';if(values.mode==='widthFix'){el.style.height='auto';el.style.width='100%'}}
       if(tag==='button')el.type=values['form-type']==='submit'?'submit':'button';
       if(tag==='input'||tag==='textarea'){
-        el.dataset.focusKey=page._inputCounter++;
+        const identity=JSON.stringify([tag,attrs.value,values.bindinput||values['bind:input'],values.id,values.name,Object.entries(values).filter(([key])=>key.startsWith('data-'))]);
+        const occurrence=page._inputKeys.get(identity)||0;page._inputKeys.set(identity,occurrence+1);
+        el.dataset.focusKey=identity+':'+occurrence;
         if(tag==='input'){el.type=['number','digit'].includes(values.type)?'text':values.type==='password'?'password':'text';if(['number','digit'].includes(values.type))el.inputMode='decimal'}
         el.value=values.value??'';
       }
@@ -156,7 +171,7 @@
         const match=key.match(/^(bind|catch):?(.+)$/);if(!match||!eventMap[match[2]])continue;
         const emit=event=>{
           if(match[1]==='catch')event.stopPropagation();
-          if(match[2]==='confirm'&&event.key!=='Enter')return;
+          if(match[2]==='confirm'&&(event.key!=='Enter'||event.isComposing||event.keyCode===229||composition?.element===el))return;
           if(match[2]==='scrolltolower'&&el.scrollTop+el.clientHeight<el.scrollHeight-30)return;
           if(match[2]==='submit'||match[2]==='longpress')event.preventDefault();
           const detail={value:el.value,width:el.naturalWidth,height:el.naturalHeight};
@@ -166,19 +181,19 @@
         };
         if(match[2]==='input'&&(tag==='input'||tag==='textarea')){
           let composing=false;
-          el.addEventListener('compositionstart',()=>{composing=true});
-          el.addEventListener('compositionend',event=>{composing=false;emit(event)});
-          el.addEventListener('input',event=>{if(!composing&&!event.isComposing)emit(event)});
-        }else el.addEventListener(eventMap[match[2]],emit);
-        if(match[2]==='tap'&&!['button','input','textarea','navigator'].includes(tag)){el.setAttribute('role','button');el.tabIndex=0;el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click()}})}
+          on('compositionstart',()=>{composing=true});
+          on('compositionend',event=>{composing=false;emit(event)});
+          on('input',event=>{if(!composing&&!event.isComposing)emit(event)});
+        }else on(eventMap[match[2]],emit);
+        if(match[2]==='tap'&&!['button','input','textarea','navigator'].includes(tag)){el.setAttribute('role','button');el.tabIndex=0;on('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click()}})}
       }
       if(tag==='navigator'){
         el.setAttribute('role','link');el.tabIndex=0;
         const open=()=>navigate(values.url,values['open-type']==='switchTab'?'tab':'push');
-        el.addEventListener('click',open);el.addEventListener('keydown',e=>{if(e.key==='Enter')open()});
+        on('click',open);on('keydown',e=>{if(e.key==='Enter')open()});
       }
-      if(values['open-type']==='chooseAvatar')el.addEventListener('click',()=>wx.chooseMedia({mediaType:['image'],success:r=>dispatch(page,values.bindchooseavatar,el,null,{avatarUrl:r.tempFiles[0].tempFilePath})}));
-      if(values['open-type']==='share')el.addEventListener('click',()=>share(page));
+      if(values['open-type']==='chooseAvatar')on('click',()=>wx.chooseMedia({mediaType:['image'],success:r=>dispatch(page,values.bindchooseavatar,el,null,{avatarUrl:r.tempFiles[0].tempFilePath})}));
+      if(values['open-type']==='share')on('click',()=>share(page));
       children(node.children,scope,el,page);
       if(node.tag==='picker'){
         el.classList.add('web-picker');
@@ -192,7 +207,7 @@
           const open=event=>{event.preventDefault();if(values.disabled)return;
             openDateTimePicker({mode:values.mode,value:current,start:values.start||'',end:values.end||'',title:label,
               onConfirm:value=>{pickerMemory.set(memoryKey,value);dispatch(page,values.bindchange,el,{type:'change'},{value})}});};
-          el.addEventListener('click',open);el.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')open(event)});
+          on('click',open);on('keydown',event=>{if(event.key==='Enter'||event.key===' ')open(event)});
         }else{
           const select=document.createElement('select');select.className='web-picker-control';select.disabled=!!values.disabled;
           select.setAttribute('aria-label',el.textContent.trim()||'选择');
@@ -205,16 +220,55 @@
       if(values['scroll-into-view'])requestAnimationFrame(()=>{const target=document.getElementById(values['scroll-into-view']);if(target)target.scrollIntoView({block:'nearest'})});
     }
   }
+  function replaceKeepingEditor(fragment,focused){
+    const key=focused?.dataset.focusKey;
+    if(key==null||renderedPage!==current)return false;
+    const fresh=[...fragment.querySelectorAll('[data-focus-key]')].find(el=>el.dataset.focusKey===key);
+    if(!fresh)return false;
+    const pairs=[];let old=focused,next=fresh;
+    while(old!==root&&next!==fragment){
+      if(!old||!next||old.tagName!==next.tagName)return false;
+      pairs.push([old,next]);old=old.parentNode;next=next.parentNode;
+    }
+    if(old!==root||next!==fragment)return false;
+    pairs.push([root,fragment]);
+    // Keep the editor AND its ancestors attached. Moving the textarea alone
+    // also closes mobile keyboards and loses native composition/undo state.
+    for(let i=0;i<pairs.length;i++){
+      const [target,replacement]=pairs[i];
+      if(target!==root){
+        for(const attr of [...target.attributes])if(!replacement.hasAttribute(attr.name))target.removeAttribute(attr.name);
+        for(const attr of [...replacement.attributes])if(target.getAttribute(attr.name)!==attr.value)target.setAttribute(attr.name,attr.value);
+        for(const [type,handler]of target._miniListeners||[])target.removeEventListener(type,handler);
+        replacement._miniRetarget?.(target);
+        target._miniListeners=replacement._miniListeners||[];
+        for(const [type,handler]of target._miniListeners)target.addEventListener(type,handler);
+      }
+      if(i===0){if(target.value!==replacement.value)target.value=replacement.value;continue;}
+      const kept=pairs[i-1][0],placeholder=pairs[i-1][1];
+      // Replace siblings in place without ever removing the focused branch.
+      for(const child of [...target.childNodes])if(child!==kept)child.remove();
+      let after=false;
+      for(const child of [...replacement.childNodes]){
+        if(child===placeholder){after=true;continue;}
+        if(after)target.append(child);else target.insertBefore(child,kept);
+      }
+    }
+    return true;
+  }
   function render() {
     renderPending=false;if(!current)return;
+    if(composition?.page===current&&composition.element.isConnected){renderDeferred=true;return;}
+    composition=null;renderDeferred=false;
     const focused=document.activeElement,focusKey=focused?.dataset.focusKey,start=focused?.selectionStart,end=focused?.selectionEnd;
     const scrollers=[...root.querySelectorAll('scroll-view')].map(el=>({id:el.id,top:el.scrollTop}));
     const canvases=renderedPage===current?new Map([...root.querySelectorAll('canvas[id]')].map(el=>[el.id,el])):new Map();
-    const fragment=document.createDocumentFragment();current._inputCounter=0;
+    const fragment=document.createDocumentFragment();current._inputKeys=new Map();
     children(source.pages[current.route].tree,current.data,fragment,current);
     // setData rerenders the DOM; keep already drawn ticket/referral QR bitmaps.
     for(const placeholder of fragment.querySelectorAll('canvas[id]')){const drawn=canvases.get(placeholder.id);if(drawn){drawn.className=placeholder.className;drawn.setAttribute('style',placeholder.getAttribute('style')||'');placeholder.replaceWith(drawn);}}
-    root.replaceChildren(fragment);root.dataset.route=current.route;
+    const keptEditor=replaceKeepingEditor(fragment,focused);
+    if(!keptEditor)root.replaceChildren(fragment);root.dataset.route=current.route;
     renderedPage=current;
     if(current.route==='pages/chat/chat'){
       const composer=root.querySelector('.chat-composer');
@@ -230,7 +284,7 @@
       const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可报名公开课、查看自己的方案和聊天记录；昵称和头像可在个人资料中修改。';
       const avatar=root.querySelector('.login-avatar-picker');if(avatar){avatar.disabled=true;avatar.setAttribute('aria-label','知守头像')}
     }
-    if(focusKey!=null){const next=root.querySelector('[data-focus-key="'+focusKey+'"]');if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
+    if(!keptEditor&&focusKey!=null){const next=[...root.querySelectorAll('[data-focus-key]')].find(el=>el.dataset.focusKey===focusKey);if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
     scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el)el.scrollTop=v.top});
   }
   function schedule(){if(!renderPending){renderPending=true;queueMicrotask(render)}}
