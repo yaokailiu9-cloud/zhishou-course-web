@@ -760,3 +760,54 @@
 .service-archive-section {display:flex;flex-direction:column;gap:18rpx;padding:20rpx 0;border-bottom:1rpx solid #e7e2d8;}.service-archive-answer {display:flex;flex-direction:column;gap:8rpx;}.service-archive-answer>text:first-child {color:#827d71;font-size:24rpx;}
 
 .service-nav-history {margin:0;padding:0 12rpx;background:transparent;font-size:23rpx;color:#827d71;}.service-return-entry {margin:14rpx 24rpx;padding:0 20rpx;background:#e9ede5;color:#3c564c;font-size:25rpx;line-height:60rpx;}
+
+/* Mobile feedback workspace: separate information, writing and review controls. */
+.service-chat-nav { gap:16rpx; padding:16rpx 24rpx; }
+.service-profile { flex-shrink:0; width:76rpx; height:76rpx; font-size:32rpx; }
+.service-chat-title text:first-child { font-size:32rpx; line-height:1.4; }
+.service-chat-title text:last-child { font-size:22rpx; line-height:1.5; overflow-wrap:anywhere; }
+.service-nav-history,.service-nav-refresh { flex-shrink:0; min-height:44px; }
+.service-nav-history { padding:0 8rpx; }
+.service-nav-refresh { width:44px; }
+.service-case-strip { gap:10rpx; padding:18rpx 24rpx; }
+.service-case-strip>view { display:flex; flex-wrap:wrap; align-items:center; min-width:0; }
+.service-case-name { font-size:28rpx; }
+.service-case-strip>text { font-size:22rpx; }
+.service-case-strip button { border-radius:12rpx; min-height:40px; font-size:23rpx; }
+.service-content-tabs { margin:0; gap:8rpx; padding:10rpx 24rpx 18rpx; }
+.service-content-tabs button { flex:1; min-width:0; min-height:44px; padding:0 8rpx; font-size:24rpx; border-radius:14rpx; }
+.service-panel,.service-feedback-card { padding:24rpx; gap:16rpx; }
+.service-feedback-empty { padding:70rpx 44rpx; gap:16rpx; }
+.service-feedback-empty .service-empty-mark { width:88rpx; height:88rpx; line-height:88rpx; border-radius:50%; font-size:32rpx; }
+.service-empty-title { font-size:30rpx; font-weight:600; color:#3c564c; }
+.service-empty-description { max-width:520rpx; font-size:24rpx; line-height:1.8; color:#77746c; }
+.service-empty-action { margin:8rpx 0 0; min-height:44px; padding:0 24rpx; font-size:24rpx; color:#3c564c; background:#e9ede5; border-radius:14rpx; }
+.service-review-settings { gap:14rpx; }
+.service-settings-toggle { display:flex; align-items:center; justify-content:space-between; gap:16rpx; width:100%; margin:0; padding:0; min-height:44px; background:transparent; text-align:left; line-height:1.5; }
+.service-settings-toggle::after { border:0; }
+.service-settings-toggle>view { display:flex; flex-direction:column; gap:4rpx; }
+.service-settings-toggle>view text:first-child { font-size:26rpx; font-weight:600; color:#3c564c; }
+.service-settings-toggle>view text:last-child,.service-settings-toggle>text { font-size:22rpx; color:#77746c; }
+.service-settings-toggle>text { flex-shrink:0; }
+.service-field-label { font-size:24rpx; font-weight:500; line-height:1.5; }
+.service-field-help { color:#77746c; font-size:22rpx; line-height:1.6; }
+.service-review-settings textarea { height:144rpx; font-size:25rpx; }
+.service-release { display:flex; flex-direction:column; align-items:stretch; gap:12rpx; padding-top:16rpx; border-top:1rpx solid #e7e2d8; }
+.service-release-control { display:flex; align-items:center; gap:16rpx; }
+.service-release-control input { width:148rpx; height:44px; padding:10rpx 18rpx; font-size:28rpx; }
+.service-release-control>text { font-size:24rpx; color:#5d655e; }
+.service-composer { display:flex; flex-direction:column; gap:12rpx; padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); }
+.service-composer-label { font-size:23rpx; color:#3c564c; font-weight:500; line-height:1.5; }
+.service-composer textarea { flex:none; width:100%; height:140rpx; min-height:100rpx; max-height:180rpx; font-size:26rpx; padding:16rpx 20rpx; }
+.service-composer-actions { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
+.service-composer-actions>text { flex:1; min-width:0; }
+.service-composer-actions button { flex-shrink:0; min-height:44px; padding:0 24rpx; font-size:24rpx; }
+.service-composer-notice { display:flex; flex-direction:column; gap:6rpx; padding:4rpx 0; }
+.service-composer-notice>text:first-child { color:#3c564c; font-size:24rpx; font-weight:500; line-height:1.5; }
+.service-composer-notice>text:last-child { color:#77746c; font-size:22rpx; line-height:1.6; }
+@media (max-width:350px) {
+ .service-chat-title text:last-child { font-size:20rpx; }
+ .service-composer-actions { flex-direction:column; align-items:stretch; gap:12rpx; }
+ .service-composer-actions button { width:100%; align-self:stretch; }
+}
+.service-reply-button { min-height:44px; border-radius:12rpx; }

@@ -29,7 +29,7 @@
    </block>
    <block wx:elif="{{serviceTab === 'feedback'}}">
     <view wx:if="{{serviceFeedbackCursor}}" class="service-more"><button bindtap="moreServiceFeedback">查看更早反馈</button></view>
-    <view wx:if="{{!serviceFeedback.length}}" class="service-empty">暂未收到家长反馈</view>
+    <view wx:if="{{!serviceFeedback.length}}" class="service-empty service-feedback-empty"><text class="service-empty-mark">信</text><text class="service-empty-title">还没有家长反馈</text><text class="service-empty-description">{{serviceDetail.owner ? '可以在下方填写孩子的执行情况，或向老师反馈问题。' : '家长提交反馈后，会显示在这里。你可以选择一条反馈，整理回复并提交审核。'}}</text><button wx:if="{{serviceDetail.canDraft}}" class="service-empty-action" data-tab="plan" bindtap="switchServiceTab">先去整理方案 ›</button></view>
     <view wx:for="{{serviceFeedback}}" wx:key="id" class="service-feedback-card">
      <view class="service-message-head"><text>家长反馈</text><text>{{item.timeText}}</text></view><text class="service-message-body">{{item.content}}</text>
      <view wx:if="{{item.reply}}" class="service-reply"><text class="service-message-head">{{item.reply.body ? '老师回复' : '老师正在处理'}}</text><text wx:if="{{item.reply.body}}" class="service-message-body">{{item.reply.body.content}}</text>
@@ -69,12 +69,21 @@
      <block wx:if="{{serviceDetail.owner && servicePlan.stage === 'SUPPLEMENT'}}"><textarea maxlength="6000" placeholder="按老师要求补充信息" value="{{serviceInput}}" bindinput="inputService" /><button class="service-primary" disabled="{{serviceBusy}}" bindtap="supplementServiceCase">提交补充信息</button></block>
     </view>
    </block>
-   <view wx:if="{{serviceDetail.staff && !serviceAssignOpen}}" class="service-panel service-review-settings"><textarea placeholder="退回原因或需家长补充的信息（退回时必填）" value="{{serviceNote}}" data-field="serviceNote" bindinput="inputService" maxlength="2000" /><view wx:if="{{serviceCanManage}}" class="service-release"><text>终审通过后</text><input type="digit" value="{{serviceReleaseHours}}" data-field="serviceReleaseHours" bindinput="inputService" /><text>小时对家长可见（0为立即）</text></view></view>
+   <view wx:if="{{serviceDetail.staff && !serviceAssignOpen && (serviceTab === 'plan' && servicePlan || serviceTab === 'feedback' && serviceFeedback.length)}}" class="service-panel service-review-settings">
+    <button class="service-settings-toggle" aria-expanded="{{serviceReviewSettingsOpen}}" bindtap="toggleServiceReviewSettings"><view><text>审核设置</text><text>退回说明{{serviceCanManage ? ' · 家长可见时间' : ''}}</text></view><text>{{serviceReviewSettingsOpen ? '收起 −' : '展开 +'}}</text></button>
+    <block wx:if="{{serviceReviewSettingsOpen}}">
+     <text class="service-field-label">退回 / 补充说明</text><textarea aria-label="退回或补充说明" placeholder="填写原因或需要补充的信息" value="{{serviceNote}}" data-field="serviceNote" bindinput="inputService" maxlength="2000" /><text class="service-field-help">退回修改或要求补充时必填。</text>
+     <view wx:if="{{serviceCanManage}}" class="service-release"><text class="service-field-label">终审通过后，对家长开放</text><view class="service-release-control"><input aria-label="终审后的开放延迟小时数" type="digit" value="{{serviceReleaseHours}}" data-field="serviceReleaseHours" bindinput="inputService" /><text>小时后</text></view><text class="service-field-help">填 0 即审核通过后立即可见。</text></view>
+    </block>
+   </view>
   </scroll-view>
   <view wx:if="{{serviceTab === 'feedback' && !serviceAssignOpen}}" class="service-composer">
-   <text wx:if="{{serviceDetail.staff}}" class="service-composer-label">{{serviceDraftFeedbackId ? '正在整理所选反馈的回复草稿' : '选择一条家长反馈进行回复'}}</text>
-   <textarea auto-height maxlength="6000" value="{{serviceInput}}" placeholder="{{serviceDetail.owner ? '填写执行情况或想向老师反馈的问题' : '输入回复内容，保存后提交审核'}}" bindinput="inputService" disabled="{{serviceBusy || serviceDetail.staff && !serviceDraftFeedbackId}}" />
-   <button class="service-primary" disabled="{{serviceBusy || !serviceInput || serviceDetail.staff && !serviceDraftFeedbackId}}" bindtap="{{serviceDetail.owner ? 'sendServiceFeedback' : 'saveServiceDraft'}}">{{serviceDetail.owner ? '发送反馈' : '保存回复草稿'}}</button>
+   <block wx:if="{{serviceDetail.owner || serviceDetail.canDraft && serviceDraftFeedbackId}}">
+    <text class="service-composer-label">{{serviceDetail.owner ? '反馈给老师' : '回复所选家长反馈'}}</text>
+    <textarea aria-label="{{serviceDetail.owner ? '家长反馈内容' : '回复草稿内容'}}" auto-height maxlength="6000" value="{{serviceInput}}" placeholder="{{serviceDetail.owner ? '填写执行情况，或想反馈的问题…' : '填写给家长的回复…'}}" bindinput="inputService" disabled="{{serviceBusy}}" />
+    <view class="service-composer-actions"><text class="service-field-help">{{serviceDetail.owner ? '发送后由老师查看并回复' : '保存草稿后，需提交审核'}}</text><button class="service-primary" disabled="{{serviceBusy || !serviceInput}}" bindtap="{{serviceDetail.owner ? 'sendServiceFeedback' : 'saveServiceDraft'}}">{{serviceDetail.owner ? '发送反馈' : '保存草稿'}}</button></view>
+   </block>
+   <view wx:else class="service-composer-notice"><text>{{!serviceDetail.canDraft ? '当前账号仅可查看和审核反馈' : !serviceFeedback.length ? '等待家长提交反馈' : '先选择一条反馈，再整理回复'}}</text><text>{{!serviceDetail.canDraft ? '回复由有权限的工作人员整理。' : !serviceFeedback.length ? '收到反馈后，即可在这里回复。' : '点击反馈卡片上的「回复这条反馈」或「编辑回复草稿」。'}}</text></view>
   </view>
  </block>
  <view wx:if="{{serviceDrawer}}" class="service-drawer-root"><view class="service-drawer-mask" bindtap="closeServiceDrawer"></view><view class="service-drawer">
