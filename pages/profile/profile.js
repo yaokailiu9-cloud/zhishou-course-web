@@ -16,6 +16,7 @@ Page({
     defaultPortrait: userPortrait,
     avatarText: "客",
     isServiceProvider: false,
+    feedbackUnread: 0,
     serviceProvider: null,
     managerAccessLoading: false,
     managerStats: [
@@ -131,7 +132,7 @@ Page({
     const generation = this.accessGeneration = (this.accessGeneration || 0) + 1;
     const current = () => generation === this.accessGeneration && viewSession.current(identity);
     // No cached role or referral response may expose staff/agent menus.
-    this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,managerAccessLoading:!!(userInfo && userInfo.id)});
+    this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessLoading:!!(userInfo && userInfo.id)});
     if (!userInfo || !userInfo.id || String(userInfo.id) !== identity.accountId) return null;
     try {
       const provider = await zion.getServiceProviderByAccount(userInfo.id);
@@ -142,9 +143,11 @@ Page({
       this.setData({canInvite:agent || manager,isServiceProvider:manager,serviceProvider:manager ? provider : null,managerAccessLoading:false});
       // Ordinary users have exactly two business entries and make no staff requests.
       if (!manager) return null;
-      const [checkin, sessionsResult] = await Promise.allSettled([
+      const [checkin, sessionsResult, unread] = await Promise.allSettled([
         checkinService.call('CHECKIN_ACCESS'),
-        zion.listManagerSessions({serviceProviderId:provider.id,managerAccountId:provider.accountId})
+        zion.listManagerSessions({serviceProviderId:provider.id,managerAccountId:provider.accountId}),
+        // New parent messages in plan feedback, shown on the workbench entry before it is opened.
+        checkinService.call('DIALOGUE_UNREAD_TOTAL')
       ]);
       if (!current()) return null;
       let servingCount = 0, completedCount = 0;
@@ -155,12 +158,12 @@ Page({
         if (item.endedAt || expiry > 0 && expiry <= Date.now() || ['closed','completed','finished','ended'].includes(status)) completedCount++;
         else if (status === 'active' || status === 'waiting') servingCount++;
       });
-      this.setData({canCheckin:checkin.status === 'fulfilled' && checkin.value.allowed === true,managerStats:[{label:'服务中',value:servingCount},{label:'已完成',value:completedCount}]});
+      this.setData({feedbackUnread:unread.status === 'fulfilled' && Number(unread.value && unread.value.staff) || 0,canCheckin:checkin.status === 'fulfilled' && checkin.value.allowed === true,managerStats:[{label:'服务中',value:servingCount},{label:'已完成',value:completedCount}]});
       return provider;
     } catch (error) {
       if (!current()) return null;
       console.warn('loadManagerAccess failed', error);
-      this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,managerAccessLoading:false});
+      this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessLoading:false});
       return null;
     }
   },

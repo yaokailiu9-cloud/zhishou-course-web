@@ -412,7 +412,7 @@ test('H5 修改昵称保留稳定登录用户名，并展示保存后的昵称',
 
 test('服务管理中管理人员可修改备注并提交档案，其他资料不出现编辑框',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();
- h.host.current.setData({loading:false,error:'',archiveOnly:true,appointment:{status:'孩子档案',child_info:{name:'合成孩子'},provider:{display_name:'负责老师'},concerns:'不应重复展示的摘要',staff_note:'不应展示的录入说明'},canEditArchive:true,editingArchive:false,childForm:{name:'合成孩子',age:11,remarks:'原备注'},childSections:require('../../utils/childArchive').formSections({name:'合成孩子',age:11,remarks:'原备注'}),answeredChildSections:require('../../utils/childArchive').answeredSections({name:'合成孩子',age:11,remarks:'原备注'}),feedbacks:[],record:null,canReply:true});await tick();
+ h.host.current.setData({loading:false,error:'',archiveOnly:true,appointment:{status:'孩子档案',child_info:{name:'合成孩子'},provider:{display_name:'负责老师'},concerns:'不应重复展示的摘要',staff_note:'不应展示的录入说明'},canEditArchive:true,editingArchive:false,childForm:{name:'合成孩子',age:11,remarks:'原备注'},childSections:require('../../utils/childArchive').formSections({name:'合成孩子',age:11,remarks:'原备注'}),answeredChildSections:require('../../utils/childArchive').answeredSections({name:'合成孩子',age:11,remarks:'原备注'}),feedbacks:[],record:null,canReply:true,archiveOpen:true});await tick();
  const page=h.document.getElementById('page');assert.doesNotMatch(page.textContent,/咨询时间|预约安排|不应重复展示的摘要|不应展示的录入说明|还没有沟通记录|保存备注/);assert.match(page.textContent,/合成孩子的孩子档案|修改档案/);assert.doesNotMatch(page.textContent,/提交档案/);
  h.host.current.editArchive();await tick();assert.match(page.textContent,/提交档案|取消修改/);assert.doesNotMatch(page.textContent,/保存备注/);assert.ok(page.querySelector('textarea[data-key="remarks"]'));assert.equal(page.querySelector('input[data-key="name"]'),null);
  h.host.current.setData({canEditArchive:false,editingArchive:false});await tick();assert.doesNotMatch(page.textContent,/修改档案|提交档案/);
@@ -447,13 +447,16 @@ test('已绑定的独立档案双方从方案详情继续反馈并发送，未�
   const h=await host({chatEntryVisible:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:isStaff?101:201});
   const calls=[],messages=[{id:10,content:'老师主动询问近况',senderRole:'teacher',isMine:isStaff,createdAt:'2026-10-09T10:00:00Z'}];
   h.host.requireModule('utils/consultationService').call=async(op,p)=>{
-   calls.push([op,p]);if(op==='GET_APPOINTMENT')return {appointment:{id:31,status:'孩子档案',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}},canTalk:true,isStaff,canReply:isStaff,feedbacks:[],summaryJobs:[]};
+   calls.push([op,p]);if(op==='GET_APPOINTMENT')return {appointment:{id:31,status:'孩子档案',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}},canTalk:true,isStaff,canReply:isStaff,feedbacks:[],summaryJobs:[],dialogueUnread:isStaff?0:1,dialogueReadMark:9};
    if(op==='GET_CONSULTATION_DIALOGUE')return {messages,nextCursor:null};
    if(op==='SEND_CONSULTATION_MESSAGE')return {message:{id:11,content:p.content,senderRole:isStaff?'teacher':'customer',isMine:true,createdAt:'2026-10-09T10:01:00Z'}};
    return {};
   };
   h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();
   const page=h.document.querySelector('#page');assert.match(page.textContent,/方案反馈/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
+  // Plan feedback is the first card and opens on arrival; new messages from the other side are tagged.
+  assert.ok(page.querySelector('.dialogue-card').compareDocumentPosition(page.querySelector('.archive-card'))&4);await tick();assert.match(page.textContent,/老师主动询问近况/);assert.equal(page.querySelectorAll('.new-tag').length,isStaff?0:1);assert.equal(page.querySelector('.unread-badge'),null);
+  [...page.querySelectorAll('button')].find(b=>b.textContent==='收起').dispatchEvent(new h.Event('click'));await tick();
   const open=[...page.querySelectorAll('button')].find(b=>b.textContent===(isStaff?'回复与沟通':'继续反馈'));assert.ok(open);open.dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师主动询问近况/);
   const input=page.querySelector('.dialogue-input');assert.ok(input);input.value=isStaff?'老师可以直接发消息':'学生可以直接发消息';input.dispatchEvent(new h.Event('input'));await tick();
   [...page.querySelectorAll('button')].find(b=>b.textContent==='发送消息').dispatchEvent(new h.Event('click'));await tick();
@@ -475,7 +478,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
  let page=h.document.querySelector('#page');const plan=[...page.querySelectorAll('.settings-row')].find(row=>row.textContent.includes('我的方案'));assert.ok(plan);plan.dispatchEvent(new h.Event('click'));await tick();
  assert.equal(h.host.current.route,'pages/customer/customer');page=h.document.querySelector('#page');assert.match(page.textContent,/我的方案/);assert.doesNotMatch(page.textContent,/购买|预约下一次咨询|我的公开课报名|客户中心/);assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/查看方案与继续反馈/);
  const card=[...page.querySelectorAll('.card')].find(row=>row.textContent.includes('合成孩子'));card.dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');
- page=h.document.querySelector('#page');assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/继续反馈/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
+ page=h.document.querySelector('#page');assert.doesNotMatch(page.textContent,/老师给出的方案内容/);page.querySelector('.archive-toggle').dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/发送消息/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
 
  test('普通用户返回我的页不查询推荐或签到，也不显示聊天页签',async()=>{
@@ -620,4 +623,12 @@ test('家长课程页：未开通或已到期时不能播放且不显示期限�
  h.host.wx.navigateTo({url:'/pages/course-access/course-access'});await tick();await tick();
  assert.match(page(),/课程观看授权/);assert.match(page(),/家长甲/);assert.match(page(),/《什么是沟通》/);assert.match(page(),/观看中/);assert.match(page(),/2 天/);assert.match(page(),/提前收回/);
  assert.deepEqual(h.errors,[]);
+});
+
+test('工作台与我的页面在进入前显示方案反馈新消息数',async()=>{
+ const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:101});
+ h.host.requireModule('utils/consultationService').call=async op=>op==='STAFF_OVERVIEW'?{canAccept:true,canReply:true,classes:[],enrollments:[],appointments:[{id:31,status:'孩子档案',contact_name:'家长甲',child_info:{name:'合成孩子'},dialogue_unread:2},{id:32,status:'孩子档案',contact_name:'家长乙',child_info:{name:'另一孩子'},dialogue_unread:0}]}:op==='DIALOGUE_UNREAD_TOTAL'?{staff:3,customer:0}:{};
+ h.host.wx.navigateTo({url:'/pages/service-workbench/service-workbench'});await tick();await tick();
+ const page=h.document.querySelector('#page'),badges=[...page.querySelectorAll('.unread-badge')].map(b=>b.textContent);
+ assert.deepEqual(badges,['3条新消息','2条新消息']);
 });

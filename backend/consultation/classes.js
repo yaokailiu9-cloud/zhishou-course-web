@@ -193,17 +193,24 @@ if(op==='VERIFY_ENROLLMENT') {
   if(Object.keys(changes).length)update('public_class_enrollment',and(eq('id',e.id),eq('status','REGISTERED','text'),eq('attendance_status',e.attendance_status,'text')),changes);
   result(s,{id:e.id,alreadyCheckedIn:repeated,enrollment:one('public_class_enrollment',e.id,ENROLL_FIELDS)});
 }
+// DIALOGUE_UNREAD: build inserts dialogue-unread.js here.
+if(op==='DIALOGUE_UNREAD_TOTAL') {
+  login(s);var mine=list('offline_appointment',eq('customer_id',s.actor.accountId),'id customer_id status',200),managed=[];
+  if(s.actor.providerId&&s.actor.canReply)managed=list('offline_appointment',s.actor.serviceKind==='STAFF'&&s.actor.canAccept?{}:eq('provider_id',s.actor.providerId),'id customer_id status',501);
+  var counts=dialogueUnread(mine.concat(managed)),total=function(rows){return rows.reduce(function(n,a){return n+(counts[a.id]?counts[a.id].unread:0);},0);};
+  result(s,{staff:total(managed.filter(function(a){return String(a.customer_id)!==String(s.actor.accountId);})),customer:total(mine)});
+}
 if(op==='MY_OVERVIEW') {
   login(s);var enrollments=list('public_class_enrollment',and(eq('customer_id',s.actor.accountId),{public_class:COURSE_SCOPE}),ENROLL_FIELDS,100);
   var qualified=list('public_class_enrollment',and(eq('customer_id',s.actor.accountId),eq('status','REGISTERED','text'),eq('attendance_status','ATTENDED','text'),{public_class:COURSE_SCOPE}),'id verified_at verified_by_id',100);
   var history=pageRows('offline_appointment',eq('customer_id',s.actor.accountId),APPOINTMENT_FIELDS,p.appointmentCursor,100,p.paginate===true);
-  result(s,{enrollments:enrollments,eligible:qualified.some(function(e){return !!e.verified_at&&!!e.verified_by_id;}),appointments:history.items,nextAppointmentCursor:history.nextCursor,isStaff:!!s.actor.providerId});
+  result(s,{enrollments:enrollments,eligible:qualified.some(function(e){return !!e.verified_at&&!!e.verified_by_id;}),appointments:withDialogueUnread(history.items),nextAppointmentCursor:history.nextCursor,isStaff:!!s.actor.providerId});
 }
 if(op==='STAFF_OVERVIEW') {
   staff(s,s.actor.canAccept?'canAccept':'canReply');
   // Managers who can take bookings see every booking so they can accept others' bookings.
   var history=pageRows('offline_appointment',s.actor.serviceKind==='STAFF'&&s.actor.canAccept?{}:eq('provider_id',s.actor.providerId),APPOINTMENT_FIELDS,p.appointmentCursor,200,p.paginate===true);
-  result(s,{classes:list('public_class',and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE)},ENROLL_FIELDS,200):[],appointments:history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
+  result(s,{classes:list('public_class',and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:and(eq('organizer_id',s.actor.providerId),COURSE_SCOPE)},ENROLL_FIELDS,200):[],appointments:s.actor.canReply?withDialogueUnread(history.items):history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
 }
 // FAMILY_HANDLERS: build script inserts family.js here.
 // PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.

@@ -49,3 +49,5 @@ label { font-size:26rpx; color:#48665a; }
 .member-hero .journey-step { border-color:#41615b; }
 .member-hero .journey-note { color:#bfd0cb; }
 .record-section .section-title { padding-bottom:18rpx; border-bottom:1rpx solid #e8e3df; }
+/* New plan-feedback messages waiting for the reader. */
+.unread-badge { display:inline-flex; flex:0 0 auto; align-items:center; margin-left:12rpx; padding:4rpx 14rpx; border-radius:999rpx; background:#c2412d; color:#fff; font-family:var(--em-font-family); font-size:22rpx; font-weight:500; line-height:1.6; white-space:nowrap; vertical-align:middle; }

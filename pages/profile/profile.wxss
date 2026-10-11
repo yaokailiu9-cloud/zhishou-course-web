@@ -566,3 +566,5 @@
 .logout-row text {
   display: block;
 }
+
+.settings-badge { display:inline-block; margin-left:12rpx; padding:2rpx 14rpx; border-radius:999rpx; background:#c2412d; color:#fff; font-size:22rpx; font-weight:500; line-height:1.6; vertical-align:middle; }

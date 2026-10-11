@@ -1,6 +1,6 @@
 const service=require('./consultationService');
 const viewSession=require('./viewSession');
-const data={canTalk:false,dialogueOpen:false,dialogueMessages:[],dialogueCursor:null,dialogueLoading:false,dialogueSending:false,dialogueContent:'',dialogueError:''};
+const data={canTalk:false,dialogueUnread:0,dialogueOpen:false,dialogueMessages:[],dialogueCursor:null,dialogueLoading:false,dialogueSending:false,dialogueContent:'',dialogueError:''};
 function active(page,identity,generation){return !page.unloaded&&!page.hidden&&page.data.dialogueOpen&&page.data.canTalk&&viewSession.current(identity)&&generation===page.dialogueGeneration;}
 const methods={
  syncDialogue(){
@@ -19,7 +19,7 @@ const methods={
  inputDialogue(e){this.dialogueEditVersion=(this.dialogueEditVersion||0)+1;this.setData({dialogueContent:e.detail.value});},
  mergeDialogue(messages){
   const rows=new Map(this.data.dialogueMessages.map(row=>[String(row.id),row]));
-  for(const message of messages||[])rows.set(String(message.id),{...message,timeText:service.formatTime(message.createdAt),senderLabel:message.senderRole==='teacher'?'老师':'学生/家长'});
+  for(const message of messages||[])rows.set(String(message.id),{...message,timeText:service.formatTime(message.createdAt),senderLabel:message.senderRole==='teacher'?'老师':'学生/家长',isNew:!message.isMine&&this.dialogueSeenId!=null&&Number(message.id)>Number(this.dialogueSeenId)});
   this.setData({dialogueMessages:[...rows.values()].sort((a,b)=>Number(a.id)-Number(b.id))});
  },
  refreshDialogue(){return this.loadDialogue(this.dialogueAfterId?'poll':'initial');},
@@ -34,7 +34,7 @@ const methods={
    const result=await service.call('GET_CONSULTATION_DIALOGUE',params);
    if(!active(this,identity,generation))return;
    this.mergeDialogue(result.messages);const rows=result.messages||[];if(mode!=='more'&&rows.length)this.dialogueAfterId=rows[rows.length-1].id;
-   this.setData({dialogueError:'',...(mode==='poll'?{}:{dialogueCursor:result.nextCursor||null})});
+   this.setData({dialogueError:'',...(mode==='more'?{}:{dialogueUnread:0}),...(mode==='poll'?{}:{dialogueCursor:result.nextCursor||null})});
   }catch(error){if(active(this,identity,generation))this.setData({dialogueError:error.message||'对话读取失败，请重试'});}
   finally{if(this.dialogueRequest===request){this.dialogueRequest=null;if(active(this,identity,generation))this.setData({dialogueLoading:false});}}
  },

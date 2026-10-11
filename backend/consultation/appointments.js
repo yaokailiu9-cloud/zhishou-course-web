@@ -56,14 +56,17 @@ if (op === "SAVE_CHILD_REMARKS") {
   update("offline_appointment",and(eq("id",a.id),eq("updated_at",latest.updated_at,"timestamptz")),{child_info:child});
   result(s,{id:a.id,remarks:remarks});
 }
+// DIALOGUE_UNREAD: build inserts dialogue-unread.js here.
 if (op === "GET_APPOINTMENT") {
   var a=appointment(s,p.appointmentId);
   var assigned=!!s.actor.providerId && (String(a.provider_id)===String(s.actor.providerId) || (s.actor.serviceKind==="STAFF" && !!s.actor.canAccept));
   var record=list("offline_consultation_record",and(eq("appointment_id",a.id),assigned ? {} : eq("status","CONFIRMED","text")),RECORD_FIELDS,1)[0] || null;
   var jobs=pageRows("consultation_summary_job",and(eq("appointment_id",a.id),assigned ? {} : eq("requester_id",s.actor.accountId)),JOB_FIELDS,p.summaryCursor,30,p.paginate===true);
   var feedback=pageRows("consultation_feedback",and(eq("appointment_id",a.id),{_or:[{_not:eq("advice_key","__consultation_dialogue__","text")},isNull("advice_key","text")]}),FEEDBACK_FIELDS,p.feedbackCursor,200,p.paginate===true);
-  var canTalk=["PENDING","CONFIRMED","COMPLETED","孩子档案"].indexOf(a.status)>=0 && !!a.customer_id && !!a.provider_id && (String(a.customer_id)===String(s.actor.accountId) || (String(a.provider_id)===String(s.actor.providerId) && !!s.actor.providerId && s.actor.canReply));
-  result(s,{appointment:a,record:record,feedbacks:feedback.items,nextFeedbackCursor:feedback.nextCursor,summaryJobs:jobs.items.map(refreshSummaryJob),nextSummaryCursor:jobs.nextCursor,isStaff:assigned,canAccept:assigned && s.actor.canAccept,canReply:assigned && s.actor.canReply,canTalk:canTalk});
+  // Every manager who may open this archive sees and answers the same plan feedback.
+  var canTalk=["PENDING","CONFIRMED","COMPLETED","孩子档案"].indexOf(a.status)>=0 && !!a.customer_id && (String(a.customer_id)===String(s.actor.accountId) || (assigned && !!s.actor.canReply));
+  var dialogueState=canTalk?(dialogueUnread([a])[a.id]||{unread:0,mark:0}):{unread:0,mark:0};
+  result(s,{appointment:a,record:record,feedbacks:feedback.items,nextFeedbackCursor:feedback.nextCursor,summaryJobs:jobs.items.map(refreshSummaryJob),nextSummaryCursor:jobs.nextCursor,isStaff:assigned,canAccept:assigned && s.actor.canAccept,canReply:assigned && s.actor.canReply,canTalk:canTalk,dialogueUnread:dialogueState.unread,dialogueReadMark:dialogueState.mark});
 }
 // AGENT_APPOINTMENTS: build script inserts agent-appointments.js here.
 context.setReturn("state",s);

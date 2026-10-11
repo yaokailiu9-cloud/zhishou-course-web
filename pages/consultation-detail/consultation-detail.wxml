@@ -2,6 +2,21 @@
  <view class="error" wx:if="{{error}}"><text>{{error}}</text><button bindtap="refresh">重新加载</button></view><text wx:if="{{loading}}" class="muted">正在加载咨询资料…</text>
  <block wx:if="{{appointment}}">
   <view class="service-hero member-hero"><text class="eyebrow">{{archiveOnly ? '孩子档案' : '线下咨询 · ' + appointment.statusText}}</text><text class="page-title">{{appointment.child_info.name || appointment.contact_name}}{{archiveOnly ? '的孩子档案' : '的沟通记录'}}</text><text class="muted">负责老师：{{appointment.provider.display_name || '待安排'}}</text></view>
+  <view wx:if="{{canTalk}}" class="card record-section dialogue-card">
+   <view class="row"><text class="section-title">方案反馈<text wx:if="{{dialogueUnread}}" class="unread-badge">{{dialogueUnread}}条新消息</text></text><button wx:if="{{dialogueOpen}}" class="text-button" bindtap="closeDialogue">收起</button></view>
+   <text class="muted">可在这里向{{isStaff ? '学生及家长' : '负责老师'}}提问、反馈执行情况，并查看回复。</text>
+   <button wx:if="{{!dialogueOpen}}" class="secondary" bindtap="openDialogue">{{dialogueUnread ? '查看' + dialogueUnread + '条新消息' : isStaff ? '回复与沟通' : '继续反馈'}}</button>
+   <block wx:else>
+    <button wx:if="{{dialogueCursor}}" class="text-button" loading="{{dialogueLoading}}" disabled="{{dialogueLoading}}" bindtap="moreDialogue">查看更早消息</button>
+    <view class="dialogue-messages" aria-live="polite">
+     <view wx:for="{{dialogueMessages}}" wx:key="id" class="dialogue-message {{item.isMine ? 'mine' : ''}} {{item.isNew ? 'is-new' : ''}}"><text class="dialogue-meta"><text wx:if="{{item.isNew}}" class="new-tag">新</text>{{item.isMine ? '我' : item.senderLabel}} · {{item.timeText}}</text><text class="dialogue-bubble">{{item.content}}</text></view>
+     <text wx:if="{{!dialogueMessages.length && !dialogueLoading}}" class="muted">还没有消息，可以直接发送你的问题或近况。</text>
+    </view>
+    <text wx:if="{{dialogueError}}" class="error">{{dialogueError}}</text>
+    <textarea class="dialogue-input" value="{{dialogueContent}}" placeholder="{{isStaff ? '给学生或家长发消息' : '给老师发消息'}}" bindinput="inputDialogue" maxlength="6000"/>
+    <view class="dialogue-actions"><button class="text-button" loading="{{dialogueLoading}}" disabled="{{dialogueLoading}}" bindtap="refreshDialogue">刷新对话</button><button class="primary" loading="{{dialogueSending}}" disabled="{{dialogueSending}}" bindtap="sendDialogue">发送消息</button></view>
+   </block>
+  </view>
   <view wx:if="{{!isStaff && pkg.package}}" class="card" bindtap="goPackage"><view class="row"><text class="section-title">{{pkg.offer.title || '5次咨询'}}</text><text class="pill">剩余 {{pkg.package.remaining}} 次</text></view><text class="link">{{pkg.package.remaining && !pkg.package.hasPending ? '预约下一次咨询' : '查看预约进度'}} ›</text></view>
   <view wx:elif="{{!isStaff && pkg.eligible && pkg.offer}}" class="card" bindtap="goPackage"><view class="row"><text class="section-title">后续{{pkg.offer.title}}</text><text class="pill">￥{{pkg.offer.price}}</text></view><text class="body">单次咨询 ￥{{pkg.offer.unitPrice}}，{{pkg.offer.sessions}}次咨询 ￥{{pkg.offer.price}}。档案已建立，购买后可自行预约时间。</text><text class="link">去购买 ›</text></view>
   <view wx:if="{{!archiveOnly}}" class="card record-section"><text class="section-title">预约安排</text><text class="body">{{appointment.status === 'PENDING' ? '期望时间：' + appointment.requested_time : '咨询时间：' + appointment.timeText}}</text><text class="muted">{{appointment.concerns}}</text><text class="body" wx:if="{{appointment.staff_note}}">{{appointment.staff_note}}</text><text class="notice" wx:if="{{appointment.status === 'PENDING'}}">申请已提交，工作人员确认时间后才算预约成功。</text>
@@ -9,7 +24,8 @@
    <button wx:if="{{appointment.status === 'PENDING' || appointment.status === 'CONFIRMED'}}" class="text-button" disabled="{{busy}}" bindtap="cancelAppointment">取消本次预约</button>
   </view>
   <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.child_info}}" class="card record-section archive-card">
-   <text class="section-title">孩子家庭档案</text>
+   <view class="row archive-toggle" bindtap="toggleArchive"><text class="section-title">孩子家庭档案</text><text class="text-link">{{archiveOpen ? '收起' : '展开'}}</text></view>
+   <block wx:if="{{archiveOpen}}">
    <button wx:if="{{canEditArchive && !editingArchive}}" class="secondary" disabled="{{busy}}" bindtap="editArchive">修改档案</button>
    <block wx:if="{{!isStaff && appointment.status === 'CONFIRMED'}}">
     <text wx:if="{{!isStaff}}" class="muted">请在到店前填写。可先提交已填写的内容，之后继续补充；资料仅用于本次咨询。</text>
@@ -40,21 +56,8 @@
     <block wx:if="{{canEditArchive && editingArchive}}"><button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="saveChild">提交档案</button><button class="text-button" disabled="{{busy}}" bindtap="cancelArchiveEdit">取消修改</button></block>
    </block>
    <text wx:else class="muted">等待家长填写家庭档案。</text>
-  </view>
-  <view wx:if="{{canTalk}}" class="card record-section dialogue-card">
-   <view class="row"><text class="section-title">方案反馈</text><button wx:if="{{dialogueOpen}}" class="text-button" bindtap="closeDialogue">收起</button></view>
-   <text class="muted">可在这里向{{isStaff ? '学生及家长' : '负责老师'}}提问、反馈执行情况，并查看回复。</text>
-   <button wx:if="{{!dialogueOpen}}" class="secondary" bindtap="openDialogue">{{isStaff ? '回复与沟通' : '继续反馈'}}</button>
-   <block wx:else>
-    <button wx:if="{{dialogueCursor}}" class="text-button" loading="{{dialogueLoading}}" disabled="{{dialogueLoading}}" bindtap="moreDialogue">查看更早消息</button>
-    <view class="dialogue-messages" aria-live="polite">
-     <view wx:for="{{dialogueMessages}}" wx:key="id" class="dialogue-message {{item.isMine ? 'mine' : ''}}"><text class="dialogue-meta">{{item.isMine ? '我' : item.senderLabel}} · {{item.timeText}}</text><text class="dialogue-bubble">{{item.content}}</text></view>
-     <text wx:if="{{!dialogueMessages.length && !dialogueLoading}}" class="muted">还没有消息，可以直接发送你的问题或近况。</text>
-    </view>
-    <text wx:if="{{dialogueError}}" class="error">{{dialogueError}}</text>
-    <textarea class="dialogue-input" value="{{dialogueContent}}" placeholder="{{isStaff ? '给学生或家长发消息' : '给老师发消息'}}" bindinput="inputDialogue" maxlength="6000"/>
-    <view class="dialogue-actions"><button class="text-button" loading="{{dialogueLoading}}" disabled="{{dialogueLoading}}" bindtap="refreshDialogue">刷新对话</button><button class="primary" loading="{{dialogueSending}}" disabled="{{dialogueSending}}" bindtap="sendDialogue">发送消息</button></view>
    </block>
+   <text wx:else class="muted">{{appointment.child_info ? '已填写，点击展开查看家庭档案。' : '尚未填写，点击展开填写或查看。'}}</text>
   </view>
   <view wx:if="{{appointment.status === 'CONFIRMED' || appointment.status === 'COMPLETED'}}" class="card record-section"><text class="section-title">沟通总结</text><text class="muted">本页本次咨询的留言、反馈与老师回复可生成文字草稿，也支持经同意录制面谈。由老师检查确认后形成正式记录。</text><button class="secondary" disabled="{{summaryBusy || recording}}" loading="{{summaryBusy}}" bindtap="summarizeText">总结本次文字沟通</button><button wx:if="{{!recording}}" class="secondary" disabled="{{summaryBusy}}" bindtap="startRecording">经同意录制面谈</button><button wx:else class="primary" bindtap="stopRecording">录音中 {{recordingSeconds}} 秒 · 停止并总结</button><text wx:if="{{recording}}" class="muted">单段最长10分钟，可分段录制。离开页面会停止录音。</text>
    <view wx:for="{{summaryJobs}}" wx:key="id" class="task"><text class="muted">{{item.source === 'AUDIO' ? '面谈录音' : '文字聊天'}} · {{item.statusText}} · {{item.createdText}}</text><text class="body" wx:if="{{item.draft}}">{{item.draft}}</text><text class="error" wx:if="{{item.error_message}}">{{item.error_message}}</text><button wx:if="{{item.status === 'FAILED'}}" class="text-button" data-id="{{item.id}}" bindtap="retrySummary" disabled="{{busy}}">重新生成</button><button wx:if="{{item.status === 'UPLOADING'}}" class="text-button" data-id="{{item.id}}" bindtap="processRecording" disabled="{{busy}}">处理已上传录音</button><button wx:if="{{canReply && item.draft && (!record || record.status !== 'CONFIRMED')}}" class="text-button" data-id="{{item.id}}" bindtap="useSummary">填入老师记录，继续编辑</button></view><button wx:if="{{summaryJobs.length}}" class="text-button" bindtap="refreshSummary">刷新总结进度</button><text wx:if="{{summaryJobs.length}}" class="muted">{{nextSummaryCursor ? '已加载' : '共'}} {{summaryJobs.length}} 条总结</text><button wx:if="{{nextSummaryCursor}}" class="secondary" data-kind="summary" bindtap="moreHistory" disabled="{{moreLoading || loading}}">查看更多总结</button>

@@ -26,3 +26,7 @@
 .dialogue-actions { display: flex; align-items: center; gap: 16rpx; }
 .dialogue-actions .primary { margin: 0 0 0 auto; min-width: 180rpx; }
 .dialogue-input { min-height: 140rpx; }
+.new-tag { display:inline-block; margin-right:10rpx; padding:0 10rpx; border-radius:6rpx; background:#c2412d; color:#fff; font-size:20rpx; line-height:1.7; }
+.dialogue-message.is-new .dialogue-bubble { box-shadow:0 0 0 2rpx #e6a99c; }
+.archive-toggle .section-title { flex:1; }
+.archive-toggle .text-link { flex:0 0 auto; color:#496760; font-size:27rpx; padding:16rpx 4rpx; }

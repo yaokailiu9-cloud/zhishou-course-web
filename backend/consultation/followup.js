@@ -45,12 +45,13 @@ if (op === "REPLY_FEEDBACK") {
   update("consultation_feedback",eq("id",f.id),{status:"REPLIED"});result(s,{id:a.id});
 }
 // Bound customers can continue feedback inside their plan, independent of paid chat sessions.
+// DIALOGUE_UNREAD: build inserts dialogue-unread.js here.
 function dialogueAppointment() {
   var a=appointment(s,p.appointmentId);
-  if(["PENDING","CONFIRMED","COMPLETED","孩子档案"].indexOf(a.status)<0 || !a.customer_id || !a.provider_id)fail("方案需绑定客户和负责老师后才能继续反馈");
+  if(["PENDING","CONFIRMED","COMPLETED","孩子档案"].indexOf(a.status)<0 || !a.customer_id)fail("方案需绑定客户后才能继续反馈");
   if(String(a.customer_id)!==String(s.actor.accountId)){
     staff(s,"canReply");
-    if(String(a.provider_id)!==String(s.actor.providerId))fail("只能与本人负责的咨询客户对话");
+    if(String(a.provider_id)!==String(s.actor.providerId) && !(s.actor.serviceKind==="STAFF" && s.actor.canAccept))fail("只能与本人负责的咨询客户对话");
   }
   return a;
 }
@@ -63,9 +64,11 @@ if(op==="GET_CONSULTATION_DIALOGUE") {
   if(p.afterId) {
     var newer=gql("query DialogueNewRows($where:consultation_feedback_bool_exp!){rows: consultation_feedback(where:$where,order_by:{id:asc},limit: 21){"+fields+"}}",{where:and(scope,compare("_gt","id",id(p.afterId)))}).rows||[];
     var more=newer.length>20;newer=newer.slice(0,20);
+    if(newer.length)markDialogueRead(a,newer[newer.length-1].id);
     result(s,{messages:newer.map(function(row){return dialogueMessage(a,row);}),hasMoreNewer:more});
   } else {
     var page=pageRows("consultation_feedback",scope,fields,p.beforeId,20,true);
+    if(!p.beforeId && page.items.length)markDialogueRead(a,page.items[0].id);
     result(s,{messages:page.items.reverse().map(function(row){return dialogueMessage(a,row);}),nextCursor:page.nextCursor});
   }
 }

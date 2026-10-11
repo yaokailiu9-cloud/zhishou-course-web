@@ -49,6 +49,8 @@ label { font-size:calc(26 * var(--rpx)); color:#48665a; }
 .member-hero .journey-step { border-color:#41615b; }
 .member-hero .journey-note { color:#bfd0cb; }
 .record-section .section-title { padding-bottom:calc(18 * var(--rpx)); border-bottom:calc(1 * var(--rpx)) solid #e8e3df; }
+/* New plan-feedback messages waiting for the reader. */
+.unread-badge { display:inline-flex; flex:0 0 auto; align-items:center; margin-left:calc(12 * var(--rpx)); padding:calc(4 * var(--rpx)) calc(14 * var(--rpx)); border-radius:calc(999 * var(--rpx)); background:#c2412d; color:#fff; font-family:var(--em-font-family); font-size:calc(22 * var(--rpx)); font-weight:500; line-height:1.6; white-space:nowrap; vertical-align:middle; }
 
 .course-page { padding-top:calc(24 * var(--rpx)); }
 .course-topline { display:flex; justify-content:space-between; align-items:center; gap:calc(16 * var(--rpx)); margin-bottom:calc(16 * var(--rpx)); }
