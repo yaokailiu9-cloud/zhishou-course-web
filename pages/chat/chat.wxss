@@ -811,3 +811,9 @@
  .service-composer-actions button { width:100%; align-self:stretch; }
 }
 .service-reply-button { min-height:44px; border-radius:12rpx; }
+
+.service-profile-static { cursor:default; flex-shrink:0; }
+.service-feedback-end { height:1px; }
+
+.service-feedback-message.teacher-message { background:#edf2ea; border-color:#dfe6d8; margin-right:44rpx; }
+.service-feedback-message:not(.teacher-message) { margin-left:44rpx; }

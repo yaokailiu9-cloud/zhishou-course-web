@@ -151,7 +151,7 @@
       if(tag==='canvas'){el.id=values['canvas-id']||values.id;el.width=256;el.height=256}
       if(tag==='scroll-view'&&values['scroll-y']!==undefined)el.setAttribute('scroll-y','');
       if(tag==='scroll-view'&&values['scroll-x']!==undefined)el.setAttribute('scroll-x','');
-      const eventMap={tap:'click',input:'input',change:'change',confirm:'keydown',submit:'submit',error:'error',load:'load',blur:'blur',focus:'focus',longpress:'contextmenu',scrolltolower:'scroll',touchstart:'touchstart',touchend:'touchend'};
+      const eventMap={tap:'click',input:'input',change:'change',confirm:'keydown',submit:'submit',error:'error',load:'load',blur:'blur',focus:'focus',longpress:'contextmenu',scroll:'scroll',scrolltolower:'scroll',touchstart:'touchstart',touchend:'touchend'};
       for(const [key,handler]of Object.entries(values)){
         const match=key.match(/^(bind|catch):?(.+)$/);if(!match||!eventMap[match[2]])continue;
         const emit=event=>{
@@ -160,6 +160,7 @@
           if(match[2]==='scrolltolower'&&el.scrollTop+el.clientHeight<el.scrollHeight-30)return;
           if(match[2]==='submit'||match[2]==='longpress')event.preventDefault();
           const detail={value:el.value,width:el.naturalWidth,height:el.naturalHeight};
+          if(match[2]==='scroll')Object.assign(detail,{scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight});
           if(match[2]==='submit')detail.value=Object.fromEntries(new FormData(el));
           dispatch(page,handler,el,event,detail);
         };

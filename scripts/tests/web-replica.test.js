@@ -10,6 +10,7 @@ const read=name=>fs.readFileSync(path.join(ROOT,name),'utf8');
 const tick=()=>new Promise(resolve=>setTimeout(resolve,15));
 async function host(options={}){
   const {document,Event}=parseHTML(read('web/index.html'));
+  document.defaultView.HTMLElement.prototype.scrollIntoView=function(){};
   Object.defineProperty(document,'currentScript',{value:{src:'http://localhost/web/replica/runtime.js?v=test'}});
   document.querySelectorAll('dialog').forEach(d=>{d.showModal=()=>{d.open=true};d.close=()=>{d.open=false}});
   const errors=[];
@@ -591,10 +592,10 @@ test('推荐客户显示预备学员，只有后台核实资格的客户能代�
   assert.equal(h.document.querySelector('.renew-action'),null);
  });
 
- test('服务反馈左上角展开孩子列表，等级与危险因素可读，普通家长不显示审核按钮',async()=>{
+ test('多档案家长可展开孩子列表，等级与危险因素可读，普通家长不显示审核按钮',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();
   const active={id:31,childName:'小知',parentName:'家长甲',pending:1,latest:'每天执行情况',metadata:{level:'A',danger:'合成风险'}};
-  h.host.current.setData({serviceMode:true,serviceLoading:false,serviceActive:active,serviceCases:[active],serviceDetail:{owner:true,staff:false,appointment:{contact_name:'家长甲',provider:{display_name:'老师'}}},serviceFeedback:[{id:1,content:'每天执行情况',reply:{id:2,stage:'DIRECTOR',stageText:'总监复核'},timeText:'今天'}],serviceMeta:active.metadata});await tick();
+  h.host.current.setData({serviceMode:true,serviceLoading:false,serviceActive:active,serviceAllCases:[active,{id:32,childName:'另一孩子'}],serviceCases:[active],serviceDetail:{owner:true,staff:false,appointment:{contact_name:'家长甲',provider:{display_name:'老师'}}},serviceFeedback:[{id:1,content:'每天执行情况',reply:{id:2,stage:'DIRECTOR',stageText:'总监复核'},timeText:'今天'}],serviceMeta:active.metadata});await tick();
   h.document.querySelector('.service-profile').click();await tick();
   assert.ok(h.document.querySelector('.service-drawer'));assert.match(h.document.querySelector('.service-drawer').textContent,/孩子档案|小知|家长甲|合成风险/);
   assert.equal(h.document.querySelector('.review-actions'),null);assert.equal(h.document.querySelector('.service-permission-entry'),null);
@@ -657,4 +658,16 @@ test('选择反馈后回复框可输入，保存携带反馈ID；审核设置独
  p.setData({serviceTab:'feedback',serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{}},serviceInput:'',serviceFeedback:[]});await tick();
  input=h.document.querySelector('.service-composer textarea');assert.equal(input.disabled,false);input.value='家长执行反馈';input.dispatchEvent(new h.Event('input'));await tick();h.document.querySelector('.service-composer .service-primary').click();await tick();
  assert.equal(calls[1].op,'SEND_SERVICE_FEEDBACK');assert.equal(calls[1].payload.content,'家长执行反馈');assert.equal(p.data.serviceInput,'');assert.deepEqual(h.errors,[]);
+});
+
+test('所有家长共用反馈模板：无审核与历史入口，单档案头像静态，档案页保留发送',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
+ for(const parentId of ['1000000000000039','1000000000000060','1000000000000080']){
+  p.setData({serviceMode:true,serviceStaff:false,serviceRoleLabel:'家长',serviceAllCases:[{id:31}],serviceActive:{id:31,childName:'本人孩子'},serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{customer_id:parentId}},serviceLoading:false,serviceFeedback:[],serviceMessages:[],serviceTab:'feedback'});await tick();
+  assert.equal(h.document.querySelector('[data-tab="plan"]'),null);assert.equal(h.document.querySelector('.service-nav-history'),null);assert.equal(h.document.querySelector('button.service-profile'),null);assert.ok(h.document.querySelector('.service-profile-static'));
+  assert.equal(h.document.querySelector('.service-composer textarea').disabled,false);assert.match(h.document.querySelector('.service-composer .service-primary').textContent,/发送反馈/);
+  h.document.querySelector('.service-case-strip button').click();await tick();assert.equal(p.data.serviceTab,'archive');assert.ok(h.document.querySelector('.service-composer textarea'));
+ }
+ p.setData({serviceTab:'feedback',serviceAllCases:[{id:31},{id:32}],serviceMessages:[{id:'feedback-17',content:'家长反馈',timeText:'今天'},{id:'reply-52',content:'老师公开回复',timeText:'今天',isReply:true}]});await tick();assert.ok(h.document.querySelector('button.service-profile'));
+ assert.doesNotMatch(h.document.querySelector('.service-chat-content').textContent,/监护专员整理|总监复核|总管终审/);assert.match(h.document.querySelector('.teacher-message').textContent,/老师公开回复/);assert.deepEqual(h.errors,[]);
 });
