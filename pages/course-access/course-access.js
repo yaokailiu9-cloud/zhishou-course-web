@@ -1,6 +1,7 @@
 const service=require('../../utils/consultationService');const auth=require('../../utils/auth');
 const STATUS={ACTIVE:'观看中',EXPIRED:'已到期',REVOKED:'已收回'};
 function grantCard(g){return {...g,statusText:STATUS[g.status]||g.status,durationText:Number(g.durationHours)===48?'2 天':'1 天',grantedText:service.formatTime(g.grantedAt),expiresText:service.formatTime(g.expiresAt),revokedText:g.revokedAt?service.formatTime(g.revokedAt):''};}
+function personCard(p){return {...p,initial:String(p.name||'?').slice(0,1),metaText:[p.phoneTail?'手机尾号 '+p.phoneTail:'',p.staff?'工作人员':''].filter(Boolean).join(' · ')};}
 Page({data:{loading:true,error:'',allowed:false,courses:[],courseOptions:[],courseIndex:-1,keyword:'',searching:false,searched:false,candidates:[],viewer:{id:'',name:''},hours:24,saving:false,grants:[],nextCursor:null},
  onShow(){this.refresh();},
  refresh(){return this.load(false);},more(){return this.load(true);},
@@ -9,7 +10,7 @@ Page({data:{loading:true,error:'',allowed:false,courses:[],courseOptions:[],cour
    this.setData({allowed:true,courses,courseOptions:courses.map(c=>c.title+(c.hasVideo?'':'（视频未上传）')+(c.enabled?'':'（已下架）')),courseIndex:selected?courses.findIndex(c=>c.id===selected.id):-1,grants:(more?this.data.grants:[]).concat((r.grants||[]).map(grantCard)),nextCursor:r.nextCursor});}
   catch(e){if(!more)this.setData({allowed:false,grants:[]});service.error(this,e);}finally{this.fetching=false;this.setData({loading:false});}},
  inputKeyword(e){this.setData({keyword:e.detail.value});},
- async search(){if(this.data.searching)return;this.setData({searching:true,error:''});try{const r=await service.call('COURSE_VIEW_CANDIDATES',{keyword:this.data.keyword});this.setData({candidates:r.items||[],searched:true});}catch(e){service.error(this,e);}finally{this.setData({searching:false});}},
+ async search(){if(this.data.searching)return;this.setData({searching:true,error:''});try{const r=await service.call('COURSE_VIEW_CANDIDATES',{keyword:this.data.keyword});this.setData({candidates:(r.items||[]).map(personCard),searched:true});}catch(e){service.error(this,e);}finally{this.setData({searching:false});}},
  pickViewer(e){const d=e.currentTarget.dataset;this.setData({viewer:{id:String(d.id),name:d.name}});this.grantKey='';},
  pickCourse(e){this.setData({courseIndex:Number(e.detail.value)});this.grantKey='';},
  pickHours(e){this.setData({hours:Number(e.currentTarget.dataset.hours)===48?48:24});this.grantKey='';},

@@ -618,6 +618,6 @@ test('家长课程页：未开通或已到期时不能播放且不显示期限�
  assert.equal(h.host.current.data.playingVideoUrl,'https://cdn.test/comm.mp4');
  h.host.requireModule('utils/consultationService').call=async op=>op==='COURSE_VIEW_ADMIN'?{courses:[{id:'14',title:'什么是沟通',enabled:true,hasVideo:false}],grants:[{id:1,courseId:'14',courseTitle:'什么是沟通',viewerName:'家长甲',grantedByName:'刘老师',durationHours:48,grantedAt:'2026-10-10T10:00:00Z',expiresAt:'2026-10-12T10:00:00Z',status:'ACTIVE'}],nextCursor:null}:{};
  h.host.wx.navigateTo({url:'/pages/course-access/course-access'});await tick();await tick();
- assert.match(page(),/课程观看授权/);assert.match(page(),/家长甲 · 什么是沟通/);assert.match(page(),/观看中/);assert.match(page(),/2 天/);assert.match(page(),/提前收回/);
+ assert.match(page(),/课程观看授权/);assert.match(page(),/家长甲/);assert.match(page(),/《什么是沟通》/);assert.match(page(),/观看中/);assert.match(page(),/2 天/);assert.match(page(),/提前收回/);
  assert.deepEqual(h.errors,[]);
 });
