@@ -6,7 +6,7 @@ if (operation.indexOf('CHECKIN_') === 0) {
   var CHECKIN_CLASS_FIELDS = 'id title starts_at status checkin_closes_at organizer_id';
   var CHECKIN_ENROLL_FIELDS = 'id registrant_name phone status attendance_status verified_at public_class_id checked_in_by_id';
   function checkinScope() {
-    return isCheckinManager ? {} : {checkin_assignments:and(eq('staff_account_id',actor.accountId),eq('active',true,'boolean'))};
+    return and(COURSE_SCOPE, isCheckinManager ? {} : {checkin_assignments:and(eq('staff_account_id',actor.accountId),eq('active',true,'boolean'))});
   }
   function checkinClass(value) {
     var c=list('public_class',and(eq('id',id(value)),checkinScope()),CHECKIN_CLASS_FIELDS,1)[0];

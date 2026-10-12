@@ -8,7 +8,7 @@ function setup(){
   const db={account:[{id:1,username:'管理'},{id:2,username:'签到员'},{id:3,username:'用户'},{id:4,username:'代理'}],service_provider:[{id:10,account_id:1,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true},{id:11,account_id:4,service_kind:'AGENT',service_status:'ACTIVE',can_reply:false,can_accept_order:false}],class_checkin_staff:[{id:1,public_class_id:20,staff_account_id:2,assigned_by_id:1,active:true}],public_class:[{id:20,title:'甲课',starts_at:new Date(Date.now()-1000).toISOString(),status:'PUBLISHED',organizer_id:10},{id:21,title:'乙课',starts_at:new Date(Date.now()-1000).toISOString(),status:'PUBLISHED',organizer_id:10}],public_class_enrollment:[{id:30,public_class_id:20,registrant_name:'家长甲',phone:'13800000000',status:'REGISTERED',attendance_status:'PENDING',entry_code:'A'.repeat(24)},{id:31,public_class_id:20,registrant_name:'家长乙',status:'REGISTERED',attendance_status:'ATTENDED',entry_code:'B'.repeat(24)},{id:32,public_class_id:20,registrant_name:'取消的人',status:'CANCELED',attendance_status:'PENDING',entry_code:'C'.repeat(24)},{id:33,public_class_id:21,status:'REGISTERED',attendance_status:'PENDING',entry_code:'D'.repeat(24)},{id:34,public_class_id:20,registrant_name:'晚到的人',status:'REGISTERED',attendance_status:'ABSENT',entry_code:'E'.repeat(24)}]};
   const calls=[];
   function related(table,r){if(table==='public_class')return {...r,checkin_assignments:db.class_checkin_staff.filter(a=>a.public_class_id===r.id)};if(table==='class_checkin_staff')return {...r,staff_account:db.account.find(a=>a.id===r.staff_account_id)};return r;}
-  function match(r,w){if(Array.isArray(r))return r.some(x=>match(x,w));if(w._and)return w._and.every(x=>match(r,x));if(w._or)return w._or.some(x=>match(r,x));if(w._not)return !match(r,w._not);for(const op of ['_eq','_lt','_ilike'])if(w[op]){const p=op==='_ilike'?w[op]:Object.values(w[op])[0],a=r[p.left_operand.column],b=p.right_operand.literal;return op==='_eq'?String(a)===String(b):op==='_lt'?Number(a)<Number(b):String(a||'').includes(b.slice(1,-1).replace(/\\([%_\\])/g,'$1'));}return Object.entries(w).every(([k,v])=>r[k]&&match(r[k],v));}
+  function match(r,w){if(Array.isArray(r))return r.some(x=>match(x,w));if(w._and)return w._and.every(x=>match(r,x));if(w._or)return w._or.some(x=>match(r,x));if(w._not)return !match(r,w._not);if(w._is_null)return r[Object.values(w._is_null)[0].column]==null;for(const op of ['_eq','_lt','_ilike'])if(w[op]){const p=op==='_ilike'?w[op]:Object.values(w[op])[0],a=r[p.left_operand.column],b=p.right_operand.literal;return op==='_eq'?String(a)===String(b):op==='_lt'?Number(a)<Number(b):String(a||'').includes(b.slice(1,-1).replace(/\\([%_\\])/g,'$1'));}return Object.entries(w).every(([k,v])=>r[k]&&match(r[k],v));}
   function runGql(name,q,v,options){calls.push({name,q,v});assert.equal(options.role,'admin');if(name==='CheckinAccount')return {account_by_pk:db.account.find(a=>a.id===v.id)};
     if(name==='SetCheckinStaff'){let a=db.class_checkin_staff.find(a=>a.public_class_id===v.object.public_class_id&&a.staff_account_id===v.object.staff_account_id);if(a)Object.assign(a,v.object);else{a={id:100,...v.object};db.class_checkin_staff.push(a);}return {insert_class_checkin_staff_one:{id:a.id}};}
     if(name==='ConfirmCourseCheckin'){const rows=db.public_class_enrollment.filter(r=>match(r,v.where));rows.forEach(r=>Object.assign(r,v.changes));return {saved:{affected_rows:rows.length}};}
@@ -21,6 +21,37 @@ function setup(){
 }
 test('签到入口：匿名拒绝，管理默认可见，仅被指定的普通用户可见',()=>{const e=setup();assert.throws(()=>e.run(null,'CHECKIN_ACCESS'),/登录/);assert.equal(e.run(1,'CHECKIN_ACCESS').allowed,true);assert.equal(e.run(2,'CHECKIN_ACCESS').allowed,true);assert.equal(e.run(3,'CHECKIN_ACCESS').allowed,false);assert.equal(e.run(4,'CHECKIN_ACCESS').allowed,false);});
 test('按场次授权，伪造身份不能读取其他课；管理可以看全部',()=>{const e=setup();assert.deepEqual(e.run(2,'CHECKIN_CLASSES').items.map(x=>x.id),[20]);assert.equal(e.run(1,'CHECKIN_CLASSES').items.length,2);assert.throws(()=>e.run(2,'CHECKIN_ROSTER',{classId:21,accountId:1,isManager:true}),/权限/);assert.throws(()=>e.run(3,'CHECKIN_ROSTER',{classId:20}),/权限/);});
+test('扫码进场仅列课程，问卷和咨询商品不能通过直接链接或签到授权进入',()=>{
+  const e=setup();
+  e.db.public_class[0].product_kind='COURSE';
+  e.db.public_class[1].product_kind=null;
+  for(const [id,product_kind,title] of [[22,'QUESTIONNAIRE','简易方案梳理'],[23,'CONSULT_PACKAGE','5次咨询'],[24,'TEXT_CONSULTATION','文字咨询']]){
+    e.db.public_class.push({id,product_kind,title,status:'PUBLISHED',organizer_id:10});
+    e.db.class_checkin_staff.push({id,public_class_id:id,staff_account_id:2,active:true});
+    for(const actor of [1,2]){
+      for(const op of ['CHECKIN_ROSTER','CHECKIN_STAFF','CHECKIN_SET_STAFF','CHECKIN_LOOKUP','CHECKIN_CONFIRM']){
+        assert.throws(()=>e.run(actor,op,{classId:id,accountId:3,active:true,entryCode:'A'.repeat(24)}),/权限|管理/,op);
+      }
+    }
+  }
+  assert.deepEqual(e.run(1,'CHECKIN_CLASSES').items.map(x=>x.id),[21,20]);
+  assert.deepEqual(e.run(2,'CHECKIN_CLASSES').items.map(x=>x.id),[20]);
+  assert.deepEqual(e.run(1,'CHECKIN_CLASSES',{search:'梳理'}).items,[]);
+  assert.equal(e.calls.some(c=>['SetCheckinStaff','ConfirmCourseCheckin'].includes(c.name)),false);
+});
+test('非课程商品在分页前过滤，不挤占课程名额或留下空页',()=>{
+  const e=setup();
+  for(let i=0;i<45;i++)e.db.public_class.push({id:100+i,title:'课程'+i,product_kind:'COURSE'});
+  for(let i=0;i<30;i++)e.db.public_class.push({id:200+i,title:'问卷'+i,product_kind:'QUESTIONNAIRE'});
+  let cursor,ids=[];
+  do{
+    const r=e.run(1,'CHECKIN_CLASSES',{cursor});
+    assert.ok(r.items.length>0);
+    ids.push(...r.items.map(x=>x.id));cursor=r.nextCursor;
+  }while(cursor);
+  assert.equal(ids.length,47);assert.equal(new Set(ids).size,47);
+  assert.ok(ids.every(id=>id<200));
+});
 test('人数排除取消且不随搜索和分页改变；授权签到人员可查看并搜索完整电话，但拿不到入场码和孩子资料',()=>{const e=setup();let r=e.run(2,'CHECKIN_ROSTER',{classId:20});assert.deepEqual(r.stats,{registered:3,attended:1,remaining:2});const person=r.items.find(x=>x.id===30);assert.equal(person.phone,'13800000000');assert.equal(person.phoneMasked,'13800000000');assert.equal(r.items[0].entry_code,undefined);r=e.run(2,'CHECKIN_ROSTER',{classId:20,search:'13800000000',filter:'REMAINING'});assert.deepEqual(r.items.map(x=>x.id),[30]);assert.equal(r.stats.remaining,2);});
 test('扫码只核对不签到，确认后保存实际操作人；重复扫码不覆盖第一次时间与操作人',()=>{const e=setup(),p={classId:20,entryCode:'EMPATH-ENTRY:'+'A'.repeat(24)};assert.equal(e.run(2,'CHECKIN_LOOKUP',p).enrollment.id,30);assert.equal(e.db.public_class_enrollment[0].attendance_status,'PENDING');const a=e.run(2,'CHECKIN_CONFIRM',p);assert.deepEqual(a.stats,{registered:3,attended:2,remaining:1});assert.equal(e.db.public_class_enrollment[0].checked_in_by_id,2);const date=e.db.public_class_enrollment[0].verified_at;assert.equal(e.run(1,'CHECKIN_CONFIRM',p).alreadyCheckedIn,true);assert.equal(e.db.public_class_enrollment[0].verified_at,date);assert.equal(e.db.public_class_enrollment[0].checked_in_by_id,2);assert.equal(e.calls.filter(c=>c.name==='ConfirmCourseCheckin').length,1);});
 test('取消、跨场次、错误二维码和时间窗由后端拦截',()=>{const e=setup();for(const code of ['C','D'])assert.throws(()=>e.run(2,'CHECKIN_CONFIRM',{classId:20,entryCode:code.repeat(24)}),/无效|本场/);assert.throws(()=>e.run(2,'CHECKIN_CONFIRM',{classId:20,entryCode:'https://example.invalid'}),/个人入场/);e.db.public_class[0].starts_at=new Date(Date.now()+10800000).toISOString();assert.throws(()=>e.run(2,'CHECKIN_CONFIRM',{classId:20,entryCode:'A'.repeat(24)}),/两小时/);e.db.public_class[0].starts_at=new Date(Date.now()+3600000).toISOString();e.db.public_class[0].checkin_closes_at=new Date(Date.now()-1000).toISOString();assert.throws(()=>e.run(2,'CHECKIN_CONFIRM',{classId:20,entryCode:'A'.repeat(24)}),/结束/);});

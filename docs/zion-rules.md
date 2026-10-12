@@ -545,3 +545,11 @@ flowchart LR
 - 后台代码 `backend/consultation/course-access.js`，以 `scripts/stage-course-access.js` 只追加到主动作流最后一个节点 `dv4kpohsg`；线上其他节点不动。工作人员（含监护专员、总监）可直接观看，代理和普通家长需开通。
 - 课程详情页不再直接读取课时视频字段，统一经 `COURSE_VIEW_ACCESS` 返回。Anonymous User / Logged-in User 对 `course_lesson.video`、`video_url` 的 select 列已于 2026-10-10 关闭（后台 `wPJRLvE4qjR`）；以 `node scripts/stage-course-access.js --dry-run --require-hidden-video` 核对。不得重新开放，否则授权失效。
 
+### 扫码进场仅展示课程（2026-10-12）
+
+- 用户要求从扫码进场课程列表移除咨询和简易方案梳理。原因是签到处理器查询 `public_class` 时只检查管理／本场签到授权，没有应用已有的 `COURSE_SCOPE`，将问卷和咨询套餐混入课程列表。
+- `checkinScope()` 统一叠加已核实的商品分类条件：仅 `product_kind = COURSE` 或历史空值。课程列表在搜索和分页前筛选，名单、入场码核对、签到确认及签到人员设置沿用同一范围，拒绝非课程编号。
+- 本次只修改主服务动作流 `h4i3zzuex` 节点中的一行范围条件；既有商品、报名、咨询记录、数据表结构和默认权限均保留。以 `scripts/stage-checkin-course-scope.js` 从最新正式节点做断言替换，禁止整段覆盖其他同期修改。
+- 正式后台 `m8P26myr4xM` 已部署并回读，编辑与正式版本一致，完整 schema 比较确认只有该行代码变化。正式运行环境只读验证返回三个课程场次，问卷及咨询套餐编号均不能打开签到名单。
+- 网页及静态产物构建通过，产物与现有版本相同；签到、身份与推荐归属相关 114 项测试通过，包含非课程排除、跨页查询、人员授权、人数及重复签到回归。
+
