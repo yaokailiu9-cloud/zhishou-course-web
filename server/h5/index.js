@@ -31,7 +31,7 @@ function sign(payload, secret = required("SESSION_SECRET")) {
   return `${body}.${signature}`;
 }
 
-function verify(token, secret = required("SESSION_SECRET")) {
+function verifySignature(token, secret = required("SESSION_SECRET")) {
   if (!token || typeof token !== "string") return null;
   const [body, signature] = token.split(".");
   if (!body || !signature) return null;
@@ -39,10 +39,39 @@ function verify(token, secret = required("SESSION_SECRET")) {
   if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try {
     const value = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-    return value.exp && value.exp < Math.floor(Date.now() / 1000) ? null : value;
+    return value;
   } catch (_) {
     return null;
   }
+}
+
+function verify(token, secret = required("SESSION_SECRET")) {
+  const value = verifySignature(token, secret);
+  return value && (!value.exp || value.exp > Math.floor(Date.now() / 1000)) ? value : null;
+}
+
+function invitationClassId(returnTo) {
+  return String(returnTo || '').match(/^\/web\/#\/pages\/(?:public-class-detail\/public-class-detail|class-enroll\/class-enroll)\?id=([1-9][0-9]*)$/)?.[1] || '';
+}
+
+async function assertInvitationCourse(classId) {
+  if (!classId) return;
+  const {classInfo:c} = await invoke(null, 'GET_CLASS', {classId});
+  if (!c || c.status !== 'PUBLISHED') throw new Error('COURSE:本场课程暂未开放报名，请联系分享人');
+  const starts = Date.parse(c.starts_at), closes = Date.parse(c.registration_closes_at || c.starts_at);
+  if (!Number.isFinite(starts) || !Number.isFinite(closes)) throw new Error('COURSE:本场报名时间暂未确认，请联系分享人');
+  if (Date.now() >= Math.min(starts, closes)) throw new Error('COURSE:本场报名已截止，请查看其他课程');
+}
+
+async function captureInvitationRef(token, returnTo) {
+  // Old signed course codes follow the live deadline too. Never relax session/OAuth expiry.
+  const value = verifySignature(token);
+  if (!value || value.kind !== 'ref' || !/^[1-9][0-9]*$/.test(String(value.accountId || ''))) return '';
+  const classId = invitationClassId(returnTo);
+  if (value.classId && String(value.classId) !== classId) throw new Error('INPUT:报名二维码与课程不匹配，请重新扫码');
+  if (classId) await assertInvitationCourse(classId);
+  else if (value.exp && value.exp <= Math.floor(Date.now()/1000)) return '';
+  return String(value.accountId);
 }
 
 function parseCookies(req) {
@@ -295,8 +324,9 @@ async function invoke(jwt, operation, payload = {}) {
   return result.data;
 }
 
-function refToken(accountId) {
-  return sign({kind:"ref", accountId:String(accountId), exp:Math.floor(Date.now()/1000)+60*60*24*180});
+function refToken(accountId, classId) {
+  // Course-scoped signatures use the current backend deadline, including later edits.
+  return sign({kind:"ref", accountId:String(accountId), ...(classId ? {classId:String(classId)} : {exp:Math.floor(Date.now()/1000)+60*60*24*180})});
 }
 
 function decodeRef(token) {
@@ -398,14 +428,22 @@ async function handleApi(req, res) {
       }
     }
     if(action==='capture-referral') {
-      const input=await body(req), current=readSession(req), referrerId=decodeRef(input.ref);
+      const input=await body(req), current=readSession(req), previous=readInvitation(req,current);
+      const requested=invitationReturn(input.returnTo);
+      const target=requested===input.returnTo?requested:previous?.returnTo||requested;
+      const referrerId=await captureInvitationRef(input.ref,target);
       if(!referrerId)return json(res,400,{ok:false,message:'报名二维码已失效，请联系分享人重新发送'});
       if(String(referrerId)===String(current?.account?.id))return json(res,200,{ok:true,data:{invitation:null}});
-      const previous=readInvitation(req,current), safeTarget=invitationReturn(input.returnTo);
+      const safeTarget=invitationReturn(input.returnTo);
       // Refreshing the login gate must not replace the original course with the plaza.
       const returnTo=safeTarget===input.returnTo?safeTarget:String(previous?.referrerId)===referrerId?invitationReturn(previous.returnTo):safeTarget;
-      const binding=current ? await invoke(current.jwt, 'BIND_INVITATION', {referrerId}) : null;
       const invitation=setInvitation(res,{referrerId,returnTo,accountId:current?.account?.id||previous?.accountId||null});
+      let binding=null;
+      if(current)try{binding=await invoke(current.jwt, 'BIND_INVITATION', {referrerId});}
+      catch(error){
+        if (/请先微信登录|jwt.*expir|token.*expir|unauthenticated/i.test(error.message)) return json(res,401,{ok:false,code:'INVITATION_LOGIN_REQUIRED',message:'登录状态已过期，请重新微信登录后继续报名'});
+        throw error;
+      }
       if(current)setSession(res,{...current,referrerId,referralReturn:invitation.returnTo});
       return json(res,200,{ok:true,data:{invitation:{returnTo:invitation.returnTo},binding:binding?.binding||null}});
     }
@@ -422,8 +460,12 @@ async function handleApi(req, res) {
     }
     if (action === "login") {
       const current=readSession(req), invitation=readInvitation(req,current);
-      const referrerId=invitationRef(req,current,url.searchParams.get('ref'));
-      const returnTo=referrerId?invitationReturn(invitation?.returnTo||url.searchParams.get('return')):'/web/#/pages/index/index';
+      const requested=invitationReturn(url.searchParams.get('return')||invitation?.returnTo);
+      const incoming=url.searchParams.get('ref');
+      const referrerId=incoming?await captureInvitationRef(incoming,requested):invitation?.referrerId||null;
+      if(incoming&&!referrerId)throw new Error('INPUT:报名二维码已失效，请联系分享人重新发送');
+      const returnTo=referrerId?requested:'/web/#/pages/index/index';
+      if(referrerId&&!incoming)await assertInvitationCourse(invitationClassId(returnTo));
       const invitationAccountId=current?.account?.id||invitation?.accountId||null;
       if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:invitationAccountId});
       const state = sign({kind:"oauth", referrerId, returnTo, invitationAccountId, exp:Math.floor(Date.now()/1000)+600});
@@ -443,11 +485,13 @@ async function handleApi(req, res) {
       const forwardedReferrer=invitationRef(req,current,url.searchParams.get("ref"));
       const data = await invoke(current?.jwt, "REFERRAL_OVERVIEW", {referrerId:forwardedReferrer});
       if (!data.canInvite) return json(res,200,{ok:true,data:{canInvite:false,isManager:false,hasEnrollment:!!data.hasEnrollment}});
-      const token = current && data.canInvite ? refToken(current.account.id) : "";
+      const classId = url.searchParams.get('classId'),target=url.searchParams.get('target');
+      const courseId=target!=='questionnaire'&&/^[1-9][0-9]*$/.test(classId||'')?classId:'';
+      if(courseId)await assertInvitationCourse(courseId);
+      const token = current && data.canInvite ? refToken(current.account.id,courseId) : "";
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
       const link = new URL('/web/', origin);
       if (token) link.searchParams.set('ref', token);
-      const classId = url.searchParams.get('classId'),target=url.searchParams.get('target');
       link.hash = target==='questionnaire' ? '/pages/questionnaire/questionnaire' : classId && /^[1-9][0-9]*$/.test(classId) ? '/pages/public-class-detail/public-class-detail?id='+classId : '/pages/plaza/plaza';
       return json(res,200,{ok:true,data:{...data,referralToken:token,shareUrl:token?link.href:""}});
     }
@@ -481,6 +525,7 @@ async function handleApi(req, res) {
     })});
     return json(res, 404, {ok:false, message:"接口不存在"});
   } catch (error) {
+    if (new URL(req.url, `https://${req.headers.host || "localhost"}`).searchParams.get('action') === 'login') return redirect(res, `/web/?loginError=${encodeURIComponent(friendly(error))}`);
     return json(res, 500, {ok:false, message:friendly(error)});
   }
 }
@@ -497,7 +542,7 @@ async function handleOauthCallback(req, res) {
     const sameAccount=!state.invitationAccountId||String(state.invitationAccountId)===String(login.account.id);
     const referrerId = sameAccount && state.referrerId && String(state.referrerId) !== String(login.account.id) ? state.referrerId : null;
     const returnTo=referrerId?invitationReturn(state.returnTo):'/web/#/pages/index/index';
-    if(referrerId)await invoke(login.jwt, 'BIND_INVITATION', {referrerId});
+    if(referrerId){await assertInvitationCourse(invitationClassId(returnTo));await invoke(login.jwt, 'BIND_INVITATION', {referrerId});}
     setSession(res, {jwt:login.jwt, account:login.account, referrerId, referralReturn:returnTo, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
     if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:login.account.id});
     else appendCookie(res,`${INVITATION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);

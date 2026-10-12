@@ -19,6 +19,7 @@ test('网页按后台身份请求推荐列表，报名使用已签名推荐人�
     else if (operation === 'LIST_CLASSES') data={classes:[]};
     else if (operation === 'MY_REFERRAL_STATUS') data={binding:null};
     else if (operation === 'MY_ENROLLMENTS' || operation === 'MY_REFERRALS') data={items:[]};
+    else if (operation === 'GET_CLASS') data={classInfo:{id:payload.classId,status:'PUBLISHED',starts_at:'2099-01-02T00:00:00Z',registration_closes_at:'2099-01-01T00:00:00Z'}};
     else if (operation === 'ENROLL') data={enrollment:{id:77}};
     return {ok:true,text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data}}}})};
   };

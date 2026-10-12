@@ -12,7 +12,7 @@ test('扫码邀请跨登录、刷新、无参数首页、支付和登录重试�
   else {const {query,variables}=JSON.parse(options.body);
    if(query.includes('authenticateWithUsername'))value={data:{authenticateWithUsername:{account:{id:actor},jwt:{token:'jwt-'+actor}}}};
    else if(query.includes('UpdateH5WechatProfile'))value={data:{update_account_by_pk:{id:actor,wechat_nickname:'合成用户'}}};
-   else {operations.push({...variables.args,auth:options.headers.authorization});const op=variables.args.operation;value={data:{fz_invoke_action_flow:{result:{ok:true,data:op==='PREPARE_COURSE_PAYMENT'?{enrollment:{id:8}}:op==='ENROLL'?{enrollment:{id:7}}:{candidate:{name:'合成推荐人'}}}}}};}
+   else {operations.push({...variables.args,auth:options.headers.authorization});const op=variables.args.operation;value={data:{fz_invoke_action_flow:{result:{ok:true,data:op==='GET_CLASS'?{classInfo:{id:variables.args.payload.classId,status:'PUBLISHED',starts_at:'2099-01-02T00:00:00Z',registration_closes_at:'2099-01-01T00:00:00Z'}}:op==='PREPARE_COURSE_PAYMENT'?{enrollment:{id:8}}:op==='ENROLL'?{enrollment:{id:7}}:{candidate:{name:'合成推荐人'}}}}}};}
   }
   return {ok:true,text:async()=>JSON.stringify(value)};
  };
@@ -49,5 +49,5 @@ test('扫码邀请跨登录、刷新、无参数首页、支付和登录重试�
  assert.equal((await req('/api/wechat-oauth-callback?'+new URLSearchParams({code:'different-account',state}))).headers.location,'/web/#/pages/index/index');assert.equal((await req('/api/h5?action=session')).data.invitation,null);assert.equal(operations.filter(c=>c.operation==='BIND_INVITATION').length,previousBindCount,'换号不得继承邀请绑定');
  await req('/api/h5?action=capture-referral',{ref:refToken('17'),returnTo:'https://evil.invalid'});assert.equal((await req('/api/h5?action=session')).data.invitation.returnTo,'/web/#/pages/plaza/plaza');
  await req('/api/h5?action=logout',{});assert.equal(jar.size,0);assert.equal((await req('/api/h5?action=session')).data.invitation,null);
- assert.equal((await req('/api/h5?action=capture-referral',{ref:sign({kind:'ref',accountId:'17',exp:1}),returnTo})).status,400);
+ assert.equal((await req('/api/h5?action=capture-referral',{ref:sign({kind:'ref',accountId:'17',exp:1}),returnTo})).status,200);
 });

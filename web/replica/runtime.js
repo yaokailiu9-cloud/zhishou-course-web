@@ -18,7 +18,8 @@
   root.addEventListener('focusout',finishComposition);
   const HOME = 'pages/index/index';
   const INVITE_LOGIN = 'pages/invite-login/invite-login';
-  let invitation=null,invitationError='';
+  let invitation=null,invitationError='',invitationNeedsLogin=false;
+  const invitationTarget='/web/'+(location.hash||'#/pages/plaza/plaza');
   const webFeatures = source.config.webFeatures || {};
   const chatEntryVisible = webFeatures.chatEntryVisible === true;
   // Display-only gate: the chat route itself stays reachable; the backend still enforces every chat permission.
@@ -343,7 +344,7 @@
     if(route==='pages/consultation-detail/consultation-detail')page.startRecording=()=>wx.showModal({title:'网页录音尚未开放',content:'本次已复刻录音与总结入口。网页录音编码尚待接入，目前可以使用文字沟通总结及手动记录。',showCancel:false});
     page.setCustomNav=function(){this.setData({statusBarHeight:12,navHeight:76,navPaddingRight:0})};
     stack.push(page);showPage(page);
-    if(!fromHistory){const hash='#/'+route+(Object.keys(options).length?'?'+new URLSearchParams(options):'');history[mode==='replace'?'replaceState':'pushState']({route},'',location.pathname+location.search+hash)}
+    if(!fromHistory){const hash=route===INVITE_LOGIN?'#'+(invitation?.returnTo||invitationTarget).split('#')[1]:'#/'+route+(Object.keys(options).length?'?'+new URLSearchParams(options):'');history[mode==='replace'?'replaceState':'pushState']({route},'',location.pathname+location.search+hash)}
     lifecycle(page,'onLoad',options);lifecycle(page,'onShow').then(()=>{if(page===current&&[HOME,'pages/plaza/plaza','pages/public-class/public-class','pages/checkin/checkin'].includes(page.route))prepareWechatShare(page).catch(()=>false);});queueMicrotask(()=>lifecycle(page,'onReady'));
   }
   function back(){if(stack.length>1){if(unloadMessage){wx.showModal({title:'尚未保存',content:unloadMessage,success:r=>{if(r.confirm){unloadMessage='';history.back()}}});return}history.back()}else navigate('/'+HOME,'tab')}
@@ -358,7 +359,7 @@
     const ok=document.createElement('button');ok.textContent=options.confirmText||'确定';ok.onclick=()=>finish(true);actions.append(ok);dialog.oncancel=event=>{event.preventDefault();finish(false)};dialog.showModal();
   }
   function webLogin(){
-    if(invitationError){wx.showToast({title:invitationError});return;}
+    if(invitationError&&!invitationNeedsLogin){wx.showToast({title:invitationError});return;}
     if(invitation&&!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'请在微信中登录',content:'请用微信扫一扫，或长按识别收到的报名二维码。',showCancel:false});return;}
     if(!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'微信登录',content:'请将当前网页链接在微信中打开，再点击微信登录。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:location.href})}});return}
     const ref=new URLSearchParams(location.search).get('ref')||'';
@@ -371,11 +372,14 @@
     const body=await response.json();
     if(identity!==session)throw new Error('登录身份已变化，请重试');
     if(!response.ok||!body.ok)throw new Error(body.message||'报名信息加载失败，请刷新重试');
-    referralContext={...body.data,identity};return body.data;
+    referralContext={...body.data,identity,classId:String(classId||'')};return body.data;
+  }
+  function shareClassId(page){
+    return (page.onShareAppMessage?.().path||'').match(/^\/pages\/public-class-detail\/public-class-detail\?id=([1-9][0-9]*)$/)?.[1]||'';
   }
   function shareDetails(page){
     const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');
-    const ref=referralContext?.identity===session&&referralContext?.canInvite?referralContext.referralToken:'';if(ref)url.searchParams.set('ref',ref);
+    const ref=referralContext?.identity===session&&referralContext?.canInvite&&referralContext.classId===shareClassId(page)?referralContext.referralToken:'';if(ref)url.searchParams.set('ref',ref);
     const image=info.imageUrl?new URL(info.imageUrl,location.origin).href:'';
     return {info,url,title:info.title||'知守',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
   }
@@ -386,6 +390,8 @@
   }
   async function prepareWechatShare(page){
     if(!/MicroMessenger/i.test(navigator.userAgent))return false;await loadWechatSdk();
+    const classId=shareClassId(page);
+    if(session&&(referralContext?.identity!==session||referralContext?.classId!==classId))await getReferralContext(classId);
     const details=shareDetails(page);
     if(!wechatShareReady){
       wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);let response,result;
@@ -411,7 +417,7 @@
     return image;
   }
   async function share(page){
-    try{await getReferralContext();}catch(_){if(session){wx.showToast({title:'分享信息加载失败，请重试'});return;}}
+    try{await getReferralContext(shareClassId(page));}catch(_){if(session){wx.showToast({title:'分享信息加载失败，请重试'});return;}}
     const details=shareDetails(page);try{showReferralPoster({url:details.url.href,title:details.title,name:referralContext?.canInvite?session?.user?.name:''});}
     catch(_){wx.showToast({title:'报名二维码生成失败，请重试'});}
   }
@@ -506,7 +512,14 @@
     getReferralContext,
     showReferralPoster,
     getInvitationError:()=>invitationError,
-    retryInvitation:()=>location.reload(),
+    retryInvitation:async()=>{
+      await captureInvitation();
+      if(invitationError&&!invitationNeedsLogin)throw new Error(invitationError);
+      if(invitationNeedsLogin){webLogin();return;}
+      if(invitation&&!storage.get('zionJwt'))webLogin();
+      else if(invitation)navigate(invitation.returnTo.split('#')[1],'replace');
+      else webLogin();
+    },
     prepareCourseShare:page=>prepareWechatShare(page).catch(()=>false),
     getReferralToken:()=>new URLSearchParams(location.search).get('ref')||'',
     canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,
@@ -551,13 +564,20 @@
     getRecorderManager:()=>({onStop(){},offStop(){},onError(fn){this.error=fn},offError(){},start(){this.error?.({errMsg:'网页录音编码尚未接入，请使用文字记录'})},stop(){}})
   };
   // Copy only a non-secret session marker into the compatibility storage. JWT stays HttpOnly.
-  async function start(){
+  async function captureInvitation(){
+    invitationError='';invitationNeedsLogin=false;
     const incomingRef=new URLSearchParams(location.search).get('ref');
     if(incomingRef){
-      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:'/web/'+(location.hash||'#/pages/plaza/plaza')})});const body=await response.json();if(!response.ok||!body.ok)throw new Error(body.message||'报名入口暂时无法打开，请重新加载');invitation=body.data.invitation;}
+      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:invitation?.returnTo||invitationTarget})});const body=await response.json();if(!response.ok||!body.ok){invitationNeedsLogin=body.code==='INVITATION_LOGIN_REQUIRED';throw new Error(body.message||'报名入口暂时无法打开，请重试');}invitation=body.data.invitation;}
       catch(e){invitationError=e.message||'报名入口暂时无法打开，请重新加载';}
     }
+  }
+  async function start(){
+    const incomingRef=new URLSearchParams(location.search).get('ref');
+    await captureInvitation();
     try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载报名页面';}
+    const loginError=new URLSearchParams(location.search).get('loginError');
+    if(loginError&&invitation&&!session)invitationError=loginError;
     if(session)try{await getReferralContext();}catch(_){/* Retry explicitly when sharing; public browsing remains available. */}
     renderTabbar();refreshChatEntry();
     $('#back-button').onclick=back;

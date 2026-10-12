@@ -116,14 +116,37 @@ test('扫码来源先保存再登录，刷新无 ref 仍强制登录并回到原
   assert.equal(calls[0].url,'/api/h5?action=capture-referral');assert.equal(JSON.parse(calls[0].options.body).returnTo,returnTo);assert.equal(calls[0].options.credentials,'same-origin');
   assert.equal(h.host.current.route,'pages/invite-login/invite-login');assert.doesNotMatch(h.document.querySelector('#page').textContent,/推荐人甲|代理|推荐归属/);
   h.host.wx.switchTab({url:'/pages/plaza/plaza'});await tick();assert.equal(h.host.current.route,'pages/invite-login/invite-login');
-  h.host.current.login();let url=new URL(h.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);
-  const refreshed=await host({navigator:{userAgent:'MicroMessenger'},fetch});assert.equal(refreshed.host.current.route,'pages/invite-login/invite-login');refreshed.host.current.login();url=new URL(refreshed.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);assert.equal(url.searchParams.get('ref'),'');
+  await h.host.current.login();let url=new URL(h.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);
+  const refreshed=await host({navigator:{userAgent:'MicroMessenger'},fetch});assert.equal(refreshed.host.current.route,'pages/invite-login/invite-login');await refreshed.host.current.login();url=new URL(refreshed.context.location.href,'http://localhost');assert.equal(url.searchParams.get('return'),returnTo);assert.equal(url.searchParams.get('ref'),'');
 });
 
 test('邀请保存失败时不能继续报名；已有登录遇到有效推荐码不强制重新授权',async()=>{
   for(const fail of [true,false]){
     const h=await host({location:{search:'?ref=signed',hash:'#/pages/public-class-detail/public-class-detail?id=7'},fetch:async(url)=>({ok:!fail||!String(url).includes('capture-referral'),status:fail?500:200,headers:[],json:async()=>({ok:!fail||!String(url).includes('capture-referral'),data:String(url).includes('action=session')?{loggedIn:true,user:{id:'18',name:'家长'},invitation:{returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=7'}}:{invitation:{returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=7'}}}),text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data:{classInfo:{id:7,status:'PUBLISHED'}}}}}})})});
     assert.equal(h.host.current.route,fail?'pages/invite-login/invite-login':'pages/public-class-detail/public-class-detail');assert.equal(h.host.wx.getStorageSync('userInfo').id,'18');
+  }
+});
+test('扫码网络故障重试恢复原课程并发起授权，不再刷新错误页',async()=>{
+  const returnTo='/web/#/pages/public-class-detail/public-class-detail?id=16';let captures=0;
+  const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=signed-course',hash:returnTo.split('/web/')[1]},fetch:async(url,options={})=>{
+    if(String(url).includes('capture-referral')){captures++;assert.equal(JSON.parse(options.body).returnTo,returnTo);if(captures===1)throw Error('网络连接中断');}
+    return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('session')?{loggedIn:false}:{invitation:{returnTo}}})};
+  }});
+  assert.equal(h.host.current.route,'pages/invite-login/invite-login');assert.match(h.host.current.data.error,/网络连接中断/);assert.equal(h.replacements.at(-1),'/web/?ref=signed-course'+returnTo.split('/web/')[1]);
+  await h.host.current.login();assert.equal(captures,2);const login=new URL(h.context.location.href,'http://localhost');assert.equal(login.pathname,'/api/h5');assert.equal(login.searchParams.get('return'),returnTo);assert.equal(login.searchParams.get('ref'),'signed-course');
+});
+test('入口登录不依赖推荐展示查询，已过期的后台登录能重新微信授权',async()=>{
+  const returnTo='/web/#/pages/public-class-detail/public-class-detail?id=16';
+  const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=signed-course',hash:returnTo.split('/web/')[1]},fetch:async url=>{
+    if(String(url).includes('referral-context'))throw Error('可选推荐查询不可用');
+    const capture=String(url).includes('capture-referral');return {ok:!capture,status:capture?401:200,json:async()=>capture?{ok:false,code:'INVITATION_LOGIN_REQUIRED',message:'登录状态已过期，请重新微信登录后继续报名'}:{ok:true,data:{loggedIn:true,user:{id:'101',name:'家长'},invitation:{returnTo}}},text:async()=>JSON.stringify({data:{service_provider:[]}})};
+  }});
+  assert.match(h.host.current.data.error,/登录状态已过期/);await h.host.current.login();assert.equal(new URL(h.context.location.href,'http://localhost').searchParams.get('return'),returnTo);
+});
+test('报名截止和无效二维码显示真实原因，不发起授权或改为请重发的通用提示',async()=>{
+  for(const message of ['本场报名已截止，请查看其他课程','报名二维码已失效，请联系分享人重新发送']){
+    const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=signed-course',hash:'#/pages/public-class-detail/public-class-detail?id=16'},fetch:async url=>{const capture=String(url).includes('capture-referral');return {ok:!capture,status:capture?400:200,json:async()=>capture?{ok:false,message}:{ok:true,data:{loggedIn:false}}};}});
+    assert.equal(h.host.current.data.error,message);await h.host.current.login();assert.equal(h.host.current.data.error,message);assert.equal(h.context.location.href,'http://localhost/web/');
   }
 });
 test('all registered pages are bundled from the exact current mini-program sources',()=>{
