@@ -94,6 +94,8 @@ test('微信课程卡片签名固定且只接受本站网页地址',()=>{
   assert.equal(signWechatShareUrl('ticket',url,'nonce',123),require('node:crypto').createHash('sha1').update(source).digest('hex'));
   const req={headers:{host:'www.apply.tianqiwushu.cn','x-forwarded-proto':'https'}};
   assert.equal(shareUrlForRequest(req,url+'#/pages/public-class-detail/public-class-detail?id=7'),url);
+  const encoded='https://www.apply.tianqiwushu.cn/web/?course=15&title=%E6%B2%89%E8%BF%B7%20%E6%89%8B%E6%9C%BA';
+  assert.equal(shareUrlForRequest(req,encoded+'#/pages/course-detail/course-detail?id=15'),encoded);
   assert.throws(()=>shareUrlForRequest(req,'https://evil.example/web/'),/分享地址无效/);
 });
 

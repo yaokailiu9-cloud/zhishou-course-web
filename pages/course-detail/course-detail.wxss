@@ -276,7 +276,7 @@
 .forward-card { padding:24rpx; background:#fff; border:1rpx solid #e6e1da; border-radius:20rpx; }
 .forward-card-brand { display:block; color:#75847c; font-size:23rpx; margin-bottom:16rpx; }
 .forward-card-title { display:block; color:#153b32; font-size:32rpx; font-weight:700; line-height:1.4; margin-bottom:20rpx; }
-.forward-card-cover { display:block; width:100%; height:42vh; max-height:560rpx; background:#f5f3ee; border-radius:10rpx; }
+.forward-card-cover { display:block; width:100%; height:auto; background:#f5f3ee; border-radius:10rpx; }
 .forward-card-subtitle { display:block; margin-top:18rpx; font-size:23rpx; color:#75847c; line-height:1.5; }
 .forward-sheet-hint { display:block; margin:22rpx 0; color:#65716c; font-size:24rpx; line-height:1.7; text-align:center; }
 
@@ -288,3 +288,5 @@
 .wechat-guide-body { display:block; font-size:32rpx; line-height:1.7; }
 .wechat-guide-note { display:block; margin-top:18rpx; font-size:25rpx; line-height:1.7; color:#dce9e2; }
 .wechat-guide-dismiss { display:block; margin-top:56rpx; font-size:24rpx; color:#aebeb4; }
+
+.forward-share-error { display:block; margin:12rpx 0; font-size:23rpx; line-height:1.7; color:#986038; overflow-wrap:anywhere; }

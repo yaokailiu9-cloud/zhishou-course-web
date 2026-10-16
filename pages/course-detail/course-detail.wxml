@@ -66,13 +66,14 @@
   <view wx:if="{{showSharePanel && course}}" class="course-forward-mask" bindtap="closeSharePanel">
     <view class="course-forward-sheet" catchtap="keepSharePanelOpen" role="dialog" aria-modal="true" aria-label="转发课程">
       <view class="forward-sheet-head"><text>分享课程</text><button class="forward-close" bindtap="closeSharePanel" aria-label="关闭转发">×</button></view>
-      <view class="forward-card"><text class="forward-card-brand">知守 · 课程</text><text class="forward-card-title">{{course.title}}</text><image wx:if="{{course.coverUrl}}" class="forward-card-cover" src="{{course.coverUrl}}" mode="aspectFit" aria-label="课程分享封面"></image><text wx:if="{{course.subtitle}}" class="forward-card-subtitle">{{course.subtitle}}</text></view>
+      <view class="forward-card"><text class="forward-card-brand">知守 · 课程</text><text class="forward-card-title">{{course.title}}</text><image wx:if="{{course.coverUrl}}" class="forward-card-cover" src="{{course.coverUrl}}" mode="widthFix" aria-label="课程分享封面"></image><text wx:if="{{course.subtitle}}" class="forward-card-subtitle">{{course.subtitle}}</text></view>
       <text class="forward-sheet-hint">{{shareHint}}</text>
-      <button class="forward-submit" open-type="share" disabled="{{sharePreparing}}">立即转发</button>
+      <text wx:if="{{shareError}}" class="forward-share-error">{{shareError}}</text>
+      <button class="forward-submit" open-type="share">立即转发</button>
     </view>
   </view>
   <view wx:if="{{showShareGuide}}" class="wechat-forward-guide" bindtap="closeShareGuide" aria-label="关闭微信转发引导">
     <image class="wechat-guide-arrow" src="/assets/icons/wechat-forward-guide.svg" mode="aspectFit"></image>
-    <text class="wechat-guide-title">点击右上角“…”</text><text class="wechat-guide-body">选择“发送给朋友”</text><text class="wechat-guide-note">将发送这门课的标题和封面卡片</text><text class="wechat-guide-dismiss">轻触任意位置返回</text>
+    <text class="wechat-guide-title">点击右上角“…”</text><text class="wechat-guide-body">选择“发送给朋友”</text><text class="wechat-guide-note">{{shareReady ? '将发送这门课的标题和封面链接卡片' : '发送当前课程链接，封面配置尚未确认'}}</text><text class="wechat-guide-dismiss">轻触任意位置返回</text>
   </view>
 </view>

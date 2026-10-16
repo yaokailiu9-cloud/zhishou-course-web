@@ -24,6 +24,8 @@ Page({
     showVideoPlayer: false,
     showSharePanel: false,
     showShareGuide: false,
+    shareReady: false,
+    shareError: "",
     sharePreparing: false,
     shareHint: "转发时将附上这门课程的封面",
     viewAccess: { checked: false, canWatch: false, reason: "" }
@@ -82,7 +84,7 @@ Page({
   onShareAppMessage() { return courseShare(this.data.course); },
   openSharePanel() {
     if (!this.data.course) return;
-    this.setData({showSharePanel:true,showShareGuide:false,sharePreparing:false,shareHint:'转发时将附上这门课程的封面'});
+    this.setData({showSharePanel:true,showShareGuide:false,sharePreparing:false,shareError:'',shareHint:'转发时将附上这门课程的封面'});
     if (!wx.isH5) return;
     if(wx.isWechatBrowser && !wx.isWechatBrowser()){
       this.setData({shareHint:'请在微信内打开后使用微信转发'});
@@ -92,7 +94,7 @@ Page({
     this.setData({sharePreparing:true,shareHint:'正在准备课程封面卡片…'});
     wx.prepareCourseShare(this).then(ready=>{
       if(this.data.course!==course || !this.data.showSharePanel)return;
-      this.setData({sharePreparing:false,shareHint:ready ? '课程封面卡片已准备好' : '封面卡片暂未准备好，请关闭面板后重试'});
+      this.setData({sharePreparing:false,shareHint:ready ? '课程封面链接卡片已准备好' : '课程链接可通过微信菜单发送；封面配置未确认'});
     });
   },
   closeSharePanel() { this.setData({showSharePanel:false,showShareGuide:false}); },

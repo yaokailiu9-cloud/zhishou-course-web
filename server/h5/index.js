@@ -203,7 +203,7 @@ function shareUrlForRequest(req, value) {
   const target = new URL(String(value || ""));
   if (target.origin !== expected.origin || !target.pathname.startsWith("/web")) throw new Error("INPUT:分享地址无效");
   target.hash = "";
-  return target.href;
+  return String(value).split("#")[0];
 }
 
 async function wechatShareConfig(req, value) {

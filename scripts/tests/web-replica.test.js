@@ -831,9 +831,12 @@ test('微信明确拒绝封面卡片配置时不误报准备成功，不降级�
  h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})});
  assert.equal(await h.host.wx.prepareCourseShare(h.host.current),false);
  h.host.current.openSharePanel();await tick();
- assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/重试/);
+ assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/课程链接.*微信菜单/);
  assert.equal(h.document.querySelectorAll('.forward-submit').length,1);
- assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/暂未准备好/);
+ assert.match(h.document.querySelector('.forward-share-error').textContent,/permission denied/);
+ h.document.querySelector('.forward-submit').click();await tick();
+ assert.equal(h.host.current.data.showShareGuide,true);
+ assert.doesNotMatch(h.document.querySelector('.wechat-guide-note').textContent,/将发送.*封面/);
  assert.equal(h.document.querySelector('#modal').open,undefined);
 });
 
@@ -846,7 +849,7 @@ test('网页立即转发显示微信菜单引导，面板不常驻菜单长提�
  h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})});
  h.document.querySelector('.course-forward').click();await tick();
  assert.equal(h.host.current.data.showShareGuide,false);
- assert.equal(h.document.querySelector('.forward-sheet-hint').textContent,'课程封面卡片已准备好');
+ assert.equal(h.document.querySelector('.forward-sheet-hint').textContent,'课程封面链接卡片已准备好');
  assert.equal(h.document.querySelectorAll('.forward-submit').length,1);
  h.document.querySelector('.forward-submit').click();await tick();
  assert.equal(h.host.current.data.showShareGuide,true);
@@ -854,4 +857,40 @@ test('网页立即转发显示微信菜单引导，面板不常驻菜单长提�
  assert.equal(card.imgUrl,'https://cdn.test/phone.jpg');
  h.document.querySelector('.wechat-forward-guide').click();await tick();
  assert.equal(h.host.current.data.showShareGuide,false);assert.equal(h.host.current.data.showSharePanel,true);
+});
+
+
+test('iPhone保留进入文档时的签名地址，安卓使用当前课程地址，换课后重新配置',async()=>{
+ for(const agent of ['MicroMessenger iPhone','MicroMessenger Android']){
+  const h=await host();h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();
+  h.host.current.setData({loading:false,error:'',course:{id:'15',title:'沉迷手机',enabled:true,coverUrl:'https://cdn.test/phone.jpg',chapters:[]}});await tick();
+  h.context.navigator.userAgent=agent;let ready;const signatures=[],cards=[];
+  h.context.wx={config:()=>ready(),ready:fn=>{ready=fn},error(){},updateAppMessageShareData:value=>{cards.push(value);value.success()},updateTimelineShareData(){}};
+  h.context.fetch=async url=>{signatures.push(new URL(String(url),'http://localhost').searchParams.get('url'));return {ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})}};
+  await h.host.wx.prepareCourseShare(h.host.current);
+  assert.equal(signatures[0],agent.includes('iPhone')?'http://localhost/web/':'http://localhost/web/?course=15');
+  assert.equal(h.replacements.at(-1),'http://localhost/web/?course=15#/pages/course-detail/course-detail?id=15');
+  h.host.current.setData({course:{id:'16',title:'该不该使用手机',enabled:true,coverUrl:'https://cdn.test/other.jpg',chapters:[]}});await tick();
+  await h.host.wx.prepareCourseShare(h.host.current);
+  assert.equal(signatures.length,agent.includes('iPhone')?1:2);
+  assert.match(cards.at(-1).link,/course=16#/);
+ }
+});
+
+test('新接口失败时兼容官方菜单分享监听，仍然分享可点击课程链接和课程封面',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=8'});await tick();
+ h.host.current.setData({loading:false,error:'',course:{id:'8',title:'倾诉的陷阱',enabled:true,coverUrl:'https://cdn.test/talk.jpg',chapters:[]}});await tick();
+ h.context.navigator.userAgent='MicroMessenger';let ready,legacy;
+ h.context.wx={config:()=>ready(),ready:fn=>{ready=fn},error(){},updateAppMessageShareData:value=>value.fail({errMsg:'function not exist'}),onMenuShareAppMessage:value=>{legacy=value}};
+ h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})});
+ assert.equal(await h.host.wx.prepareCourseShare(h.host.current),false,'菜单监听注册不是已发送卡片的证明');
+ assert.equal(legacy.title,'倾诉的陷阱');assert.equal(legacy.imgUrl,'https://cdn.test/talk.jpg');
+ assert.equal(legacy.link,'http://localhost/web/?course=8#/pages/course-detail/course-detail?id=8');
+ assert.doesNotMatch(legacy.link,/token|video|data:/);
+});
+
+test('课程转发封面按原图宽高比展示，模板不强制正方形或固定视口高度',()=>{
+ assert.match(read('pages/course-detail/course-detail.wxml'),/class="forward-card-cover"[^>]+mode="widthFix"/);
+ const rule=read('pages/course-detail/course-detail.wxss').match(/\.forward-card-cover\s*\{([^}]+)\}/)[1];
+ assert.match(rule,/height:auto/);assert.doesNotMatch(rule,/aspect-ratio|42vh|max-height/);
 });

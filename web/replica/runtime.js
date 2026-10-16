@@ -1,11 +1,12 @@
 /* Browser host for the preserved mini-program. Source expressions are compiled at build time. */
 (function () {
   const source = window.MiniSource;
+  const wechatEntryUrl = location.href.split('#')[0];
   const buildVersion = new URL(document.currentScript.src).searchParams.get('v');
   const root = document.getElementById('page');
   const modules = {}, definitions = {}, files = new Map(), storage = new Map();
   const app = {globalData:{}};
-  let current = null, renderedPage = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null;
+  let current = null, renderedPage = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null, wechatSignedUrl = '';
   let composition = null, renderDeferred = false;
   // A poll or another setData must never detach an editor while the IME owns it.
   root.addEventListener('compositionstart',event=>{composition={page:current,element:event.target}});
@@ -389,29 +390,49 @@
     wechatSdkLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');const timer=setTimeout(()=>reject(new Error('微信组件加载超时')),12000);script.src='https://res.wx.qq.com/open/js/jweixin-1.6.0.js';script.onload=()=>{clearTimeout(timer);resolve(true)};script.onerror=()=>{clearTimeout(timer);reject(new Error('微信组件加载失败'))};document.head.append(script)}).catch(error=>{wechatSdkLoading=null;throw error});
     return wechatSdkLoading;
   }
+  function shareProblem(page,error){
+    const message=String(error?.errMsg||error?.message||'微信未返回卡片配置结果').slice(0,180);
+    const reason=/invalid signature/i.test(message)?'微信签名验证未通过':/invalid url domain|url not|domain/i.test(message)?'当前域名未通过微信 JS 接口验证':/permission|not exist|not support|offline verifying/i.test(message)?'微信未开放当前网页的封面分享接口':'微信封面分享配置未完成';
+    page.setData({shareError:reason+'（'+message+'）',shareReady:false});
+    console.warn('课程链接卡片配置失败',message);
+  }
   async function prepareWechatShare(page){
     if(!/MicroMessenger/i.test(navigator.userAgent))return false;await loadWechatSdk();
     const classId=shareClassId(page);
     if(page.route!=='pages/course-detail/course-detail'&&session&&(referralContext?.identity!==session||referralContext?.classId!==classId))await getReferralContext(classId);
-    const details=shareDetails(page);
-    if(!wechatShareReady){
-      wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);let response,result;
+    const details=shareDetails(page),videoCourse=page.route==='pages/course-detail/course-detail';
+    // A shared web URL must identify the course before # so WeChat can fetch its cover.
+    if(videoCourse && details.info.path?.includes('?id=') && new URL(location.href).searchParams.get('course')!==String(page.data.course?.id))history.replaceState(null,'',details.url.href);
+    // iOS validates against the URL that opened this document; Android uses the current URL.
+    const signedUrl=/iPhone|iPad|iPod/i.test(navigator.userAgent)?wechatEntryUrl:(videoCourse?details.url.href.split('#')[0]:location.href.split('#')[0]);
+    if(!wechatShareReady||wechatSignedUrl!==signedUrl){
+      wechatSignedUrl=signedUrl;
+      wechatShareReady=(async()=>{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);let response,result;
         try{response=await fetch('/api/h5?action=share-signature&url='+encodeURIComponent(signedUrl),{credentials:'same-origin',signal:controller.signal});result=await response.json();}finally{clearTimeout(timeout)}
-        if(!response.ok||!result.ok)throw new Error(result.message||'微信分享配置失败');
-        await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('微信组件配置超时')),12000);window.wx.ready(()=>{clearTimeout(timer);resolve()});window.wx.error(error=>{clearTimeout(timer);reject(new Error('微信 JS-SDK 配置失败：'+(error?.errMsg||error?.message||'未知原因')))});window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData','scanQRCode']})});return true;})().catch(error=>{wechatShareReady=null;throw error});
+        if(!response.ok||!result.ok)throw new Error(result.message||'微信分享签名请求失败');
+        await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('微信组件配置超时')),12000);window.wx.ready(()=>{clearTimeout(timer);resolve()});window.wx.error(error=>{clearTimeout(timer);reject(new Error(error?.errMsg||error?.message||'微信组件验证失败'))});window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData','onMenuShareAppMessage','scanQRCode']})});return true;})().catch(error=>{if(wechatSignedUrl===signedUrl)wechatShareReady=null;throw error});
     }
     await wechatShareReady;
     if(page!==current)return false;
     const data={title:details.title,desc:details.desc,link:details.url.href,imgUrl:details.image};
-    if(page.route==='pages/course-detail/course-detail'){
-      if(typeof window.wx.updateAppMessageShareData!=='function')throw new Error('微信版本暂不支持课程卡片');
-      await new Promise((resolve,reject)=>{
-        const timer=setTimeout(()=>reject(new Error('课程卡片配置超时')),8000);
-        window.wx.updateAppMessageShareData({...data,success:()=>{clearTimeout(timer);resolve()},fail:error=>{clearTimeout(timer);reject(new Error(error?.errMsg||'课程卡片配置失败'))}});
-      });
+    if(videoCourse){
+      try{
+        await new Promise((resolve,reject)=>{
+          const timer=setTimeout(()=>reject(new Error('课程封面接口响应超时')),8000);
+          const finish=error=>{clearTimeout(timer);error?reject(error):resolve()};
+          try{
+            if(typeof window.wx.updateAppMessageShareData!=='function')throw new Error('updateAppMessageShareData not supported');
+            window.wx.updateAppMessageShareData({...data,success:()=>finish(),fail:error=>finish(new Error(error?.errMsg||'微信拒绝设置分享封面'))});
+          }catch(error){finish(error)}
+        });
+      }catch(error){
+        // Official compatibility listener still sends a web link with title and cover.
+        // Registering it does not confirm that the client has sent a message.
+        try{window.wx.onMenuShareAppMessage?.({...data,fail:failure=>shareProblem(page,failure)})}catch(_){}
+        throw error;
+      }
       try{window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image})}catch(_){}
     }else{
-      // An optional share-menu error must not disable check-in scanning.
       try{window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image})}catch(error){console.warn('微信分享菜单更新失败',error)}
     }
     return true;
@@ -433,11 +454,10 @@
       if(!/MicroMessenger/i.test(navigator.userAgent)){
         page.setData({shareHint:'请在微信内打开后使用微信转发'});return;
       }
-      page.setData({sharePreparing:true,shareHint:'正在准备课程封面卡片…'});
-      try{
-        if(await prepareWechatShare(page))page.setData({showShareGuide:true,shareHint:'课程封面卡片已准备好'});
-      }catch(_){page.setData({shareHint:'封面卡片暂未准备好，请点击“立即转发”重试'});}
-      finally{page.setData({sharePreparing:false});}
+      // The native WeChat menu can always send the current course URL. Do not
+      // hide that menu behind optional cover configuration or an endless retry.
+      page.setData({showShareGuide:true,sharePreparing:false,shareHint:'通过微信菜单发送本课程链接'});
+      prepareWechatShare(page).then(ready=>{if(ready)page.setData({shareReady:true,shareError:'',shareHint:'课程封面链接卡片已准备好'});}).catch(error=>shareProblem(page,error));
       return;
     }
     try{await getReferralContext(shareClassId(page));}catch(_){if(session){wx.showToast({title:'分享信息加载失败，请重试'});return;}}
@@ -544,7 +564,7 @@
       else if(invitation)navigate(invitation.returnTo.split('#')[1],'replace');
       else webLogin();
     },
-    prepareCourseShare:page=>prepareWechatShare(page).catch(()=>false),
+    prepareCourseShare:page=>prepareWechatShare(page).then(ready=>{if(ready)page.setData({shareReady:true,shareError:''});return ready;}).catch(error=>{shareProblem(page,error);return false;}),
     getReferralToken:()=>new URLSearchParams(location.search).get('ref')||'',
     canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,
     requestPayment:o=>{
