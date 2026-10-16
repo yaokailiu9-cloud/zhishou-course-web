@@ -205,6 +205,10 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   assert.equal(wechatVerify.status,200);
   assert.match(wechatVerify.headers['content-type'],/text\/plain/);
   assert.equal(wechatVerify.body.trim(),'GFzG9U79F1ySzmh4');
+  const shareDomainVerify=await request(server,'/MP_verify_KiDe3aPfcIUcyqaY.txt');
+  assert.equal(shareDomainVerify.status,200);
+  assert.match(shareDomainVerify.headers['content-type'],/text\/plain/);
+  assert.equal(shareDomainVerify.body,'KiDe3aPfcIUcyqaY');
   const page=await request(server,'/web/');
   assert.equal(page.status,200);
   assert.match(page.headers['content-type'],/text\/html/);

@@ -88,8 +88,8 @@ function createServer() {
       });
       return;
     }
-    if (url.pathname === '/MP_verify_GFzG9U79F1ySzmh4.txt') {
-      await serveWeb(req, res, '/web/MP_verify_GFzG9U79F1ySzmh4.txt');
+    if (['/MP_verify_GFzG9U79F1ySzmh4.txt', '/MP_verify_KiDe3aPfcIUcyqaY.txt'].includes(url.pathname)) {
+      await serveWeb(req, res, '/web' + url.pathname);
       return;
     }
     if (url.pathname === '/api/h5') {
