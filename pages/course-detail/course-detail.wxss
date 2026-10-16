@@ -259,3 +259,14 @@
 .course-info-section { padding:32rpx 0; border-top:1rpx solid #e6e1da; }
 .course-info-title { display:block; margin-bottom:18rpx; font-family:var(--em-font-serif); font-size:32rpx; line-height:1.5; }
 .course-info-body { display:block; color:#515e5a; font-size:27rpx; line-height:1.9; white-space:pre-wrap; overflow-wrap:break-word; }
+
+.course-share-panel { margin:28rpx 0; padding:28rpx; background:#f1eee7; border:1rpx solid #e4ded2; border-radius:20rpx; }
+.course-share-title { display:block; font-size:28rpx; font-weight:700; line-height:1.5; }
+.course-share-note { display:block; margin-top:8rpx; font-size:23rpx; color:#65716c; line-height:1.6; }
+.course-share-actions { display:flex; gap:16rpx; margin-top:24rpx; }
+.course-share-actions button { flex:1; margin:0; padding:18rpx 12rpx; font-size:26rpx; line-height:1.4; border-radius:12rpx; }
+.course-share-primary { background:#002727; color:#fff; }
+.course-share-secondary { background:#fff; color:#002727; }
+.course-access-note { margin:24rpx 0; color:#65716c; font-size:24rpx; line-height:1.7; }
+
+.hero-mask { pointer-events:none; }

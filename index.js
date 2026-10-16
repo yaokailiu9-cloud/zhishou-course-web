@@ -3,6 +3,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const {handleApi, handleOauthCallback, handlePaymentNotify} = require('./server/h5');
 
+const {courseShareHead} = require('./server/h5/course-share');
+
 const WEB_ROOT = path.join(__dirname, 'web');
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -53,7 +55,8 @@ async function serveWeb(req, res, pathname) {
     return;
   }
   try {
-    const content = await fs.readFile(file);
+    let content = await fs.readFile(file);
+    if (file === path.join(WEB_ROOT, 'index.html')) content = await courseShareHead(content.toString('utf8'), req.url);
     const type = MIME_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
     send(res, 200, req.method === 'HEAD' ? '' : content, {
       'content-type': type,

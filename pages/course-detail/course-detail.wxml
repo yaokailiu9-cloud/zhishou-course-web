@@ -20,7 +20,7 @@
         binderror="onVideoError"
       ></video>
       <block wx:else>
-        <image wx:if="{{course.coverUrl}}" class="hero-cover" src="{{course.coverUrl}}" mode="aspectFill"></image>
+        <image wx:if="{{course.coverUrl}}" class="hero-cover" src="{{course.coverUrl}}" mode="aspectFill" bindtap="previewCover"></image>
         <view wx:else class="course-cover-placeholder"><text class="cover-label">知守 · 共修课堂</text><text class="cover-message">封面待更新</text></view>
         <view wx:if="{{course.coverUrl}}" class="hero-mask"></view>
         <view wx:if="{{course.chapters[0].hasVideo}}" class="play-button" bindtap="previewCourse">
@@ -36,6 +36,12 @@
         <text class="course-title">{{course.title}}</text>
         <text wx:if="{{course.subtitle}}" class="course-subtitle">{{course.subtitle}}</text>
       </view>
+
+      <view class="course-share-panel">
+        <view class="course-share-copy"><text class="course-share-title">把这堂课分享给朋友</text><text class="course-share-note">分享课程图片与介绍，视频按观看权限开放</text></view>
+        <view class="course-share-actions"><button class="course-share-primary" open-type="share">分享课程</button><button class="course-share-secondary" bindtap="copyLink">复制链接</button></view>
+      </view>
+      <view wx:if="{{viewAccess.checked}}" class="course-access-note">{{viewAccess.isPublic ? '本课程对外开放，可直接观看' : (viewAccess.canWatch ? '已为你开通观看' : '可查看课程图片与介绍，视频需开通观看权限')}}</view>
 
       <view wx:for="{{contentSections}}" wx:key="title" class="course-info-section"><text class="course-info-title">{{item.title}}</text><text class="course-info-body">{{item.body}}</text></view>
 

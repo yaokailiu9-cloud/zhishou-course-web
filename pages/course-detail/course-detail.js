@@ -1,4 +1,5 @@
 const zion = require("../../utils/zion");
+const { courseShare, courseWebLink } = require("../../utils/coursePresentation");
 const consultationService = require("../../utils/consultationService");
 // Parents see only whether a course is open now; grant periods stay in the manager console.
 const VIEW_BLOCKED = {
@@ -53,8 +54,9 @@ Page({
   fetchCourse(courseId=this.courseId) {
     this.setData({loading:true,error:"",course:null,isAnswerLibrary:false,viewAccess:{checked:false,canWatch:false,reason:""}});
     return zion.getCourse(courseId).then(r=>{
-      if(!r.course || !r.course.id || !r.course.title){this.setData({error:"这门课程不存在或已下架。"});return;}
+      if(!r.course || !r.course.id || !r.course.title || r.course.enabled === false){this.setData({error:"这门课程不存在或已下架。"});return;}
       this.setData({course:r.course,isAnswerLibrary:isAnswerLibraryCourse(r.course),contentSections:courseSections(r.course.description)});wx.setNavigationBarTitle({title:r.course.title});
+      if (wx.prepareCourseShare) wx.prepareCourseShare(this);
       return this.loadViewAccess(r.course);
     }).catch(()=>this.setData({error:"课程加载失败，请检查网络后重试。"})).finally(()=>this.setData({loading:false}));
   },
@@ -68,10 +70,20 @@ Page({
         const item = lessons[chapter.id] || {};
         return { ...chapter, hasVideo: !!item.hasVideo, videoUrl: access.canWatch ? item.videoUrl || "" : "" };
       });
-      this.setData({ "course.chapters": chapters, viewAccess: { checked: true, canWatch: !!access.canWatch, reason: access.reason || "" } });
+      this.setData({ "course.chapters": chapters, viewAccess: { checked: true, canWatch: !!access.canWatch, reason: access.reason || "", isPublic: !!access.isPublic } });
     }).catch(() => {
       if (this.data.course === course) this.setData({ viewAccess: { checked: false, canWatch: false, reason: "" } });
     });
+  },
+  onShareAppMessage() { return courseShare(this.data.course); },
+  copyLink() {
+    if (!this.data.course) return;
+    if (wx.copyCourseLink) return wx.copyCourseLink(this);
+    wx.setClipboardData({data:courseWebLink(this.data.course)});
+  },
+  previewCover() {
+    const url = this.data.course && this.data.course.coverUrl;
+    if (url) wx.previewImage({current:url,urls:[url]});
   },
   retryCourse(){this.fetchCourse();},
   goBack() {

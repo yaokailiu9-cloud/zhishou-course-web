@@ -10,3 +10,15 @@ test('进群方式可以留空并正常发布',async()=>{const payloads=[];const
 test('公开课列表只展示尚未开始的已发布课程',()=>{const now=Date.parse('2026-09-21T11:00:00+08:00');assert.equal(presentation.isUpcomingClass({...c,starts_at:'2026-09-21T12:00:00+08:00'},now),true);assert.equal(presentation.isUpcomingClass({...c,starts_at:'2026-09-21T10:00:00+08:00'},now),false);assert.equal(presentation.isUpcomingClass({...c,status:'CLOSED',starts_at:'2026-09-21T12:00:00+08:00'},now),false);});
 test('保存后读取失败时保留课程 ID，且不误报截止时间已保存',async()=>{const payloads=[];const p=page('course-edit',async(op,payload)=>{if(op==='SAVE_CLASS'){payloads.push(payload);return {id:c.id};}throw Error('读取超时');});p.data.allowed=true;p.data.loading=false;Object.assign(p.data.form,{title:c.title,date:'2099-01-01',time:'14:00',groupGuide:'工作人员电话联系进群'});await p.submit('PUBLISHED');assert.equal(p.classId,c.id);assert.match(p.data.publishError,/尚未核对到后端数据/);assert.equal(p.data.saveNotice,'');assert.equal(p.onShareAppMessage().path,'/pages/public-class/public-class');assert.equal(payloads.length,1);assert.equal(p.data.form.title,c.title);});
 test('编辑已有课程分享已保存内容，保留历史链接和图片字段',async()=>{const calls=[];const saved={...c,revision:2,signup_url:'https://example.invalid/legacy',share_code:{id:9,url:'https://example.invalid/code'}};const p=page('course-edit',async(op,payload)=>{calls.push({op,payload});return op==='SAVE_CLASS'?{id:c.id}:{classInfo:saved};});p.classId=c.id;await p.refresh();p.input({currentTarget:{dataset:{key:'title'}},detail:{value:'未保存的标题'}});assert.equal(p.onShareAppMessage().title,c.title);await p.submit('DRAFT');const write=calls.find(x=>x.op==='SAVE_CLASS').payload;assert.equal(write.signupUrl,saved.signup_url);assert.equal(write.shareCodeId,9);});
+
+test('视频课程无论公开或受限均可分享封面与介绍，分享内容不包含视频凭据',()=>{
+ for(const publicVideo of [true,false]){
+  const course={id:'1234567890123456',title:'沉迷手机',subtitle:'孩子系列课程',enabled:true,publicVideo,coverUrl:'https://example.invalid/phone.jpg',chapters:[{videoUrl:'https://private.test/video?token=secret'}]};
+  const share=presentation.courseShare(course);
+  assert.equal(share.path,'/pages/course-detail/course-detail?id='+course.id);
+  assert.equal(share.title,course.title);assert.equal(share.imageUrl,course.coverUrl);
+  assert.doesNotMatch(JSON.stringify(share),/private|token|secret/);
+  assert.equal(presentation.courseWebLink(course),'https://www.apply.tianqiwushu.cn/web/?course='+course.id+'#/pages/course-detail/course-detail?id='+course.id);
+ }
+ for(const course of [null,{id:'7',title:'下架',enabled:false}])assert.equal(presentation.courseShare(course).path,'/pages/plaza/plaza');
+});

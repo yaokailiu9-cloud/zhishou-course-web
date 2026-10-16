@@ -379,7 +379,8 @@
   }
   function shareDetails(page){
     const info=page.onShareAppMessage?.()||{};const url=new URL('/web/',location.origin);url.hash='/'+(info.path||page.route).replace(/^\//,'');
-    const ref=referralContext?.identity===session&&referralContext?.canInvite&&referralContext.classId===shareClassId(page)?referralContext.referralToken:'';if(ref)url.searchParams.set('ref',ref);
+    const videoId=info.path?.match(/^\/pages\/course-detail\/course-detail\?id=([1-9][0-9]*)$/)?.[1];if(videoId)url.searchParams.set('course',videoId);
+    const ref=!videoId&&referralContext?.identity===session&&referralContext?.canInvite&&referralContext.classId===shareClassId(page)?referralContext.referralToken:'';if(ref)url.searchParams.set('ref',ref);
     const image=info.imageUrl?new URL(info.imageUrl,location.origin).href:'';
     return {info,url,title:info.title||'知守',desc:info.desc||'查看课程介绍、开课时间与报名信息',image};
   }
@@ -391,7 +392,7 @@
   async function prepareWechatShare(page){
     if(!/MicroMessenger/i.test(navigator.userAgent))return false;await loadWechatSdk();
     const classId=shareClassId(page);
-    if(session&&(referralContext?.identity!==session||referralContext?.classId!==classId))await getReferralContext(classId);
+    if(page.route!=='pages/course-detail/course-detail'&&session&&(referralContext?.identity!==session||referralContext?.classId!==classId))await getReferralContext(classId);
     const details=shareDetails(page);
     if(!wechatShareReady){
       wechatShareReady=(async()=>{const signedUrl=location.href.split('#')[0];const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);let response,result;
@@ -400,6 +401,7 @@
         await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('微信组件配置超时')),12000);window.wx.ready(()=>{clearTimeout(timer);resolve()});window.wx.error(error=>{clearTimeout(timer);reject(new Error('微信 JS-SDK 配置失败：'+(error?.errMsg||error?.message||'未知原因')))});window.wx.config({...result.data,debug:false,jsApiList:['updateAppMessageShareData','updateTimelineShareData','scanQRCode']})});return true;})().catch(error=>{wechatShareReady=null;throw error});
     }
     await wechatShareReady;
+    if(page!==current)return false;
     const data={title:details.title,desc:details.desc,link:details.url.href,imgUrl:details.image};
     // Sharing is optional on the check-in screen; a share-menu failure must not disable scanning.
     try{window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image})}catch(error){console.warn('微信分享菜单更新失败',error)}
@@ -417,6 +419,17 @@
     return image;
   }
   async function share(page){
+    if(page.route==='pages/course-detail/course-detail'){
+      const details=shareDetails(page);
+      try {
+        if(/MicroMessenger/i.test(navigator.userAgent)){
+          if(!await prepareWechatShare(page))return;
+          wx.showModal({title:'分享课程',content:'课程封面和介绍已准备好，点击微信右上角“…”发送给朋友或群。',showCancel:false,confirmText:'知道了'});
+        }else if(navigator.share)await navigator.share({title:details.title,text:details.desc,url:details.url.href});
+        else await wx.setClipboardData({data:details.url.href});
+      }catch(error){if(error.name!=='AbortError')wx.showModal({title:'分享课程',content:'微信分享暂不可用，可以复制课程链接发送给朋友。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:details.url.href})}});}
+      return;
+    }
     try{await getReferralContext(shareClassId(page));}catch(_){if(session){wx.showToast({title:'分享信息加载失败，请重试'});return;}}
     const details=shareDetails(page);try{showReferralPoster({url:details.url.href,title:details.title,name:referralContext?.canInvite?session?.user?.name:''});}
     catch(_){wx.showToast({title:'报名二维码生成失败，请重试'});}
@@ -520,6 +533,7 @@
       else if(invitation)navigate(invitation.returnTo.split('#')[1],'replace');
       else webLogin();
     },
+    copyCourseLink:page=>wx.setClipboardData({data:shareDetails(page).url.href}),
     prepareCourseShare:page=>prepareWechatShare(page).catch(()=>false),
     getReferralToken:()=>new URLSearchParams(location.search).get('ref')||'',
     canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,
@@ -582,7 +596,8 @@
     renderTabbar();refreshChatEntry();
     $('#back-button').onclick=back;
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};
-    const initial=location.hash.slice(1);
+    const courseId=new URLSearchParams(location.search).get('course');
+    const initial=location.hash.slice(1)||(/^[1-9][0-9]*$/.test(courseId||'')?'/pages/course-detail/course-detail?id='+courseId:'');
     const target=aliases[initial]||(parseRoute(initial).route===INVITE_LOGIN&&session?invitation?.returnTo?.split('#')[1]||HOME:initial)||HOME;
     navigate(parseRoute(target).route==='pages/profile/profile'?HOME:target,'replace');
     const error=new URLSearchParams(location.search).get('loginError');if(error)wx.showToast({title:error});

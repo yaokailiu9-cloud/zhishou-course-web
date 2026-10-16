@@ -95,3 +95,18 @@ test('管理端按姓名或手机号尾号查找家长，结果不含停用账�
  const admin=h.run(101,'COURSE_VIEW_ADMIN');
  assert.deepEqual(admin.courses.map(c=>[c.title,c.hasVideo]),[['什么是沟通',true],['倾诉的陷阱',true]]);
 });
+
+test('公开课程向游客、普通家长和代理返回视频，分享参数不能开放其他课程',()=>{
+ const h=harness();h.db.course[0].public_video=true;
+ for(const actor of [null,201,104]){
+  const open=h.run(actor,'COURSE_VIEW_ACCESS',{courseId:14});
+  assert.equal(open.canWatch,true);assert.equal(open.isPublic,true);assert.equal(open.reason,'');
+  assert.equal(open.lessons[0].videoUrl,'https://cdn.test/comm.mp4');
+  const locked=h.run(actor,'COURSE_VIEW_ACCESS',{courseId:8,public_video:true,canWatch:true,share:true});
+  assert.equal(locked.canWatch,false);assert.equal(locked.isPublic,false);assert.doesNotMatch(JSON.stringify(locked),/talk\.mp4/);
+ }
+ h.db.course[0].enabled=false;
+ assert.equal(h.run(null,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false,'下架课程不向游客开放');
+ h.db.course[0].enabled=true;h.db.course[0].public_video=null;
+ assert.equal(h.run(null,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false,'历史空值默认为非公开');
+});

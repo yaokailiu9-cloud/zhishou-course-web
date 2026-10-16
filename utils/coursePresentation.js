@@ -36,4 +36,18 @@ function classShare(c) {
   if(cover)share.imageUrl=cover;
   return share;
 }
-module.exports={classCard,isUpcomingClass,enrollmentCard,dateParts,iso,classShare};
+// Public introductions may be shared even when video access is restricted.
+function courseShare(course) {
+  if (!course || !course.id || !course.title || course.enabled === false)
+    return {title:'知守 · 课程',path:'/pages/plaza/plaza'};
+  const share={title:course.title,path:'/pages/course-detail/course-detail?id='+encodeURIComponent(String(course.id)),
+    desc:String(course.subtitle || '知守课程 · 查看课程图片与介绍').slice(0,120)};
+  if(course.coverUrl)share.imageUrl=course.coverUrl;
+  return share;
+}
+function courseWebLink(course) {
+  const share=courseShare(course);
+  const query=course && course.id && course.enabled !== false ? '?course='+encodeURIComponent(String(course.id)) : '';
+  return 'https://www.apply.tianqiwushu.cn/web/'+query+'#'+share.path;
+}
+module.exports={courseShare,courseWebLink,classCard,isUpcomingClass,enrollmentCard,dateParts,iso,classShare};

@@ -10,7 +10,7 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
   function viewActive(g) { return !g.revoked_at && new Date(g.expires_at).getTime() > Date.now(); }
   function viewRequireManager() { login(s); if (!viewManager) fail('只有管理人员可以开通课程观看'); }
   function viewCourse(value) {
-    var c = gql('query CourseViewCourse($id:bigint!){course_by_pk(id:$id){id title enabled}}', {id:id(value)}).course_by_pk;
+    var c = gql('query CourseViewCourse($id:bigint!){course_by_pk(id:$id){id title enabled public_video}}', {id:id(value)}).course_by_pk;
     if (!c) fail('课程不存在或已下架');
     return c;
   }
@@ -20,14 +20,16 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
   if (op === 'COURSE_VIEW_ACCESS') {
     var course = viewCourse(p.courseId);
     var lessons = gql('query CourseViewLessons($where:course_lesson_bool_exp!){rows:course_lesson(where:$where,order_by:{sort_order:asc},limit:100){id video_url video{id url}}}', {where:eq('course_id', course.id)}).rows || [];
-    var canWatch = viewStaff, reason = '';
-    if (!s.actor.accountId) reason = 'LOGIN';
-    else if (!viewStaff) {
+    // Only the server-stored flag opens video; a share URL never grants access.
+    var isPublic = course.enabled === true && course.public_video === true;
+    var canWatch = isPublic || viewStaff, reason = '';
+    if (!canWatch && !s.actor.accountId) reason = 'LOGIN';
+    else if (!canWatch) {
       var grants = list('course_view_grant', and(eq('viewer_id', s.actor.accountId), eq('course_id', course.id)), 'id expires_at revoked_at', 50);
       canWatch = grants.some(viewActive);
       reason = canWatch ? '' : grants.length ? 'ENDED' : 'NOT_GRANTED';
     }
-    result(s, {canWatch:canWatch, reason:reason, lessons:lessons.map(function(l) {
+    result(s, {canWatch:canWatch, isPublic:isPublic, reason:reason, lessons:lessons.map(function(l) {
       var url = (l.video && l.video.url) || l.video_url || '';
       return {id:String(l.id), hasVideo:!!url, videoUrl:canWatch ? url : ''};
     })});

@@ -782,3 +782,36 @@ test('所有家长共用反馈模板：无审核与历史入口，单档案头�
  p.setData({serviceTab:'feedback',serviceAllCases:[{id:31},{id:32}],serviceMessages:[{id:'feedback-17',content:'家长反馈',timeText:'今天'},{id:'reply-52',content:'老师公开回复',timeText:'今天',isReply:true}]});await tick();assert.ok(h.document.querySelector('button.service-profile'));
  assert.doesNotMatch(h.document.querySelector('.service-chat-content').textContent,/监护专员整理|总监复核|总管终审/);assert.match(h.document.querySelector('.teacher-message').textContent,/老师公开回复/);assert.deepEqual(h.errors,[]);
 });
+
+test('视频课从无hash分享链接直达，展示图片介绍且受限课不播放，复制与系统分享使用本课链接',async()=>{
+ const copied=[],shared=[];
+ const row={id:'15',title:'沉迷手机',subtitle:'孩子系列课程',description:'## 课程介绍\n理解孩子使用手机的原因',enabled:true,cover_image:{url:'https://example.invalid/phone.jpg'},course_lesson:[{id:'25',title:'沉迷手机'}]};
+ const fetch=async(url,options)=>{
+  const input=options?.body?JSON.parse(options.body):{};
+  const data=String(url).includes('action=session')?{ok:true,data:{loggedIn:false}}:input.query?.includes('query GetCourse')?{data:{course_by_pk:row}}:{data:{fz_invoke_action_flow:{result:{ok:true,data:{canWatch:false,isPublic:false,reason:'LOGIN',lessons:[{id:'25',hasVideo:true,videoUrl:''}]}}}}};
+  return {ok:true,status:200,headers:[],json:async()=>data,text:async()=>JSON.stringify(data)};
+ };
+ const h=await host({location:{search:'?course=15'},fetch,navigator:{clipboard:{writeText:async text=>copied.push(text)},share:async value=>shared.push(value)}});await tick();
+ assert.equal(h.host.current.route,'pages/course-detail/course-detail');
+ assert.match(h.document.getElementById('page').textContent,/理解孩子使用手机的原因|视频需开通观看权限/);
+ assert.equal(h.document.querySelector('.hero-cover').getAttribute('src'),row.cover_image.url);
+ assert.equal(h.document.querySelector('#page video'),null);
+ h.document.querySelector('.course-share-secondary').dispatchEvent(new h.Event('click'));await tick();
+ assert.equal(copied[0],'http://localhost/web/?course=15#/pages/course-detail/course-detail?id=15');
+ h.document.querySelector('.course-share-primary').dispatchEvent(new h.Event('click'));await tick();
+ assert.equal(shared[0].title,row.title);assert.equal(shared[0].url,copied[0]);
+ assert.doesNotMatch(shared[0].url,/token|canWatch|ref=/);
+ assert.deepEqual(h.errors,[]);
+});
+
+test('微信课程卡片配置带课程封面，不继承其他代理的报名参数',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=8'});await tick();
+ h.host.current.setData({loading:false,error:'',course:{id:'8',title:'倾诉的陷阱',subtitle:'孩子系列课程',enabled:true,coverUrl:'https://cdn.test/talk.jpg',chapters:[]}});await tick();
+ h.context.navigator.userAgent='MicroMessenger';let ready,card,timeline;
+ h.context.wx={config:()=>ready(),ready:fn=>{ready=fn},error(){},updateAppMessageShareData:value=>{card=value},updateTimelineShareData:value=>{timeline=value}};
+ h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})});
+ await h.host.wx.prepareCourseShare(h.host.current);
+ assert.equal(card.title,'倾诉的陷阱');assert.equal(card.imgUrl,'https://cdn.test/talk.jpg');
+ assert.equal(card.link,'http://localhost/web/?course=8#/pages/course-detail/course-detail?id=8');
+ assert.equal(timeline.link,card.link);assert.equal(timeline.imgUrl,card.imgUrl);
+});
