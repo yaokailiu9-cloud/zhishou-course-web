@@ -55,6 +55,113 @@
     if(v.startsWith('/assets/'))return '/web/replica'+v;
     return /^(https?:|blob:|data:image\/|\/web\/)/i.test(v)?v:'';
   }
+  // Browsers that sniff <video> and add their own download / cloud-save button. WeChat and WeCom never match.
+  function videoDownloadBrowser(ua=navigator.userAgent){
+    return !/MicroMessenger|wxwork/i.test(ua)&&/Quark\/|UCBrowser|UCWEB|UBrowser|baiduboxapp|baidubrowser|BaiduHD|bdbrowser|MQQBrowser|QQBrowser|SogouMobileBrowser|SogouSearch|MetaSr|2345Explorer|Mb2345Browser|LieBaoFast|LBBROWSER|QihooBrowser|QHBrowser|360SE|360EE|MiuiBrowser|HuaweiBrowser|HeyTapBrowser|OppoBrowser|VivoBrowser|Maxthon/i.test(ua);
+  }
+  // Course MP4s play through MediaSource as blob: segments where the browser supports it, so the element never carries a file URL to save.
+  // Any failure switches back to the original direct src at the same position; iPhone (no MediaSource) keeps the direct src.
+  const STREAM_CHUNK=2*1024*1024,STREAM_AHEAD=60,STREAM_BEHIND=30;
+  let mp4boxLoading=null;
+  function loadMp4box(){
+    if(window.MP4Box)return Promise.resolve();
+    return mp4boxLoading||(mp4boxLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/web/replica/mp4box.js?v='+buildVersion;script.onload=()=>window.MP4Box?resolve():reject(new Error('mp4box missing'));script.onerror=()=>reject(new Error('mp4box load failed'));document.head.append(script)}).catch(error=>{mp4boxLoading=null;throw error}));
+  }
+  function canStreamVideo(src){
+    try{return !!window.MediaSource?.isTypeSupported?.('video/mp4; codecs="avc1.42E01E"')&&/^https:\/\//i.test(src)&&/\.mp4$/i.test(new URL(src).pathname)}catch(_){return false}
+  }
+  function attachMedia(video){
+    video._mediaAttached=true;const src=video._mediaSrc;
+    if(videoDownloadBrowser())return;
+    if(!canStreamVideo(src)){video.setAttribute('src',src);return}
+    video._mediaStream=true;
+    streamVideo(video,src).catch(()=>directVideo(video,src));
+  }
+  function directVideo(video,src){
+    if(!video._mediaStream)return;
+    video._mediaStream=false;video._stopStream?.();
+    const time=video.currentTime||0,resume=!video.paused;
+    video.setAttribute('src',src);
+    if(time||resume)video.addEventListener('loadedmetadata',()=>{if(time)video.currentTime=time;if(resume)video.play().catch(()=>{})},{once:true});
+  }
+  async function streamVideo(video,src){
+    await loadMp4box();
+    if(!video._mediaStream)return;
+    const source=new MediaSource(),file=window.MP4Box.createFile(),tracks=[],url=URL.createObjectURL(source);
+    let offset=0,ended=false,fetching=false,controller=null,ready=false,stopped=false,retries=0,stall=null;
+    const boot=setTimeout(()=>{if(!ready)fail()},15000);
+    function fail(){if(!stopped)directVideo(video,src)}
+    function stop(){
+      if(stopped)return;stopped=true;controller?.abort();clearTimeout(stall);clearTimeout(boot);URL.revokeObjectURL(url);
+      video.removeEventListener('timeupdate',tick);video.removeEventListener('seeking',seek);video.removeEventListener('waiting',wait);video.removeEventListener('error',fail);
+    }
+    video._stopStream=stop;
+    const ahead=()=>{const b=video.buffered,t=video.currentTime;for(let i=0;i<b.length;i++)if(b.start(i)<=t+0.3&&t<b.end(i))return b.end(i)-t;return 0};
+    function finish(){if(ended&&ready&&source.readyState==='open'&&tracks.every(track=>!track.queue.length&&!track.buffer.updating)){try{source.endOfStream()}catch(_){}}}
+    function flush(track){
+      if(stopped||track.buffer.updating||!track.queue.length||source.readyState==='closed')return;
+      const item=track.queue[0];
+      try{track.buffer.appendBuffer(item.data);track.queue.shift();if(item.sample)file.releaseUsedSamples(track.id,item.sample)}
+      catch(error){if(error.name==='QuotaExceededError')evict(5);else fail()}
+    }
+    function evict(behind){
+      const keep=video.currentTime-behind;
+      for(const track of tracks){const b=track.buffer.buffered;if(!track.buffer.updating&&b.length&&b.start(0)<keep-(behind===5?0:10)){try{track.buffer.remove(0,keep)}catch(_){}}}
+    }
+    async function pump(){
+      if(stopped||fetching||ended)return;
+      if(!video.isConnected)return stop();
+      if(ready&&ahead()>STREAM_AHEAD)return;
+      fetching=true;const start=offset,request=controller=new AbortController();
+      try{
+        const response=await fetch(src,{headers:{Range:'bytes='+start+'-'+(start+STREAM_CHUNK-1)},signal:request.signal,credentials:'omit'});
+        if(response.status===416)ended=true;
+        else if(response.status!==206)throw new Error('range');
+        else{
+          const data=await response.arrayBuffer();
+          if(stopped)return;
+          if(request.signal.aborted){fetching=false;return pump()}
+          data.fileStart=start;
+          const next=file.appendBuffer(data);
+          if(data.byteLength<STREAM_CHUNK){ended=true;file.flush()}
+          else offset=typeof next==='number'&&next>start?next:start+data.byteLength;
+        }
+        retries=0;
+      }catch(error){
+        fetching=false;
+        if(stopped)return;
+        if(request.signal.aborted)return pump();
+        if(++retries<=3){setTimeout(pump,1000*retries);return}
+        return fail();
+      }
+      fetching=false;finish();pump();
+    }
+    function seek(){
+      if(!ready||stopped||ahead()>0.5)return;
+      const target=file.seek(video.currentTime,true);
+      tracks.forEach(track=>{track.queue=track.queue.filter(item=>!item.sample)});
+      ended=false;offset=target.offset;controller?.abort();
+      if(!fetching)pump();
+    }
+    function tick(){if(!video.isConnected)return stop();clearTimeout(stall);evict(STREAM_BEHIND);tracks.forEach(flush);pump()}
+    function wait(){clearTimeout(stall);stall=setTimeout(()=>{if(!stopped&&!video.paused&&video.readyState<3)fail()},15000)}
+    file.onError=fail;
+    file.onReady=info=>{
+      const list=[...info.videoTracks,...info.audioTracks],types=list.map(track=>(track.video?'video':'audio')+'/mp4; codecs="'+track.codec+'"');
+      if(!info.videoTracks.length||!types.every(type=>MediaSource.isTypeSupported(type)))return fail();
+      try{
+        if(info.duration&&info.timescale)source.duration=info.duration/info.timescale;
+        list.forEach((track,i)=>{const entry={id:track.id,buffer:source.addSourceBuffer(types[i]),queue:[]};entry.buffer.addEventListener('updateend',()=>{flush(entry);finish()});tracks.push(entry);file.setSegmentOptions(track.id,entry,{nbSamples:track.video?120:180})});
+        file.initializeSegmentation().forEach(segment=>{segment.user.queue.push({data:segment.buffer});flush(segment.user)});
+        ready=true;clearTimeout(boot);file.start();
+      }catch(_){fail()}
+    };
+    file.onSegment=(id,entry,data,sample)=>{if(stopped)return;entry.queue.push({data,sample});flush(entry)};
+    video.addEventListener('timeupdate',tick);video.addEventListener('seeking',seek);video.addEventListener('waiting',wait);video.addEventListener('error',fail);
+    await new Promise((resolve,reject)=>{source.addEventListener('sourceopen',resolve,{once:true});video.src=url;setTimeout(()=>reject(new Error('sourceopen')),8000)});
+    URL.revokeObjectURL(url);
+    pump();
+  }
   function dispatch(page, name, element, native, detail={}) {
     if(!name||typeof page[name]!=='function')return;
     const target={dataset:{...element.dataset},id:element.id};
@@ -152,7 +259,7 @@
       for(const [key,val]of Object.entries(values)){
         if(key.startsWith('wx:')||/^(bind|catch)/.test(key)||['range','range-key','mode','value','open-type','form-type','url','scroll-into-view','scroll-top','canvas-id','type'].includes(key))continue;
         if(['disabled','hidden','controls','autoplay','loop','muted','scroll-y','scroll-x'].includes(key)){if(val!==false&&val!=null&&val!=='false'){el.setAttribute(key,'');if(key in el)el[key]=true}continue}
-        if(key==='src'||key==='poster'){if(safeUrl(val))el.setAttribute(key,safeUrl(val));continue}
+        if(key==='src'||key==='poster'){if(safeUrl(val)){if(tag==='video'&&key==='src')el._mediaSrc=safeUrl(val);else el.setAttribute(key,safeUrl(val))}continue}
         if(key==='style'){el.style.cssText=String(val||'').replace(/(-?\d+(?:\.\d+)?)rpx/g,'calc($1 * var(--rpx))');continue}
         if(val!=null)el.setAttribute(key,String(val));
       }
@@ -174,6 +281,7 @@
       for(const [key,handler]of Object.entries(values)){
         const match=key.match(/^(bind|catch):?(.+)$/);if(!match||!eventMap[match[2]])continue;
         const emit=event=>{
+          if(match[2]==='error'&&el._mediaStream)return;
           if(match[1]==='catch')event.stopPropagation();
           if(match[2]==='confirm'&&(event.key!=='Enter'||event.isComposing||event.keyCode===229||composition?.element===el))return;
           if(match[2]==='scrolltolower'&&el.scrollTop+el.clientHeight<el.scrollHeight-30)return;
@@ -267,12 +375,16 @@
     const focused=document.activeElement,focusKey=focused?.dataset.focusKey,start=focused?.selectionStart,end=focused?.selectionEnd;
     const scrollers=[...root.querySelectorAll('scroll-view')].map(el=>({id:el.id,top:el.scrollTop}));
     const canvases=renderedPage===current?new Map([...root.querySelectorAll('canvas[id]')].map(el=>[el.id,el])):new Map();
+    const videos=renderedPage===current?new Map([...root.querySelectorAll('video[id]')].map(el=>[el.id,el])):new Map();
     const fragment=document.createDocumentFragment();current._inputKeys=new Map();
     children(source.pages[current.route].tree,current.data,fragment,current);
     // setData rerenders the DOM; keep already drawn ticket/referral QR bitmaps.
     for(const placeholder of fragment.querySelectorAll('canvas[id]')){const drawn=canvases.get(placeholder.id);if(drawn){drawn.className=placeholder.className;drawn.setAttribute('style',placeholder.getAttribute('style')||'');placeholder.replaceWith(drawn);}}
+    // Keep the course video element too, so a setData during playback never restarts the lesson.
+    for(const placeholder of fragment.querySelectorAll('video[id]')){const playing=videos.get(placeholder.id);if(playing&&playing._mediaSrc===placeholder._mediaSrc){playing.className=placeholder.className;playing.setAttribute('style',placeholder.getAttribute('style')||'');placeholder.replaceWith(playing);}}
     const keptEditor=replaceKeepingEditor(fragment,focused);
     if(!keptEditor)root.replaceChildren(fragment);root.dataset.route=current.route;
+    root.querySelectorAll('video').forEach(video=>{if(video._mediaSrc&&!video._mediaAttached)attachMedia(video)});
     renderedPage=current;
     if(current.route==='pages/chat/chat'){
       const composer=root.querySelector('.chat-composer');
@@ -555,6 +667,7 @@
     login:o=>{complete(o,{errMsg:'网页请通过公众号授权登录'},true);webLogin()},
     isH5:true,
     isWechatBrowser:()=>/MicroMessenger/i.test(navigator.userAgent),
+    isVideoDownloadBrowser:()=>videoDownloadBrowser(),
     getReferralContext,
     showReferralPoster,
     getInvitationError:()=>invitationError,

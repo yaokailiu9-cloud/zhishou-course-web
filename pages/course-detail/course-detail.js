@@ -1,5 +1,5 @@
 const zion = require("../../utils/zion");
-const { courseShare } = require("../../utils/coursePresentation");
+const { courseShare, courseWebLink } = require("../../utils/coursePresentation");
 const consultationService = require("../../utils/consultationService");
 const auth = require("../../utils/auth");
 // Parents see only whether a course is open now; grant periods stay in the manager console.
@@ -160,6 +160,17 @@ Page({
         showCancel: this.data.viewAccess.reason === "LOGIN",
         confirmText: this.data.viewAccess.reason === "LOGIN" ? "去登录" : "知道了",
         success: (res) => { if (res.confirm && this.data.viewAccess.reason === "LOGIN") wx.switchTab({ url: "/pages/profile/profile" }); }
+      });
+      return;
+    }
+    // Quark, UC and similar browsers offer their own one-tap download, so the web build only plays where that menu is absent.
+    if (wx.isVideoDownloadBrowser && wx.isVideoDownloadBrowser()) {
+      const link = courseWebLink(this.data.course);
+      wx.showModal({
+        title: "请在微信中观看",
+        content: "当前浏览器会提供视频下载，为保护课程版权，请复制链接后在微信中打开观看。",
+        confirmText: "复制链接",
+        success: (res) => { if (res.confirm) wx.setClipboardData({ data: link }); }
       });
       return;
     }

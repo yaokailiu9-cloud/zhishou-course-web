@@ -914,3 +914,32 @@ test('课程视频网页端去掉浏览器下载入口并显示观看者水印�
  h.host.wx.removeStorageSync('zionJwt');h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
  assert.equal(h.document.querySelector('.video-watermark').textContent,'知守 · 访客观看');
 });
+
+const openPublicLesson=async h=>{
+ const course={id:'15',title:'沉迷手机',description:'',enabled:true,chapters:[{id:'24',title:'沉迷手机',duration:'11:42',sortOrder:1,hasVideo:true,videoUrl:''}]};
+ h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
+ h.host.requireModule('utils/consultationService').call=async()=>({canWatch:true,isPublic:true,reason:'',lessons:[{id:'24',hasVideo:true,videoUrl:'https://cdn.test/phone.mp4'}]});
+ h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();await tick();
+ h.host.current.videoContext={play(){},pause(){},stop(){}};
+ h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+};
+test('夸克、UC 等自带视频下载的浏览器不加载视频，提示复制链接到微信观看',async()=>{
+ for(const ua of['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Quark/7.4.5.2088','Mozilla/5.0 (Linux; U; Android 14) UCBrowser/17.2.0.1380 Mobile Safari/537.36','Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36 baiduboxapp/13.60.0.10','Mozilla/5.0 (Linux; Android 14) MQQBrowser/14.8 Mobile Safari/537.36']){
+  const h=await host({navigator:{userAgent:ua}});await openPublicLesson(h);
+  assert.equal(!!h.document.querySelector('#courseVideo'),false,ua);assert.equal(h.host.current.data.showVideoPlayer,false);
+  const modal=h.document.querySelector('#modal');assert.equal(modal.open,true);assert.match(modal.textContent,/请在微信中观看/);assert.match(modal.textContent,/复制链接/);
+ }
+});
+test('微信（含安卓 X5 的 MQQBrowser 标识）和普通浏览器照常播放课程视频',async()=>{
+ for(const ua of['Mozilla/5.0 (Linux; Android 14) MQQBrowser/6.2 TBS/046011 Mobile Safari/537.36 MicroMessenger/8.0.49','Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 MicroMessenger/8.0.50','Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1']){
+  const h=await host({navigator:{userAgent:ua}});await openPublicLesson(h);
+  assert.equal(h.document.querySelector('#courseVideo')?.getAttribute('src'),'https://cdn.test/phone.mp4',ua);
+ }
+});
+test('播放中页面 setData 不会重建视频元素，避免课程从头播放',async()=>{
+ const h=await host();await openPublicLesson(h);
+ const video=h.document.querySelector('#courseVideo');
+ h.host.current.setData({showSharePanel:true});await tick();
+ assert.equal(h.document.querySelector('#courseVideo')===video,true);
+ h.host.current.stopVideo();await tick();assert.equal(!!h.document.querySelector('#courseVideo'),false);
+});
