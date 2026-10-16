@@ -19,6 +19,7 @@ Page({
     feedbackUnread: 0,
     serviceProvider: null,
     managerAccessLoading: false,
+    managerAccessError: "",
     managerStats: [
       { label: "服务中", value: 0 },
       { label: "已完成", value: 0 }
@@ -80,7 +81,8 @@ Page({
         avatarText: "客",
         isServiceProvider: false,
         serviceProvider: null,
-        managerAccessLoading: false
+        managerAccessLoading: false,
+        managerAccessError: ""
       });
       return;
     }
@@ -132,7 +134,7 @@ Page({
     const generation = this.accessGeneration = (this.accessGeneration || 0) + 1;
     const current = () => generation === this.accessGeneration && viewSession.current(identity);
     // No cached role or referral response may expose staff/agent menus.
-    this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessLoading:!!(userInfo && userInfo.id)});
+    this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessError:"",managerAccessLoading:!!(userInfo && userInfo.id)});
     if (!userInfo || !userInfo.id || String(userInfo.id) !== identity.accountId) return null;
     try {
       const provider = await zion.getServiceProviderByAccount(userInfo.id);
@@ -163,10 +165,12 @@ Page({
     } catch (error) {
       if (!current()) return null;
       console.warn('loadManagerAccess failed', error);
-      this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessLoading:false});
+      this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessLoading:false,managerAccessError:'身份读取失败，请重试。'});
       return null;
     }
   },
+
+  retryManagerAccess() { return this.loadManagerAccess(this.data.userInfo); },
 
   onChooseLoginAvatar(event) {
     this.setData({ "loginForm.avatarUrl": event.detail.avatarUrl || "" });
@@ -301,6 +305,7 @@ Page({
       isServiceProvider: false,
       serviceProvider: null,
       managerAccessLoading: false,
+      managerAccessError: "",
       managerStats: [
         { label: "服务中", value: 0 },
         { label: "已完成", value: 0 }

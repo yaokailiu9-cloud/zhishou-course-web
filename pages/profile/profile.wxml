@@ -62,8 +62,9 @@
         <view class="photo-accent"></view>
       </view>
       <text class="profile-name">{{userInfo.nickName || serviceProvider.displayName || '微信用户'}}</text>
-      <text class="profile-badge">{{isServiceProvider ? '已认证 · 在线服务' : '客户中心'}}</text>
+      <text class="profile-badge">{{managerAccessLoading ? '正在确认身份…' : managerAccessError ? '身份暂未确认' : isServiceProvider ? '管理' : canInvite ? '代理' : '用户'}}</text>
       <text wx:if="{{isServiceProvider}}" class="profile-quote">你的工作身份已启用，可进入工作台查看会话。</text>
+      <button wx:if="{{managerAccessError}}" class="edit-button" bindtap="retryManagerAccess">重新确认身份</button>
       <button class="edit-button" bindtap="goEditProfile">编辑个人资料</button>
     </view>
 

@@ -65,3 +65,16 @@ test('我的页、聊天页和工作台都使用同一个管理身份判断，�
   const chat = fs.readFileSync(path.join(root, 'pages/chat/chat.js'), 'utf8');
   assert.doesNotMatch(chat, /storedProviderId/);
 });
+
+
+test('管理身份查询不依赖被账号隐私权限拦截的关联展示字段', async () => {
+  const {zion, requests} = loadZion(({query}) => {
+    assert.doesNotMatch(query, /\baccount\s*\{/);
+    return {service_provider:[{id:14,account_id:19,display_name:'管理',service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true}]};
+  });
+  const provider = await zion.getServiceProviderByAccount('19');
+  assert.equal(zion.isManagerProvider(provider),true);
+  assert.equal(provider.accountId,'19');
+  assert.equal(provider.displayName,'管理');
+  assert.equal(requests[0].variables.accountId,19);
+});

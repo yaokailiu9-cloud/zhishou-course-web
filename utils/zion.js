@@ -945,6 +945,8 @@ function listServiceProviders(filters = {}) {
 function getServiceProviderByAccount(accountId) {
   if (!accountId) return Promise.resolve(null);
 
+  // Identity must not depend on access to related account display fields.
+  // The provider already stores its display name and avatar.
   const query = `
     query GetServiceProviderByAccount($accountId: bigint!) {
       service_provider(where: { _eq: { bigint_operand: { left_operand: { column: account_id }, right_operand: { literal: $accountId } } } }, limit: 1) {
@@ -968,11 +970,6 @@ function getServiceProviderByAccount(accountId) {
         active_session_count
         today_income
         total_income
-        account {
-          username
-          wechat_nickname
-          wechat_avatar_url
-        }
       }
     }
   `;

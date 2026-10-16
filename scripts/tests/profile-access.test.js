@@ -40,3 +40,23 @@ test('管理会话列表失败不会把已确认的管理身份变成普通用�
  test('不能用上个账号的资料在新登录身份下恢复特权入口',async()=>{
  const h=setup();h.storage.userInfo={id:'40'};await h.page.loadManagerAccess({id:'39'});assert.equal(h.pending.length,0);assert.equal(h.page.data.canInvite,false);
  });
+
+
+test('身份读取失败显示待确认并可重试，不误报为普通用户', async()=>{
+ const h=setup();let job=h.page.loadManagerAccess(h.storage.userInfo);
+ assert.equal(h.page.data.managerAccessLoading,true);assert.equal(h.page.data.managerAccessError,'');
+ h.pending[0].reject(Error('字段无访问权限'));await job;
+ assert.equal(h.page.data.managerAccessLoading,false);assert.ok(h.page.data.managerAccessError);assert.equal(h.page.data.isServiceProvider,false);
+ h.page.data.userInfo=h.storage.userInfo;job=h.page.retryManagerAccess();
+ assert.equal(h.page.data.managerAccessLoading,true);assert.equal(h.page.data.managerAccessError,'');
+ h.pending[1].resolve({...agent,serviceKind:'STAFF',canReply:true,canAcceptOrder:true});await job;
+ assert.equal(h.page.data.isServiceProvider,true);assert.equal(h.page.data.managerAccessError,'');
+});
+
+test('只有后端成功确认无工作身份时才显示用户，加载和错误有独立文案',async()=>{
+ const h=setup(),job=h.page.loadManagerAccess(h.storage.userInfo);h.pending[0].resolve(null);await job;
+ assert.equal(h.page.data.managerAccessError,'');assert.equal(h.page.data.managerAccessLoading,false);assert.equal(h.page.data.isServiceProvider,false);
+ const template=fs.readFileSync(path.resolve(__dirname,'../../pages/profile/profile.wxml'),'utf8');
+ assert.match(template,/managerAccessLoading \? '正在确认身份…' : managerAccessError \? '身份暂未确认'/);
+ assert.match(template,/bindtap="retryManagerAccess"/);
+});
