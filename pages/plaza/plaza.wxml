@@ -7,8 +7,8 @@
     <view class="library-intro">
       <text class="library-kicker">按主题学习</text>
       <view class="library-tabs">
-        <button class="library-tab {{activeCategory === 'growth' ? 'active' : ''}}" data-category="growth" bindtap="selectCategory" aria-label="查看个人成长课程" aria-selected="{{activeCategory === 'growth'}}"><text>个人成长</text><text class="tab-count">{{personalGrowthCourses.length}} 门课程</text></button>
         <button class="library-tab {{activeCategory === 'child' ? 'active' : ''}}" data-category="child" bindtap="selectCategory" aria-label="查看孩子系列课程" aria-selected="{{activeCategory === 'child'}}"><text>孩子系列课程</text><text class="tab-count">{{childCourses.length}} 门课程</text></button>
+        <button class="library-tab {{activeCategory === 'growth' ? 'active' : ''}}" data-category="growth" bindtap="selectCategory" aria-label="查看个人成长课程" aria-selected="{{activeCategory === 'growth'}}"><text>个人成长</text><text class="tab-count">{{personalGrowthCourses.length}} 门课程</text></button>
       </view>
     </view>
     <view class="library-series-cover" aria-label="{{activeCategory === 'growth' ? '个人成长系列课程封面' : '孩子教育系列课程封面'}}">
