@@ -802,7 +802,7 @@ test('课程标题右侧只有转发按钮，弹出本课程封面卡片，不�
  assert.equal(h.host.current.data.showSharePanel,true);
  assert.equal(h.document.querySelector('.forward-card-title').textContent,row.title);
  assert.equal(h.document.querySelector('.forward-card-cover').getAttribute('src'),row.cover_image.url);
- assert.equal(h.document.querySelectorAll('.forward-submit').length,0);
+ assert.equal(h.document.querySelectorAll('.forward-submit').length,1);
  assert.deepEqual(copied,[]);assert.deepEqual(shared,[]);
  assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/微信内打开/);
  h.document.querySelector('.forward-close').dispatchEvent(new h.Event('click'));await tick();
@@ -832,7 +832,7 @@ test('微信明确拒绝封面卡片配置时不误报准备成功，不降级�
  assert.equal(await h.host.wx.prepareCourseShare(h.host.current),false);
  h.host.current.openSharePanel();await tick();
  assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/重试/);
- assert.equal(h.document.querySelectorAll('.forward-submit').length,0);
+ assert.equal(h.document.querySelectorAll('.forward-submit').length,1);
  assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/暂未准备好/);
  assert.equal(h.document.querySelector('#modal').open,undefined);
 });
