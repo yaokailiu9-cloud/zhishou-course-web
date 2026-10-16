@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-16",
+  "project_ex_id": "JmAxbl1MMe4",
+  "source_archive": "默认标题__2026-10-16+14_18_44.zip",
+  "description": "将压缩包内十张原始 PNG 按标题对应现有课程，上传 Zion 并更新 course.cover_image_id。未修改课程标题、内容、分类或前端代码。原文件解压至本地 outputs/course-covers-2026-10-16/。",
+  "covers": [
+    {
+      "filename": "01.png",
+      "course_id": 7,
+      "title": "奖励的误区",
+      "previous_cover_image_id": 1020000000000023,
+      "cover_image_id": 1020000000000035,
+      "sha256": "e63271751ecf7d516abb389b9ccfbd50392f9bf7773097372c65a135734917b4",
+      "bytes": 6044290
+    },
+    {
+      "filename": "02.png",
+      "course_id": 8,
+      "title": "倾诉的陷阱",
+      "previous_cover_image_id": 1020000000000025,
+      "cover_image_id": 1020000000000036,
+      "sha256": "70a10ff43f00950fad4e6b909166ea1a0b991dadfc790d410a8ddc8e267bd84f",
+      "bytes": 3035090
+    },
+    {
+      "filename": "03.png",
+      "course_id": 9,
+      "title": "安全感从哪来",
+      "previous_cover_image_id": 1020000000000026,
+      "cover_image_id": 1020000000000037,
+      "sha256": "19faf2652b24e5011cbeafe59d47b716229b17248c30d39c6d5ee0d23715cbe5",
+      "bytes": 3365932
+    },
+    {
+      "filename": "04.png",
+      "course_id": 10,
+      "title": "为何知错不改",
+      "previous_cover_image_id": 1020000000000027,
+      "cover_image_id": 1020000000000038,
+      "sha256": "3338c592a694184a7eb71290666e6ed8c23eaf11f2416fb4ce34b1e2e5b9fb61",
+      "bytes": 5085720
+    },
+    {
+      "filename": "05.png",
+      "course_id": 11,
+      "title": "问题从哪里来",
+      "previous_cover_image_id": 1020000000000029,
+      "cover_image_id": 1020000000000039,
+      "sha256": "a37329b85d5eb75cb5202064b534ff357e62f06a653c777543d3e1475afb0b99",
+      "bytes": 3715435
+    },
+    {
+      "filename": "06.png",
+      "course_id": 12,
+      "title": "判断准确吗",
+      "previous_cover_image_id": 1020000000000030,
+      "cover_image_id": 1020000000000040,
+      "sha256": "a030a62ef73997325e775905d73f67a42b3f54be0ecf48c15bc9cfecfd34c457",
+      "bytes": 5188685
+    },
+    {
+      "filename": "07.png",
+      "course_id": 13,
+      "title": "有没有选择权",
+      "previous_cover_image_id": 1020000000000031,
+      "cover_image_id": 1020000000000041,
+      "sha256": "0075efb3e3ca37773e498a28a7304429b5b691d3610dec7551cc5d983cd38731",
+      "bytes": 6236158
+    },
+    {
+      "filename": "08.png",
+      "course_id": 14,
+      "title": "什么是沟通",
+      "previous_cover_image_id": 1020000000000032,
+      "cover_image_id": 1020000000000042,
+      "sha256": "5bacd6e52fdf02ddb57fe8b8285dbbf4a45dced6d32c6fbaf753493bcbb63d9e",
+      "bytes": 4820980
+    },
+    {
+      "filename": "09.png",
+      "course_id": 15,
+      "title": "沉迷手机",
+      "previous_cover_image_id": 1020000000000033,
+      "cover_image_id": 1020000000000043,
+      "sha256": "91b8855ce4e3e9d8172787954a051842f085949ff54770a4c9954c934175b8ba",
+      "bytes": 5799146
+    },
+    {
+      "filename": "10.png",
+      "course_id": 16,
+      "title": "该不该使用手机",
+      "previous_cover_image_id": 1020000000000034,
+      "cover_image_id": 1020000000000044,
+      "sha256": "c4629c4681ff3c2e76940e6bae1f4872e73fe3314359869c0b97c64db9c2fb5f",
+      "bytes": 5015413
+    }
+  ]
+}
