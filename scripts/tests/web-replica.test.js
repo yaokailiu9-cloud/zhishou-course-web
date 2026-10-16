@@ -836,3 +836,22 @@ test('微信明确拒绝封面卡片配置时不误报准备成功，不降级�
  assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/暂未准备好/);
  assert.equal(h.document.querySelector('#modal').open,undefined);
 });
+
+
+test('网页立即转发显示微信菜单引导，面板不常驻菜单长提示，卡片仍采用课程封面',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();
+ h.host.current.setData({loading:false,error:'',course:{id:'15',title:'沉迷手机',enabled:true,coverUrl:'https://cdn.test/phone.jpg',chapters:[]}});await tick();
+ h.context.navigator.userAgent='MicroMessenger';let ready,card;
+ h.context.wx={config:()=>ready(),ready:fn=>{ready=fn},error(){},updateAppMessageShareData:value=>{card=value;value.success()},updateTimelineShareData(){}};
+ h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})});
+ h.document.querySelector('.course-forward').click();await tick();
+ assert.equal(h.host.current.data.showShareGuide,false);
+ assert.equal(h.document.querySelector('.forward-sheet-hint').textContent,'课程封面卡片已准备好');
+ assert.equal(h.document.querySelectorAll('.forward-submit').length,1);
+ h.document.querySelector('.forward-submit').click();await tick();
+ assert.equal(h.host.current.data.showShareGuide,true);
+ assert.match(h.document.querySelector('.wechat-forward-guide').textContent,/发送给朋友/);
+ assert.equal(card.imgUrl,'https://cdn.test/phone.jpg');
+ h.document.querySelector('.wechat-forward-guide').click();await tick();
+ assert.equal(h.host.current.data.showShareGuide,false);assert.equal(h.host.current.data.showSharePanel,true);
+});

@@ -23,6 +23,7 @@ Page({
     playingVideoUrl: "",
     showVideoPlayer: false,
     showSharePanel: false,
+    showShareGuide: false,
     sharePreparing: false,
     shareHint: "转发时将附上这门课程的封面",
     viewAccess: { checked: false, canWatch: false, reason: "" }
@@ -81,21 +82,22 @@ Page({
   onShareAppMessage() { return courseShare(this.data.course); },
   openSharePanel() {
     if (!this.data.course) return;
-    this.setData({showSharePanel:true,sharePreparing:false,shareHint:'转发时将附上这门课程的封面'});
+    this.setData({showSharePanel:true,showShareGuide:false,sharePreparing:false,shareHint:'转发时将附上这门课程的封面'});
     if (!wx.isH5) return;
     if(wx.isWechatBrowser && !wx.isWechatBrowser()){
-      this.setData({shareHint:'请在微信内打开课程，点击右上角“…” → 发送给朋友'});
+      this.setData({shareHint:'请在微信内打开后使用微信转发'});
       return;
     }
     const course=this.data.course;
     this.setData({sharePreparing:true,shareHint:'正在准备课程封面卡片…'});
     wx.prepareCourseShare(this).then(ready=>{
       if(this.data.course!==course || !this.data.showSharePanel)return;
-      this.setData({sharePreparing:false,shareHint:ready ? '点击微信右上角“…” → 发送给朋友，转发带封面的课程卡片' : '封面卡片暂未准备好，请关闭面板后重试'});
+      this.setData({sharePreparing:false,shareHint:ready ? '课程封面卡片已准备好' : '封面卡片暂未准备好，请关闭面板后重试'});
     });
   },
-  closeSharePanel() { this.setData({showSharePanel:false}); },
+  closeSharePanel() { this.setData({showSharePanel:false,showShareGuide:false}); },
   keepSharePanelOpen() {},
+  closeShareGuide() { this.setData({showShareGuide:false}); },
   previewCover() {
     const url = this.data.course && this.data.course.coverUrl;
     if (url) wx.previewImage({current:url,urls:[url]});

@@ -281,3 +281,10 @@
 .forward-sheet-hint { display:block; margin:calc(22 * var(--rpx)) 0; color:#65716c; font-size:calc(24 * var(--rpx)); line-height:1.7; text-align:center; }
 
 .forward-submit { display:block; width:100%; margin:0; padding:calc(26 * var(--rpx)); background:#002727; color:#fff; border-radius:calc(999 * var(--rpx)); font-size:calc(29 * var(--rpx)); line-height:1.4; font-weight:700; }
+
+.wechat-forward-guide { position:fixed; inset:0; z-index:110; box-sizing:border-box; padding:calc(24 * var(--rpx)) calc(40 * var(--rpx)); background:rgba(5,17,14,.86); color:#fff; text-align:right; }
+.wechat-guide-arrow { display:block; width:calc(100 * var(--rpx)); height:calc(150 * var(--rpx)); margin:0 0 calc(24 * var(--rpx)) auto; }
+.wechat-guide-title { display:block; margin-bottom:calc(20 * var(--rpx)); font-size:calc(38 * var(--rpx)); font-weight:700; line-height:1.5; }
+.wechat-guide-body { display:block; font-size:calc(32 * var(--rpx)); line-height:1.7; }
+.wechat-guide-note { display:block; margin-top:calc(18 * var(--rpx)); font-size:calc(25 * var(--rpx)); line-height:1.7; color:#dce9e2; }
+.wechat-guide-dismiss { display:block; margin-top:calc(56 * var(--rpx)); font-size:calc(24 * var(--rpx)); color:#aebeb4; }

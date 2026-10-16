@@ -429,7 +429,15 @@
   }
   async function share(page){
     if(page.route==='pages/course-detail/course-detail'){
-      page.openSharePanel();
+      if(!page.data.showSharePanel){page.openSharePanel();return;}
+      if(!/MicroMessenger/i.test(navigator.userAgent)){
+        page.setData({shareHint:'请在微信内打开后使用微信转发'});return;
+      }
+      page.setData({sharePreparing:true,shareHint:'正在准备课程封面卡片…'});
+      try{
+        if(await prepareWechatShare(page))page.setData({showShareGuide:true,shareHint:'课程封面卡片已准备好'});
+      }catch(_){page.setData({shareHint:'封面卡片暂未准备好，请点击“立即转发”重试'});}
+      finally{page.setData({sharePreparing:false});}
       return;
     }
     try{await getReferralContext(shareClassId(page));}catch(_){if(session){wx.showToast({title:'分享信息加载失败，请重试'});return;}}

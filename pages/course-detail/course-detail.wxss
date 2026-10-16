@@ -281,3 +281,10 @@
 .forward-sheet-hint { display:block; margin:22rpx 0; color:#65716c; font-size:24rpx; line-height:1.7; text-align:center; }
 
 .forward-submit { display:block; width:100%; margin:0; padding:26rpx; background:#002727; color:#fff; border-radius:999rpx; font-size:29rpx; line-height:1.4; font-weight:700; }
+
+.wechat-forward-guide { position:fixed; inset:0; z-index:110; box-sizing:border-box; padding:24rpx 40rpx; background:rgba(5,17,14,.86); color:#fff; text-align:right; }
+.wechat-guide-arrow { display:block; width:100rpx; height:150rpx; margin:0 0 24rpx auto; }
+.wechat-guide-title { display:block; margin-bottom:20rpx; font-size:38rpx; font-weight:700; line-height:1.5; }
+.wechat-guide-body { display:block; font-size:32rpx; line-height:1.7; }
+.wechat-guide-note { display:block; margin-top:18rpx; font-size:25rpx; line-height:1.7; color:#dce9e2; }
+.wechat-guide-dismiss { display:block; margin-top:56rpx; font-size:24rpx; color:#aebeb4; }

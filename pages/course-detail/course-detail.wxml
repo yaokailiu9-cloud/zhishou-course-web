@@ -71,4 +71,8 @@
       <button class="forward-submit" open-type="share" disabled="{{sharePreparing}}">立即转发</button>
     </view>
   </view>
+  <view wx:if="{{showShareGuide}}" class="wechat-forward-guide" bindtap="closeShareGuide" aria-label="关闭微信转发引导">
+    <image class="wechat-guide-arrow" src="/assets/icons/wechat-forward-guide.svg" mode="aspectFit"></image>
+    <text class="wechat-guide-title">点击右上角“…”</text><text class="wechat-guide-body">选择“发送给朋友”</text><text class="wechat-guide-note">将发送这门课的标题和封面卡片</text><text class="wechat-guide-dismiss">轻触任意位置返回</text>
+  </view>
 </view>
