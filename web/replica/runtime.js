@@ -166,6 +166,8 @@
         el.value=values.value??'';
       }
       if(tag==='canvas'){el.id=values['canvas-id']||values.id;el.width=256;el.height=256}
+      // Course videos: drop the browser's own download entry and long-press save menu; speed, casting and fullscreen stay available.
+      if(tag==='video'){el.setAttribute('controlslist','nodownload');el.setAttribute('playsinline','');el.setAttribute('webkit-playsinline','');el.setAttribute('x5-playsinline','');el.draggable=false;on('contextmenu',event=>event.preventDefault())}
       if(tag==='scroll-view'&&values['scroll-y']!==undefined)el.setAttribute('scroll-y','');
       if(tag==='scroll-view'&&values['scroll-x']!==undefined)el.setAttribute('scroll-x','');
       const eventMap={tap:'click',input:'input',change:'change',confirm:'keydown',submit:'submit',error:'error',load:'load',blur:'blur',focus:'focus',longpress:'contextmenu',scroll:'scroll',scrolltolower:'scroll',touchstart:'touchstart',touchend:'touchend'};

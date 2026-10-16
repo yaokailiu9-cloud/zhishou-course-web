@@ -894,3 +894,23 @@ test('课程转发封面按原图宽高比展示，模板不强制正方形或�
  const rule=read('pages/course-detail/course-detail.wxss').match(/\.forward-card-cover\s*\{([^}]+)\}/)[1];
  assert.match(rule,/height:auto/);assert.doesNotMatch(rule,/aspect-ratio|42vh|max-height/);
 });
+
+test('课程视频网页端去掉浏览器下载入口并显示观看者水印，不影响播放控件',async()=>{
+ const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:'201',nickName:'家长甲',phone:'13800000000'});
+ const course={id:'15',title:'沉迷手机',description:'',chapters:[{id:'24',title:'沉迷手机',duration:'11:42',sortOrder:1,hasVideo:true,videoUrl:''}]};
+ h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
+ h.host.requireModule('utils/consultationService').call=async()=>({canWatch:true,isPublic:true,reason:'',lessons:[{id:'24',hasVideo:true,videoUrl:'https://cdn.test/phone.mp4'}]});
+ h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();await tick();
+ h.host.current.videoContext={play(){},pause(){},stop(){}};
+ h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+ const video=h.document.querySelector('#courseVideo');
+ assert.equal(video.getAttribute('src'),'https://cdn.test/phone.mp4');assert.equal(video.hasAttribute('controls'),true);
+ assert.equal(video.getAttribute('controlslist'),'nodownload');assert.equal(video.hasAttribute('playsinline'),true);
+ const menu=new h.Event('contextmenu',{cancelable:true});video.dispatchEvent(menu);assert.equal(menu.defaultPrevented,true);
+ const mark=h.document.querySelector('.video-watermark');
+ assert.equal(mark.getAttribute('aria-hidden'),'true');assert.equal(mark.textContent,'知守 · 家长甲 · ID 201');assert.doesNotMatch(mark.textContent,/138/);
+ const css=fs.readFileSync(path.join(__dirname,'../../web/replica/course-detail.css'),'utf8');
+ assert.match(css,/\.video-watermark \{[^}]*pointer-events: none/);
+ h.host.wx.removeStorageSync('zionJwt');h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+ assert.equal(h.document.querySelector('.video-watermark').textContent,'知守 · 访客观看');
+});

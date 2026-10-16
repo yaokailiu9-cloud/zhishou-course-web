@@ -123,6 +123,34 @@
   border-radius: 10rpx;
 }
 
+/* Viewer watermark: drifts by CSS only (setData would rebuild the web video), never takes taps, stays clear of the control bar. */
+.video-watermark {
+  position: absolute;
+  inset: 0 0 96rpx;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.video-watermark-text {
+  position: absolute;
+  top: 30%;
+  left: 8%;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 22rpx;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-shadow: 0 0 4rpx rgba(0, 0, 0, 0.45);
+  animation: video-watermark-drift 72s steps(1, end) infinite;
+}
+
+@keyframes video-watermark-drift {
+  0% { top: 30%; left: 8%; }
+  25% { top: 62%; left: 50%; }
+  50% { top: 48%; left: 12%; }
+  75% { top: 20%; left: 52%; }
+  100% { top: 30%; left: 8%; }
+}
+
 .detail-main {
   padding: 28rpx var(--em-page-x) 0;
 }

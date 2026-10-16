@@ -1,6 +1,7 @@
 const zion = require("../../utils/zion");
 const { courseShare } = require("../../utils/coursePresentation");
 const consultationService = require("../../utils/consultationService");
+const auth = require("../../utils/auth");
 // Parents see only whether a course is open now; grant periods stay in the manager console.
 const VIEW_BLOCKED = {
   LOGIN: { title: "请先登录", content: "登录后才能观看已为你开通的课程。" },
@@ -8,6 +9,13 @@ const VIEW_BLOCKED = {
   NOT_GRANTED: { title: "暂不能观看", content: "本课程需要老师为你开通后才能观看，请联系老师。" }
 };
 const { courseSections, isAnswerLibraryCourse } = require("../../utils/courseContent");
+// Watermark names the viewer (never their phone) so a screen recording can be traced back.
+function viewerMark() {
+  const user = auth.getLoggedInUser();
+  if (!user) return "知守 · 访客观看";
+  const name = String(user.nickName || user.wechat_nickname || "学员").slice(0, 10);
+  return `知守 · ${name} · ID ${user.id}`;
+}
 
 Page({
   data: {
@@ -22,6 +30,7 @@ Page({
     activeChapterIndex: -1,
     playingVideoUrl: "",
     showVideoPlayer: false,
+    viewerMark: "",
     showSharePanel: false,
     showShareGuide: false,
     shareReady: false,
@@ -158,7 +167,8 @@ Page({
     this.setData({
       activeChapterIndex: index,
       playingVideoUrl: chapter.videoUrl,
-      showVideoPlayer: true
+      showVideoPlayer: true,
+      viewerMark: viewerMark()
     }, () => {
       if (!this.videoContext) {
         this.videoContext = wx.createVideoContext("courseVideo", this);
