@@ -9,12 +9,12 @@ function home(listCourses){
  page.data=structuredClone(page.data);page.setData=function(patch){Object.assign(this.data,patch);};return{page,navigations};
 }
 test('首页将个人成长与孩子系列分开，并直接推荐两堂手机课',async()=>{
- const rows=[{id:'1234567890123456',title:'二阶线上共修',badge:'付费',coverUrl:''},{id:'2',title:'原有课程',badge:'热门'},{id:'8',title:'奖励的误区',subtitle:'《答案库》系列课程',coverUrl:'https://example.invalid/cover.jpg'},{id:'15',title:'沉迷手机',subtitle:'《答案库》系列课程'},{id:'16',title:'该不该使用手机',subtitle:'《答案库》系列课程'},{id:'17',title:'责善',subtitle:'个人成长课程'}];
+ const rows=[{id:'1234567890123456',title:'二阶线上共修',badge:'付费',coverUrl:''},{id:'2',title:'原有课程',badge:'热门'},{id:'8',title:'奖励的误区',subtitle:'《答案库》系列课程',coverUrl:'https://example.invalid/cover.jpg'},{id:'16',title:'该不该使用手机',subtitle:'《答案库》系列课程'},{id:'15',title:'沉迷手机',subtitle:'《答案库》系列课程'},{id:'17',title:'责善',subtitle:'个人成长课程'}];
  const {page,navigations}=home(async()=>({courses:rows}));await page.fetchFeaturedCourses();
- assert.deepEqual(page.data.childCourses.map(course=>course.id),['8','15','16']);
+ assert.deepEqual(page.data.childCourses.map(course=>course.id),['8','16','15']);
  assert.deepEqual(page.data.personalGrowthCourses.map(course=>course.id),['17']);
- assert.deepEqual(page.data.phoneCourses.map(course=>course.title),['沉迷手机','该不该使用手机']);
- page.openCourse({currentTarget:{dataset:{id:rows[4].id}}});page.goSearch();
+ assert.deepEqual(Array.from(page.data.phoneCourses,course=>course.title),['沉迷手机','该不该使用手机']);
+ page.openCourse({currentTarget:{dataset:{id:'16'}}});page.goSearch();
  assert.deepEqual(navigations,['/pages/course-detail/course-detail?id=16','/pages/search/search?mode=courses']);
 });
 test('首页后端读取失败可重试，不使用人物或虚构课程作为兜底',async()=>{

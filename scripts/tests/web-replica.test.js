@@ -269,6 +269,11 @@ test('loop rendering and conditional states preserve user input and search filte
   assert.equal(homePage.querySelectorAll('.home-growth-card').length,1);
   assert.deepEqual([...homePage.querySelectorAll('.home-topic-card .topic-title')].map(node=>node.textContent),['沉迷手机','该不该使用手机']);
   assert.equal(h.document.querySelectorAll('.series-entry').length,1);
+  const homeOrder=[...homePage.querySelectorAll('.series-entry,.home-topic-card,.home-growth-card')];
+  assert.ok(homeOrder[0].classList.contains('series-entry'));
+  assert.deepEqual(homeOrder.slice(1,3).map(node=>node.querySelector('.topic-title').textContent),['沉迷手机','该不该使用手机']);
+  assert.ok(homeOrder[3].classList.contains('home-growth-card'));
+  for(const card of homePage.querySelectorAll('.home-topic-card'))assert.equal(card.querySelector('.topic-cover-image').getAttribute('src'),'https://example.invalid/cover.png');
   assert.doesNotMatch(h.document.getElementById('page').textContent,/奖励的误区|倾诉的陷阱/);
   homePage.querySelector('[aria-label="查看沉迷手机"]').dispatchEvent(new h.Event('click'));await tick();
   assert.equal(h.host.current.route,'pages/course-detail/course-detail');assert.equal(h.host.current.options.id,'15');
@@ -294,6 +299,14 @@ test('loop rendering and conditional states preserve user input and search filte
   assert.equal(h.document.querySelector('.library-search-input').value,'');
   h.document.querySelector('[aria-label="查看责善"]').dispatchEvent(new h.Event('click'));await tick();
   assert.equal(h.host.current.options.id,'17');
+  h.host.wx.switchTab({url:'/pages/index/index'});await tick();
+  h.document.querySelector('[aria-label="查看孩子系列课程"]').dispatchEvent(new h.Event('click'));await tick();
+  assert.equal(h.host.current.data.activeCategory,'child','从首页进入系列时不会停留在上次的个人成长分类');
+  assert.equal(h.document.querySelectorAll('.course-grid .course-card').length,10);
+  assert.equal(h.host.wx.getStorageSync('courseLibraryCategory'),'');
+  h.host.wx.switchTab({url:'/pages/index/index'});await tick();
+  h.document.querySelector('[aria-label="查看该不该使用手机"]').dispatchEvent(new h.Event('click'));await tick();
+  assert.equal(h.host.current.route,'pages/course-detail/course-detail');assert.equal(h.host.current.options.id,'16');
 });
 test('网页表单等待中文输入法组词完成后再更新页面',async()=>{
   const h=await host();h.host.wx.navigateTo({url:'/pages/course-edit/course-edit'});await tick();

@@ -36,6 +36,37 @@
   <view wx:elif="{{courseError}}" class="loading-notice"><text>{{courseError}}</text><button class="retry-button" bindtap="fetchFeaturedCourses">重新加载</button></view>
   <block wx:else>
     <view class="section-head">
+      <view><text class="section-kicker">亲子关系 · 孩子成长</text><text class="section-title">孩子系列课程</text></view>
+      <text class="section-note">答案库系列</text>
+    </view>
+    <view class="home-course-list">
+      <view wx:if="{{childCourses.length}}" class="home-course-card series-entry" bindtap="goChildSeries" aria-label="查看孩子系列课程">
+        <view class="home-course-cover">
+          <image class="home-course-image" src="/assets/course-covers/child-education.png" mode="aspectFit"/>
+        </view>
+        <view class="home-course-body">
+          <text class="series-entry-kicker">《答案库》系列课程</text>
+          <text class="home-course-title">探索更多孩子成长主题</text>
+          <view class="series-entry-footer"><text>孩子系列 · {{childCourses.length}} 门</text><text class="series-entry-action">查看全部课程</text></view>
+        </view>
+      </view>
+      <view wx:if="{{phoneCourses.length}}" class="home-topic-list">
+        <view wx:for="{{phoneCourses}}" wx:key="id" class="home-topic-card" data-id="{{item.id}}" bindtap="openCourse" aria-label="查看{{item.title}}">
+          <view class="topic-cover">
+            <image wx:if="{{item.coverUrl}}" class="topic-cover-image" src="{{item.coverUrl}}" mode="aspectFill"/>
+            <view wx:else class="topic-cover-fallback"><text>{{item.title}}</text></view>
+          </view>
+          <view class="topic-body">
+            <text class="topic-label">手机主题 · 孩子系列</text>
+            <text class="topic-title">{{item.title}}</text>
+            <view class="topic-footer"><text>{{item.durationText}}</text><text>进入课程 ↗</text></view>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{!childCourses.length}}" class="loading-notice">孩子系列课程准备中</view>
+    </view>
+
+    <view class="section-head">
       <view><text class="section-kicker">从自己开始 · 持续成长</text><text class="section-title">个人成长课程</text></view>
     </view>
     <view class="home-series-cover" aria-label="个人成长系列课程封面">
@@ -48,31 +79,6 @@
         <view class="growth-footer"><text>{{item.durationText}}</text><text>进入课程 ↗</text></view>
       </view>
       <view wx:if="{{!personalGrowthCourses.length}}" class="loading-notice">个人成长课程准备中</view>
-    </view>
-
-    <view class="section-head">
-      <view><text class="section-kicker">亲子关系 · 孩子成长</text><text class="section-title">孩子系列课程</text></view>
-      <text class="section-note">答案库系列</text>
-    </view>
-    <view class="home-course-list">
-      <view wx:if="{{phoneCourses.length}}" class="home-topic-list">
-        <view wx:for="{{phoneCourses}}" wx:key="id" class="home-topic-card" data-id="{{item.id}}" bindtap="openCourse" aria-label="查看{{item.title}}">
-          <text class="topic-label">手机主题 · 孩子系列</text>
-          <text class="topic-title">{{item.title}}</text>
-          <view class="topic-footer"><text>{{item.durationText}}</text><text>查看课程 ↗</text></view>
-        </view>
-      </view>
-      <navigator wx:if="{{childCourses.length}}" class="home-course-card series-entry" url="/pages/plaza/plaza" open-type="switchTab" aria-label="查看孩子系列课程">
-        <view class="home-course-cover">
-          <image class="home-course-image" src="/assets/course-covers/child-education.png" mode="aspectFit"/>
-        </view>
-        <view class="home-course-body">
-          <text class="series-entry-kicker">《答案库》系列课程</text>
-          <text class="home-course-title">探索更多孩子成长主题</text>
-          <view class="series-entry-footer"><text>孩子系列 · {{childCourses.length}} 门</text><text class="series-entry-action">查看全部课程</text></view>
-        </view>
-      </navigator>
-      <view wx:if="{{!childCourses.length}}" class="loading-notice">孩子系列课程准备中</view>
     </view>
   </block>
 </view>

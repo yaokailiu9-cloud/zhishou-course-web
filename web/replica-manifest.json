@@ -34,11 +34,11 @@
     "pages/support/support"
   ],
   "sha256": {
-    "pages/index/index.js": "433f3418b5c9f52ccc6c6ddc01ad9531db26aa4dd78f6f5234502296d5604622",
-    "pages/index/index.wxml": "3b4df7e3468e321ba73e1cd76cace7f6015c82179d2948f95790515557f23b99",
-    "pages/index/index.wxss": "45e67c997f69321988c63913abeb6c08bd0dada7b0a708150a8e7850c338257f",
+    "pages/index/index.js": "e1bd1b3484a6cb67a232af1513ff938182936b8c1aa380dd588c582cd5eec89d",
+    "pages/index/index.wxml": "18198b31fd1c0ffe122e767d5512f953351ff79c25581dfab45f1a654bee930e",
+    "pages/index/index.wxss": "2b40c5369ee5cec5cb80c69a13cf0169d6c874f05e8fbd8eb4a54bf3c20be9a4",
     "pages/index/index.json": "2c728cc275cad57201431c201d07ef269461e778694f2be33c75c1af5c5794f3",
-    "pages/plaza/plaza.js": "751c33dcba66f6b300629010efa6b7d1114b066a0ba377293c53f3d0b5a7af2e",
+    "pages/plaza/plaza.js": "99d9efae7ef82dfb3f1aed442e5b2a55d280d72656d6be48cf6c3bc82c20deae",
     "pages/plaza/plaza.wxml": "6299d9f9768f3d4b23736f67f20a228b06705735babb8b92136f97a121bbb9a8",
     "pages/plaza/plaza.wxss": "007387db5e726658b9cd9ec5162270a3874d1d7e09b8f605091d1df144c5d498",
     "pages/plaza/plaza.json": "3bb9dadce615635f65ad15f3e3c93e0ab9120fe3a2b17a81990bc710f5633df8",

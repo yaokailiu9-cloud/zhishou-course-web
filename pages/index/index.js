@@ -67,6 +67,11 @@ Page({
     wx.switchTab({ url: "/pages/plaza/plaza" });
   },
 
+  goChildSeries() {
+    wx.setStorageSync("courseLibraryCategory", "child");
+    wx.switchTab({ url: "/pages/plaza/plaza" });
+  },
+
   goSearch() {
     wx.navigateTo({ url: "/pages/search/search?mode=courses" });
   },
@@ -80,7 +85,7 @@ Page({
       this.setData({
         childCourses,
         personalGrowthCourses: list.filter(isPersonalGrowthCourse),
-        phoneCourses: childCourses.filter(course=>PHONE_COURSE_TITLES.includes(course.title))
+        phoneCourses: PHONE_COURSE_TITLES.map(title=>childCourses.find(course=>course.title===title)).filter(Boolean)
       });
     } catch (_) {
       this.setData({childCourses:[],personalGrowthCourses:[],phoneCourses:[],courseError:"课程暂时加载失败，请重试。"});

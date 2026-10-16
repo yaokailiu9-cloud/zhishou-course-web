@@ -21,6 +21,11 @@ Page({
 
   onShow() {
     wx.showTabBar({ animation: false });
+    const requestedCategory = wx.getStorageSync("courseLibraryCategory");
+    if (requestedCategory === "child" || requestedCategory === "growth") {
+      wx.removeStorageSync("courseLibraryCategory");
+      this.selectCategory({currentTarget:{dataset:{category:requestedCategory}}});
+    }
   },
 
   setCustomNav() {
