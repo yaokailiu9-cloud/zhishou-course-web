@@ -1,13 +1,16 @@
 const zion = require("../../utils/zion");
-const { isAnswerLibraryCourse } = require("../../utils/courseContent");
+const { isAnswerLibraryCourse, isPersonalGrowthCourse } = require("../../utils/courseContent");
 
 Page({
   data: {
     statusBarHeight: 54,
     navHeight: 104,
     navPaddingRight: 180,
-    featuredCourse: null,
+    activeCategory: "child",
+    childCourses: [],
+    personalGrowthCourses: [],
     visibleCourses: [],
+    searchKeyword: "",
     loading: true, error: ""
   },
 
@@ -46,7 +49,7 @@ Page({
           this.setData({ loading: false }, () => this.refreshCourses());
           return;
         }
-        this.allCourses=[];this.setData({loading:false,visibleCourses:[],featuredCourse:null});
+        this.allCourses=[];this.setData({loading:false,childCourses:[],personalGrowthCourses:[],visibleCourses:[]});
       })
       .catch(() => {
         this.setData({loading:false,error:"课程加载失败，请检查网络后重试。"});
@@ -54,9 +57,39 @@ Page({
   },
 
   refreshCourses() {
-    const visibleCourses = (this.allCourses || []).filter(isAnswerLibraryCourse);
-    const featuredCourse = visibleCourses.find((item) => item.badge) || visibleCourses[0] || null;
-    this.setData({ visibleCourses, featuredCourse });
+    const courses = this.allCourses || [];
+    const childCourses = courses.filter(isAnswerLibraryCourse);
+    const personalGrowthCourses = courses.filter(isPersonalGrowthCourse);
+    this.setData({
+      childCourses,
+      personalGrowthCourses,
+      visibleCourses: this.filterCourses(this.data.activeCategory, this.data.searchKeyword, childCourses, personalGrowthCourses)
+    });
+  },
+
+  filterCourses(category, keyword, childCourses=this.data.childCourses, personalGrowthCourses=this.data.personalGrowthCourses) {
+    const courses = category === "growth" ? personalGrowthCourses : childCourses;
+    const search = String(keyword || "").trim().toLowerCase();
+    return search ? courses.filter(course=>String(course.title || "").toLowerCase().includes(search)) : courses;
+  },
+
+  selectCategory(event) {
+    const activeCategory = event.currentTarget.dataset.category;
+    if (activeCategory !== "growth" && activeCategory !== "child") return;
+    this.setData({
+      activeCategory,
+      searchKeyword: "",
+      visibleCourses: this.filterCourses(activeCategory, "")
+    });
+  },
+
+  onSearchInput(event) {
+    const searchKeyword = event.detail.value || "";
+    this.setData({searchKeyword,visibleCourses:this.filterCourses(this.data.activeCategory,searchKeyword)});
+  },
+
+  clearSearch() {
+    this.setData({searchKeyword:"",visibleCourses:this.filterCourses(this.data.activeCategory,"")});
   },
 
   openCourse(event) {

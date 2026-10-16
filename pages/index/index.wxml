@@ -14,7 +14,7 @@
 
   <view class="public-class-entry">
     <view class="hero-arch"></view>
-    <text class="public-class-kicker">知守 · 公开课堂</text>
+    <text class="public-class-kicker">公开课程 · 知守课堂</text>
     <text class="public-class-title">透过现象看本质，\n父母有道，孩子有路。</text>
     <text class="public-class-desc">从一堂课开始学习与沟通。\n报名费用以各场次页面显示为准。</text>
     <view class="public-class-actions">
@@ -32,25 +32,45 @@
     <text class="search-text">搜索共修课程与学习主题</text>
   </view>
 
-  <view class="section-head">
-    <view><text class="section-kicker">父母学习 · 同伴共修</text><text class="section-title">《答案库》系列课程</text></view>
-    <text class="section-note">自愿参与 · 持续践行</text>
-  </view>
+  <view wx:if="{{loadingCourses}}" class="loading-notice">正在加载课程…</view>
+  <view wx:elif="{{courseError}}" class="loading-notice"><text>{{courseError}}</text><button class="retry-button" bindtap="fetchFeaturedCourses">重新加载</button></view>
+  <block wx:else>
+    <view class="section-head">
+      <view><text class="section-kicker">从自己开始 · 持续成长</text><text class="section-title">个人成长课程</text></view>
+    </view>
+    <view class="home-growth-list">
+      <view wx:for="{{personalGrowthCourses}}" wx:key="id" class="home-growth-card" data-id="{{item.id}}" bindtap="openCourse" aria-label="查看{{item.title}}">
+        <text class="growth-label">个人成长</text>
+        <text class="growth-title">{{item.title}}</text>
+        <view class="growth-footer"><text>{{item.durationText}}</text><text>进入课程 ↗</text></view>
+      </view>
+      <view wx:if="{{!personalGrowthCourses.length}}" class="loading-notice">个人成长课程准备中</view>
+    </view>
 
-  <view class="home-course-list">
-    <view wx:if="{{loadingCourses}}" class="loading-notice">正在加载课程…</view>
-    <view wx:elif="{{courseError}}" class="loading-notice"><text>{{courseError}}</text><button class="retry-button" bindtap="fetchFeaturedCourses">重新加载</button></view>
-    <view wx:elif="{{!featuredCourses.length}}" class="loading-notice">共修课程准备中，可先查看最新课程场次。</view>
-    <navigator wx:else class="home-course-card series-entry" url="/pages/plaza/plaza" open-type="switchTab" aria-label="查看答案库系列课程">
-      <view class="home-course-cover">
-        <image wx:if="{{featuredCourses[0].coverUrl}}" class="home-course-image" src="{{featuredCourses[0].coverUrl}}" mode="aspectFill"/>
-        <view wx:else class="course-cover-placeholder"><text class="cover-message">答案库</text></view>
+    <view class="section-head">
+      <view><text class="section-kicker">亲子关系 · 孩子成长</text><text class="section-title">孩子系列课程</text></view>
+      <text class="section-note">答案库系列</text>
+    </view>
+    <view class="home-course-list">
+      <view wx:if="{{phoneCourses.length}}" class="home-topic-list">
+        <view wx:for="{{phoneCourses}}" wx:key="id" class="home-topic-card" data-id="{{item.id}}" bindtap="openCourse" aria-label="查看{{item.title}}">
+          <text class="topic-label">手机主题 · 孩子系列</text>
+          <text class="topic-title">{{item.title}}</text>
+          <view class="topic-footer"><text>{{item.durationText}}</text><text>查看课程 ↗</text></view>
+        </view>
       </view>
-      <view class="home-course-body">
-        <text class="series-entry-kicker">认知改变世界</text>
-        <text class="home-course-title">答案库</text>
-        <view class="series-entry-footer"><text>系列课程 · {{featuredCourses.length}} 门</text><text class="series-entry-action">查看系列课程</text></view>
-      </view>
-    </navigator>
-  </view>
+      <navigator wx:if="{{childCourses.length}}" class="home-course-card series-entry" url="/pages/plaza/plaza" open-type="switchTab" aria-label="查看孩子系列课程">
+        <view class="home-course-cover">
+          <image wx:if="{{childCourses[0].coverUrl}}" class="home-course-image" src="{{childCourses[0].coverUrl}}" mode="aspectFill"/>
+          <view wx:else class="course-cover-placeholder"><text class="cover-message">答案库</text></view>
+        </view>
+        <view class="home-course-body">
+          <text class="series-entry-kicker">《答案库》系列课程</text>
+          <text class="home-course-title">探索更多孩子成长主题</text>
+          <view class="series-entry-footer"><text>孩子系列 · {{childCourses.length}} 门</text><text class="series-entry-action">查看全部课程</text></view>
+        </view>
+      </navigator>
+      <view wx:if="{{!childCourses.length}}" class="loading-notice">孩子系列课程准备中</view>
+    </view>
+  </block>
 </view>

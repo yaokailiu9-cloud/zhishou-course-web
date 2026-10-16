@@ -1,7 +1,9 @@
 const zion = require("../../utils/zion");
 const chatContext = require("../../utils/chatContext");
 const auth = require("../../utils/auth");
-const { isAnswerLibraryCourse } = require("../../utils/courseContent");
+const { isAnswerLibraryCourse, isPersonalGrowthCourse } = require("../../utils/courseContent");
+
+const PHONE_COURSE_TITLES = ["沉迷手机", "该不该使用手机"];
 
 Page({
   goCustomerPortal() {
@@ -16,7 +18,9 @@ Page({
     statusBarHeight: 54,
     navHeight: 104,
     navPaddingRight: 180,
-    featuredCourses: [],
+    childCourses: [],
+    personalGrowthCourses: [],
+    phoneCourses: [],
     loadingCourses: false,
     courseError: "",
     userInfo: {},
@@ -72,9 +76,14 @@ Page({
     try {
       const response = await zion.listCourses({limit:50});
       const list = Array.isArray(response.courses) ? response.courses : [];
-      this.setData({featuredCourses:list.filter(course=>isAnswerLibraryCourse(course)||course.badge==='付费')});
+      const childCourses = list.filter(isAnswerLibraryCourse);
+      this.setData({
+        childCourses,
+        personalGrowthCourses: list.filter(isPersonalGrowthCourse),
+        phoneCourses: childCourses.filter(course=>PHONE_COURSE_TITLES.includes(course.title))
+      });
     } catch (_) {
-      this.setData({featuredCourses:[],courseError:"课程暂时加载失败，请重试。"});
+      this.setData({childCourses:[],personalGrowthCourses:[],phoneCourses:[],courseError:"课程暂时加载失败，请重试。"});
     } finally {
       this.setData({loadingCourses:false});
     }

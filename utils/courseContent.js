@@ -14,9 +14,13 @@ function courseSections(description) {
   flush();
   return sections;
 }
-// Single place for the backend subtitle that marks 《答案库》 series courses.
+// Existing backend subtitles identify the two recorded-course categories.
 const ANSWER_LIBRARY_SUBTITLE='《答案库》系列课程';
+const PERSONAL_GROWTH_SUBTITLE='个人成长课程';
 function isAnswerLibraryCourse(course) {
   return !!course && course.subtitle===ANSWER_LIBRARY_SUBTITLE;
 }
-module.exports={courseSections,ANSWER_LIBRARY_SUBTITLE,isAnswerLibraryCourse};
+function isPersonalGrowthCourse(course) {
+  return !!course && course.subtitle===PERSONAL_GROWTH_SUBTITLE;
+}
+module.exports={courseSections,ANSWER_LIBRARY_SUBTITLE,PERSONAL_GROWTH_SUBTITLE,isAnswerLibraryCourse,isPersonalGrowthCourse};

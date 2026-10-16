@@ -7,6 +7,16 @@
 .library-kicker { display:block; margin-bottom:8px; color:#80714e; font-size:12px; letter-spacing:2px; }
 .library-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .library-title { font-size:24px; font-weight:600; line-height:1.4; }
+.library-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.library-tab { display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; min-width:0; min-height:86px; margin:0; padding:14px; border:1px solid #e5ded2; border-radius:10px; background:#fff; color:#20322d; font-size:17px; font-weight:600; text-align:left; }
+.library-tab.active { border-color:#002f30; background:#002f30; color:#fff; }
+.tab-count { margin-top:8px; color:#858986; font-size:12px; font-weight:400; }
+.library-tab.active .tab-count { color:#c6d6d0; }
+.library-search { display:flex; align-items:center; gap:10px; height:46px; margin-bottom:20px; padding:0 12px; border:1px solid #e5ded2; border-radius:9px; background:#fff; }
+.library-search-icon { flex:none; color:#858986; font-size:24px; line-height:1; }
+.library-search-input { flex:1; min-width:0; height:100%; color:#20322d; font-size:14px; }
+.library-search-clear { flex:none; margin:0; padding:0 4px; background:transparent; color:#858986; font-size:23px; }
+.library-current-heading { margin:4px 2px 16px; }
 .section-count { color:#858986; font-size:12px; }
 .course-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:10px; row-gap:16px; }
 .course-card { min-width:0; overflow:hidden; background:#fff; border-radius:8px; }

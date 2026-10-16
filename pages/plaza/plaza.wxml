@@ -1,13 +1,22 @@
 <view class="course-page">
   <view class="course-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px;">
     <button class="library-back" bindtap="goHome">返回首页</button>
-    <text class="nav-title">答案库</text>
+    <text class="nav-title">课程</text>
   </view>
   <view class="course-body">
     <view class="library-intro">
-      <text class="library-kicker">认知改变世界</text>
-      <view class="library-heading"><text class="library-title">系列课程</text><text class="section-count">{{visibleCourses.length}} 门课程</text></view>
+      <text class="library-kicker">按主题学习</text>
+      <view class="library-tabs">
+        <button class="library-tab {{activeCategory === 'growth' ? 'active' : ''}}" data-category="growth" bindtap="selectCategory" aria-label="查看个人成长课程" aria-selected="{{activeCategory === 'growth'}}"><text>个人成长</text><text class="tab-count">{{personalGrowthCourses.length}} 门课程</text></button>
+        <button class="library-tab {{activeCategory === 'child' ? 'active' : ''}}" data-category="child" bindtap="selectCategory" aria-label="查看孩子系列课程" aria-selected="{{activeCategory === 'child'}}"><text>孩子系列课程</text><text class="tab-count">{{childCourses.length}} 门课程</text></button>
+      </view>
     </view>
+    <view class="library-search">
+      <text class="library-search-icon">⌕</text>
+      <input class="library-search-input" value="{{searchKeyword}}" placeholder="搜索当前分类的课程" confirm-type="search" bindinput="onSearchInput"/>
+      <button wx:if="{{searchKeyword}}" class="library-search-clear" bindtap="clearSearch" aria-label="清空搜索">×</button>
+    </view>
+    <view class="library-heading library-current-heading"><text class="library-title">{{activeCategory === 'growth' ? '个人成长课程' : '孩子系列课程'}}</text><text class="section-count">{{visibleCourses.length}} 门课程</text></view>
     <view class="course-grid">
       <view wx:for="{{visibleCourses}}" wx:key="id" class="course-card" data-id="{{item.id}}" bindtap="openCourse" aria-label="查看{{item.title}}">
         <view class="card-cover-wrap">
@@ -23,6 +32,6 @@
     </view>
     <view wx:if="{{loading}}" class="empty-state">正在加载课程…</view>
     <view wx:elif="{{error}}" class="empty-state"><text>{{error}}</text><button class="retry-button" bindtap="fetchCourses">重新加载</button></view>
-    <view wx:elif="{{!visibleCourses.length}}" class="empty-state">系列课程准备中</view>
+    <view wx:elif="{{!visibleCourses.length}}" class="empty-state">{{searchKeyword ? '没有找到相关课程' : '该分类的课程准备中'}}</view>
   </view>
 </view>
