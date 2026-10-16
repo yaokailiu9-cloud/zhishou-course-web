@@ -175,7 +175,9 @@
 .nav-brand { display:flex; align-items:center; justify-content:center; color:#002727; font-family:var(--em-font-serif); font-size:32rpx; }
 .home-course-list { display:flex; flex-direction:column; gap:28rpx; }
 .home-course-card { overflow:hidden; border:1rpx solid #e6e1da; border-radius:22rpx; background:#fff; }
-.home-course-cover { position:relative; display:block; height:300rpx; }
+.home-course-cover { position:relative; display:block; width:100%; height:auto; aspect-ratio:2752 / 1536; }
+.home-series-cover { width:100%; aspect-ratio:2752 / 1536; overflow:hidden; margin-bottom:18rpx; border-radius:18rpx; }
+.series-cover-image { display:block; width:100%; height:100%; }
 .home-course-image { width:100%; height:100%; }
 .home-course-badge { position:absolute; top:22rpx; left:22rpx; padding:8rpx 20rpx; border-radius:6rpx; background:#e5ce99; color:#002727; font-size:24rpx; }
 .home-course-body { padding:30rpx; }

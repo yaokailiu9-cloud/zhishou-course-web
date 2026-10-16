@@ -11,6 +11,9 @@
         <button class="library-tab {{activeCategory === 'child' ? 'active' : ''}}" data-category="child" bindtap="selectCategory" aria-label="查看孩子系列课程" aria-selected="{{activeCategory === 'child'}}"><text>孩子系列课程</text><text class="tab-count">{{childCourses.length}} 门课程</text></button>
       </view>
     </view>
+    <view class="library-series-cover" aria-label="{{activeCategory === 'growth' ? '个人成长系列课程封面' : '孩子教育系列课程封面'}}">
+      <image class="library-series-image" src="{{activeCategory === 'growth' ? '/assets/course-covers/personal-growth.png' : '/assets/course-covers/child-education.png'}}" mode="aspectFit"/>
+    </view>
     <view class="library-search">
       <text class="library-search-icon">⌕</text>
       <input class="library-search-input" value="{{searchKeyword}}" placeholder="搜索当前分类的课程" confirm-type="search" bindinput="onSearchInput"/>

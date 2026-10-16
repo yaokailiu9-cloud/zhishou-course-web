@@ -94,5 +94,27 @@
       "sha256": "c4629c4681ff3c2e76940e6bae1f4872e73fe3314359869c0b97c64db9c2fb5f",
       "bytes": 5015413
     }
-  ]
+  ],
+  "series_covers": {
+    "source_archive": "默认标题__2026-10-16+14_26_00.zip",
+    "placement": "首页系列展示与课程页当前分类封面",
+    "covers": [
+      {
+        "filename": "1.png",
+        "title": "孩子教育",
+        "source_path": "assets/course-covers/child-education.png",
+        "web_path": "web/replica/assets/course-covers/child-education.png",
+        "sha256": "16cdd3d51b0c4ae0add4d481769178f50286df51c6af5c7eaa18923f442c2087",
+        "bytes": 4289345
+      },
+      {
+        "filename": "2.png",
+        "title": "个人成长",
+        "source_path": "assets/course-covers/personal-growth.png",
+        "web_path": "web/replica/assets/course-covers/personal-growth.png",
+        "sha256": "2fc620415c1f843443a445e742dbe25f8f1a07410c7dff0bb3014e61a844f20a",
+        "bytes": 5121012
+      }
+    ]
+  }
 }

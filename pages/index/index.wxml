@@ -38,6 +38,9 @@
     <view class="section-head">
       <view><text class="section-kicker">从自己开始 · 持续成长</text><text class="section-title">个人成长课程</text></view>
     </view>
+    <view class="home-series-cover" aria-label="个人成长系列课程封面">
+      <image class="series-cover-image" src="/assets/course-covers/personal-growth.png" mode="aspectFit"/>
+    </view>
     <view class="home-growth-list">
       <view wx:for="{{personalGrowthCourses}}" wx:key="id" class="home-growth-card" data-id="{{item.id}}" bindtap="openCourse" aria-label="查看{{item.title}}">
         <text class="growth-label">个人成长</text>
@@ -61,8 +64,7 @@
       </view>
       <navigator wx:if="{{childCourses.length}}" class="home-course-card series-entry" url="/pages/plaza/plaza" open-type="switchTab" aria-label="查看孩子系列课程">
         <view class="home-course-cover">
-          <image wx:if="{{childCourses[0].coverUrl}}" class="home-course-image" src="{{childCourses[0].coverUrl}}" mode="aspectFill"/>
-          <view wx:else class="course-cover-placeholder"><text class="cover-message">答案库</text></view>
+          <image class="home-course-image" src="/assets/course-covers/child-education.png" mode="aspectFit"/>
         </view>
         <view class="home-course-body">
           <text class="series-entry-kicker">《答案库》系列课程</text>
