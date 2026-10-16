@@ -55,10 +55,8 @@
     if(v.startsWith('/assets/'))return '/web/replica'+v;
     return /^(https?:|blob:|data:image\/|\/web\/)/i.test(v)?v:'';
   }
-  // Browsers that sniff <video> and add their own download / cloud-save button. WeChat and WeCom never match.
-  function videoDownloadBrowser(ua=navigator.userAgent){
-    return !/MicroMessenger|wxwork/i.test(ua)&&/Quark\/|UCBrowser|UCWEB|UBrowser|baiduboxapp|baidubrowser|BaiduHD|bdbrowser|MQQBrowser|QQBrowser|SogouMobileBrowser|SogouSearch|MetaSr|2345Explorer|Mb2345Browser|LieBaoFast|LBBROWSER|QihooBrowser|QHBrowser|360SE|360EE|MiuiBrowser|HuaweiBrowser|HeyTapBrowser|OppoBrowser|VivoBrowser|Maxthon/i.test(ua);
-  }
+  // WeChat (and WeCom) plays the lesson picture; every other browser gets only the separately keyed audio track.
+  const wechatBrowser=()=>/MicroMessenger/i.test(navigator.userAgent);
   // Course MP4s play through MediaSource as blob: segments where the browser supports it, so the element never carries a file URL to save.
   // Any failure switches back to the original direct src at the same position; iPhone (no MediaSource) keeps the direct src.
   const STREAM_CHUNK=2*1024*1024,STREAM_AHEAD=60,STREAM_BEHIND=30,attachedVideos=new Set();
@@ -74,7 +72,7 @@
   }
   function attachMedia(video){
     video._mediaAttached=true;const src=video._mediaSrc;
-    if(videoDownloadBrowser())return;
+    if(!wechatBrowser()&&!src.startsWith('zshls://'))return;
     attachedVideos.add(video);
     if(src.startsWith('zshls://')){playHls(video,src).catch(()=>videoError(video));return}
     if(!canStreamVideo(src)){video.setAttribute('src',src);return}
@@ -93,8 +91,10 @@
   // (iPhone, no MediaSource) get short-lived same-origin URLs from the H5 relay instead.
   const hlsSources=new Map();let hlsLoading=null;
   function registerHls(lessonId,hls){
-    if(!hls||!/^[1-9][0-9]*$/.test(String(lessonId))||!/^[0-9a-f]{32}$/i.test(hls.key||'')||typeof hls.playlist!=='string'||!hls.version)return '';
-    const src='zshls://'+lessonId+'/'+hls.version;hlsSources.set(src,{lessonId:String(lessonId),version:hls.version,key:hls.key,playlist:hls.playlist});return src;
+    const track=t=>!!t&&/^[0-9a-f]{32}$/i.test(t.key||'')&&typeof t.playlist==='string';
+    if(!hls||!/^[1-9][0-9]*$/.test(String(lessonId))||!track(hls)||!hls.version)return '';
+    const src='zshls://'+lessonId+'/'+hls.version;
+    hlsSources.set(src,{lessonId:String(lessonId),version:hls.version,video:{key:hls.key,playlist:hls.playlist},audio:track(hls.audio)?{key:hls.audio.key,playlist:hls.audio.playlist}:null});return src;
   }
   function loadHlsJs(){
     if(window.Hls)return Promise.resolve();
@@ -102,24 +102,27 @@
   }
   function videoError(video){video._mediaStream=false;if(video.isConnected)video.dispatchEvent(new Event('error'))}
   async function playHls(video,src){
-    const entry=hlsSources.get(src);if(!entry)return videoError(video);
+    const entry=hlsSources.get(src),audio=!wechatBrowser(),media=entry&&(audio?entry.audio:entry.video);
+    if(!media)return videoError(video);
+    // Audio-only: the element keeps showing its poster (the course cover) because the stream has no picture.
+    video.classList.toggle('audio-only',audio);
     const native=!window.MediaSource&&typeof video.canPlayType==='function'&&!!video.canPlayType('application/vnd.apple.mpegurl');
     if(native){
-      const response=await fetch('/api/h5?action=hls-session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(entry)});
+      const response=await fetch('/api/h5?action=hls-session',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({lessonId:entry.lessonId,version:entry.version,key:media.key,playlist:media.playlist,track:audio?'audio':'video'})});
       const data=await response.json().catch(()=>({}));
       if(!response.ok||!data.ok||!/^\/api\/hls\/[A-Za-z0-9_-]{24}\.m3u8$/.test(data.data?.url||''))return videoError(video);
-      if(video.isConnected)video.setAttribute('src',data.data.url);
+      if(video.isConnected){video.setAttribute('src',data.data.url);video.play().catch(()=>{})}
       return;
     }
     if(!window.MediaSource&&!window.ManagedMediaSource)return videoError(video);
     await loadHlsJs();
     const Hls=window.Hls;if(!video.isConnected)return;if(!Hls.isSupported())return videoError(video);
-    const key=new Uint8Array(entry.key.match(/../g).map(byte=>parseInt(byte,16))).buffer;
+    const key=new Uint8Array(media.key.match(/../g).map(byte=>parseInt(byte,16))).buffer;
     class MemoryLoader extends Hls.DefaultConfig.loader{
       load(context,config,callbacks){
         const playlist=context.url.startsWith('zshls:'),secret=context.url.startsWith('zskey:');
         if(!playlist&&!secret)return super.load(context,config,callbacks);
-        const stats=this.stats,data=playlist?entry.playlist:key.slice(0);
+        const stats=this.stats,data=playlist?media.playlist:key.slice(0);
         stats.loading.start=stats.loading.first=stats.loading.end=performance.now();stats.loaded=stats.total=playlist?data.length:data.byteLength;
         queueMicrotask(()=>callbacks.onSuccess({url:context.url,data},stats,context,null));
       }
@@ -719,8 +722,8 @@
     login:o=>{complete(o,{errMsg:'网页请通过公众号授权登录'},true);webLogin()},
     isH5:true,
     isWechatBrowser:()=>/MicroMessenger/i.test(navigator.userAgent),
-    isVideoDownloadBrowser:()=>videoDownloadBrowser(),
     registerHls:(lessonId,hls)=>registerHls(lessonId,hls),
+    hlsAudioReady:src=>!!hlsSources.get(src)?.audio,
     getReferralContext,
     showReferralPoster,
     getInvitationError:()=>invitationError,

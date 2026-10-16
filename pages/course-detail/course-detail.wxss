@@ -143,6 +143,18 @@
   animation: video-watermark-drift 72s steps(1, end) infinite;
 }
 
+.audio-only-tip {
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  padding: 6rpx 14rpx;
+  color: #ffffff;
+  font-size: 22rpx;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 10rpx;
+  pointer-events: none;
+}
+
 @keyframes video-watermark-drift {
   0% { top: 30%; left: 8%; }
   25% { top: 62%; left: 50%; }

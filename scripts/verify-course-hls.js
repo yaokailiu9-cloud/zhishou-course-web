@@ -24,7 +24,7 @@ function invoke(operation,payload){
 }
 function summary(courseId){
   var r=invoke('COURSE_VIEW_ACCESS',{courseId:courseId});
-  return {canWatch:r.data.canWatch,reason:r.data.reason,lessons:r.data.lessons.map(function(l){var p=l.hls&&l.hls.playlist||'';return {id:l.id,hasVideo:l.hasVideo,mp4:!!l.videoUrl,hls:!!l.hls,keyOk:!!(l.hls&&/^[0-9a-f]{32}$/.test(l.hls.key)),segments:(p.match(/#EXTINF:/g)||[]).length,keyUri:(p.match(/URI="([^"]+)"/)||[])[1]||'',ended:p.indexOf('#EXT-X-ENDLIST')>0};})};
+  return {canWatch:r.data.canWatch,reason:r.data.reason,lessons:r.data.lessons.map(function(l){var p=l.hls&&l.hls.playlist||'';return {id:l.id,hasVideo:l.hasVideo,mp4:!!l.videoUrl,hls:!!l.hls,keyOk:!!(l.hls&&/^[0-9a-f]{32}$/.test(l.hls.key)),segments:(p.match(/#EXTINF:/g)||[]).length,keyUri:(p.match(/URI="([^"]+)"/)||[])[1]||'',ended:p.indexOf('#EXT-X-ENDLIST')>0,audio:l.hls&&l.hls.audio?{ownKey:/^[0-9a-f]{32}$/.test(l.hls.audio.key)&&l.hls.audio.key!==l.hls.key,segments:(l.hls.audio.playlist.match(/#EXTINF:/g)||[]).length,keyUri:(l.hls.audio.playlist.match(/URI="([^"]+)"/)||[])[1]||''}:null};})};
 }
 native.setReturn('result',{packaged:summary(${packaged}),unpackaged:summary(${unpackaged}),privateCourse:summary(${privateCourse})});`;
 const output=JSON.parse(run('runtime','run-code','--projectExId','JmAxbl1MMe4','--no-updateDb','--jsCode',wrapper));

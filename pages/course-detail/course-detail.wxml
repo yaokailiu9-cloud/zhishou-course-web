@@ -28,6 +28,7 @@
         </view>
       </block>
       <view wx:if="{{showVideoPlayer && playingVideoUrl}}" class="video-watermark" aria-hidden="true"><text class="video-watermark-text">{{viewerMark}}</text></view>
+      <text wx:if="{{showVideoPlayer && audioOnly}}" class="audio-only-tip">当前浏览器仅播放声音 · 微信内可看画面</text>
       <text wx:if="{{isAnswerLibrary ? course.title : course.badge}}" class="detail-course-badge">{{isAnswerLibrary ? course.title : course.badge}}</text>
       <text wx:if="{{course.durationText}}" class="hero-duration">{{course.durationText}}</text>
     </view>

@@ -545,6 +545,13 @@ flowchart LR
 - 后台代码 `backend/consultation/course-access.js`，以 `scripts/stage-course-access.js` 只追加到主动作流最后一个节点 `dv4kpohsg`；线上其他节点不动。工作人员（含监护专员、总监）可直接观看，代理和普通家长需开通。
 - 课程详情页不再直接读取课时视频字段，统一经 `COURSE_VIEW_ACCESS` 返回。Anonymous User / Logged-in User 对 `course_lesson.video`、`video_url` 的 select 列已于 2026-10-10 关闭（后台 `wPJRLvE4qjR`）；以 `node scripts/stage-course-access.js --dry-run --require-hidden-video` 核对。不得重新开放，否则授权失效。
 
+### 课时加密 HLS（2026-10-16 用户要求，防下载）
+
+- 表 `course_lesson_hls`（课时加密视频，与 `course_lesson` 一对一，`key_hex` 存 `密钥hex:IVhex`）和 `course_lesson_hls_segment`（课时加密分片，`segment_file` 为私有 FILE）。两个前台角色六项权限全部关闭，只经动作流读取；任何表结构改动后都要重新核对两角色并关闭。
+- 打包：`node scripts/hls-package.js <课时id>`（需本机 ffmpeg 和已登录 zion-mcp，从主文件夹运行或设 `ZION_PROJECT_CWD`）。流复制不转码、6 秒 AES-128 分片、随机密钥与 IV；重跑会生成新版本并替换旧记录。上传新课时视频后要重新打包，否则该课时仍走 MP4。
+- `COURSE_VIEW_ACCESS` 对有 READY 记录的课时只返回 `hls:{version,key,playlist}`（分片地址每次请求重新签名），不再返回 MP4；播放列表生成失败时退回 MP4。以 `node scripts/verify-course-hls.js 15 16 8` 在 run-code 里只读核对。
+- 网页端：有 MediaSource 的浏览器用 `web/replica/hls.js`，播放列表和密钥只在页面内存（`zshls://`、`zskey://`）；iPhone 走 `/api/h5?action=hls-session` 中转，得到 4 小时有效的同源地址，密钥最多读取 60 次。小程序不支持已加密课时（用户确认只用网页）。
+
 ### 扫码进场仅展示课程（2026-10-12）
 
 - 用户要求从扫码进场课程列表移除咨询和简易方案梳理。原因是签到处理器查询 `public_class` 时只检查管理／本场签到授权，没有应用已有的 `COURSE_SCOPE`，将问卷和咨询套餐混入课程列表。

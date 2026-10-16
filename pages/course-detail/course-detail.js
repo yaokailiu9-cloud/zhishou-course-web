@@ -31,6 +31,7 @@ Page({
     playingVideoUrl: "",
     showVideoPlayer: false,
     viewerMark: "",
+    audioOnly: false,
     showSharePanel: false,
     showShareGuide: false,
     shareReady: false,
@@ -165,12 +166,13 @@ Page({
       });
       return;
     }
-    // Quark, UC and similar browsers offer their own one-tap download, so the web build only plays where that menu is absent.
-    if (wx.isVideoDownloadBrowser && wx.isVideoDownloadBrowser()) {
+    // Outside WeChat the web build plays only the lesson's audio over its cover; the picture stays inside WeChat.
+    const audioOnly = !!wx.isH5 && !(wx.isWechatBrowser && wx.isWechatBrowser());
+    if (audioOnly && !(wx.hlsAudioReady && wx.hlsAudioReady(chapter.videoUrl))) {
       const link = courseWebLink(this.data.course);
       wx.showModal({
         title: "请在微信中观看",
-        content: "当前浏览器会提供视频下载，为保护课程版权，请复制链接后在微信中打开观看。",
+        content: "这节课的声音版还在准备中，请复制链接后在微信中打开观看。",
         confirmText: "复制链接",
         success: (res) => { if (res.confirm) wx.setClipboardData({ data: link }); }
       });
@@ -181,6 +183,7 @@ Page({
       activeChapterIndex: index,
       playingVideoUrl: chapter.videoUrl,
       showVideoPlayer: true,
+      audioOnly,
       viewerMark: viewerMark()
     }, () => {
       if (!this.videoContext) {

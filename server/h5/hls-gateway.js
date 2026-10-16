@@ -24,11 +24,13 @@ async function readInput(req) {
   try { return raw ? JSON.parse(raw) : {}; } catch (_) { throw new Error("INPUT:请求格式无效"); }
 }
 
-// Accept only the playlist shape COURSE_VIEW_ACCESS builds: one AES-128 key on zskey://lesson/version and Zion segment URLs.
+// Accept only the playlist shape COURSE_VIEW_ACCESS builds: one AES-128 key on zskey://lesson/version (or
+// zskey://lesson/version/audio for the audio-only track) and Zion segment URLs.
 function checkedPlaylist(input) {
   const lessonId = String(input.lessonId || ""), version = String(input.version || ""), key = String(input.key || ""), playlist = String(input.playlist || "");
-  if (!/^[1-9][0-9]{0,15}$/.test(lessonId) || !/^[1-9][0-9]{0,8}$/.test(version) || !/^[0-9a-f]{32}$/i.test(key)) throw new Error("INPUT:播放信息无效");
-  const keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="zskey://${lessonId}/${version}",`;
+  const track = input.track === "audio" ? "/audio" : input.track == null || input.track === "video" ? "" : null;
+  if (track == null || !/^[1-9][0-9]{0,15}$/.test(lessonId) || !/^[1-9][0-9]{0,8}$/.test(version) || !/^[0-9a-f]{32}$/i.test(key)) throw new Error("INPUT:播放信息无效");
+  const keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="zskey://${lessonId}/${version}${track}",`;
   const lines = playlist.split("\n").map(line => line.trim()).filter(Boolean);
   if (lines[0] !== "#EXTM3U" || lines[lines.length - 1] !== "#EXT-X-ENDLIST") throw new Error("INPUT:播放列表无效");
   if (lines.filter(line => line.startsWith("#EXT-X-KEY")).length !== 1 || !lines.some(line => line.startsWith(keyLine) && /,IV=0x[0-9a-f]{32}$/i.test(line))) throw new Error("INPUT:播放列表无效");

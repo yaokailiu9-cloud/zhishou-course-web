@@ -21,3 +21,11 @@ test('HLS 中转返回同源短期地址，密钥地址改为本次会话并限�
  assert.equal(get('/api/hls/'+'A'.repeat(24)+'.m3u8').status,404);assert.equal(get('/api/hls/../../etc/passwd').status,404);
  gateway._sessions.get(url.slice(9,33)).expires=Date.now()-1;assert.equal(get(url).status,404);
 });
+test('HLS 中转接受声音版播放列表，但声音版密钥地址必须与 track 一致',async()=>{
+ const audio=playlist().replace('zskey://24/1"','zskey://24/1/audio"');
+ const {url}=await gateway.createHlsSession(request({lessonId:'24',version:1,key:KEY,playlist:audio,track:'audio'}));
+ assert.equal(get(url).status,200);
+ assert.throws(()=>gateway.checkedPlaylist({lessonId:'24',version:1,key:KEY,playlist:audio}),/INPUT:/);
+ assert.throws(()=>gateway.checkedPlaylist({lessonId:'24',version:1,key:KEY,playlist:playlist(),track:'audio'}),/INPUT:/);
+ assert.throws(()=>gateway.checkedPlaylist({lessonId:'24',version:1,key:KEY,playlist:playlist(),track:'other'}),/INPUT:/);
+});

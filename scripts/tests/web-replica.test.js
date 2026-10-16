@@ -713,7 +713,7 @@ test('推荐客户显示预备学员，只有后台核实资格的客户能代�
   assert.doesNotMatch(h.document.querySelector('#page').textContent,/待开始|剩余/);
  });
 test('家长课程页：未开通或已到期时不能播放且不显示期限，开通后可播放；管理端可进入授权页',async()=>{
- const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:'201'});
+ const h=await host({navigator:{userAgent:'MicroMessenger/8.0.50'}});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:'201'});
  const course={id:'14',title:'什么是沟通',description:'',chapters:[{id:'22',title:'什么是沟通',duration:'',sortOrder:1,hasVideo:false,videoUrl:''}]};
  h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
  let access={canWatch:false,reason:'ENDED',lessons:[{id:'22',hasVideo:true,videoUrl:''}]};const calls=[];
@@ -895,67 +895,69 @@ test('课程转发封面按原图宽高比展示，模板不强制正方形或�
  assert.match(rule,/height:auto/);assert.doesNotMatch(rule,/aspect-ratio|42vh|max-height/);
 });
 
-test('课程视频网页端去掉浏览器下载入口并显示观看者水印，不影响播放控件',async()=>{
- const h=await host();h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:'201',nickName:'家长甲',phone:'13800000000'});
- const course={id:'15',title:'沉迷手机',description:'',chapters:[{id:'24',title:'沉迷手机',duration:'11:42',sortOrder:1,hasVideo:true,videoUrl:''}]};
- h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
- h.host.requireModule('utils/consultationService').call=async()=>({canWatch:true,isPublic:true,reason:'',lessons:[{id:'24',hasVideo:true,videoUrl:'https://cdn.test/phone.mp4'}]});
+const WECHAT_UA='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 MicroMessenger/8.0.50';
+const lessonCourse={id:'15',title:'沉迷手机',description:'',enabled:true,chapters:[{id:'24',title:'沉迷手机',duration:'11:42',sortOrder:1,hasVideo:true,videoUrl:''}]};
+const lessonPlaylist=(uri)=>'#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="'+uri+'",IV=0x'+'0'.repeat(32)+'\n#EXTINF:6.000000,\nhttps://fz-zion-static.functorz.com/a/seg.ts\n#EXT-X-ENDLIST\n';
+const openLesson=async(h,lesson)=>{
+ h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(lessonCourse)});
+ h.host.requireModule('utils/consultationService').call=async()=>({canWatch:true,isPublic:true,reason:'',lessons:[{id:'24',hasVideo:true,videoUrl:'',...lesson}]});
  h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();await tick();
  h.host.current.videoContext={play(){},pause(){},stop(){}};
  h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+};
+const mp4Lesson={videoUrl:'https://cdn.test/phone.mp4'};
+const hlsLesson=(audio=true)=>({hls:{version:1,key:'ab'.repeat(16),playlist:lessonPlaylist('zskey://24/1'),audio:audio?{key:'cd'.repeat(16),playlist:lessonPlaylist('zskey://24/1/audio')}:null}});
+
+test('微信内课程视频去掉浏览器下载入口并显示观看者水印，不影响播放控件',async()=>{
+ const h=await host({navigator:{userAgent:WECHAT_UA}});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:'201',nickName:'家长甲',phone:'13800000000'});
+ await openLesson(h,mp4Lesson);
  const video=h.document.querySelector('#courseVideo');
  assert.equal(video.getAttribute('src'),'https://cdn.test/phone.mp4');assert.equal(video.hasAttribute('controls'),true);
  assert.equal(video.getAttribute('controlslist'),'nodownload');assert.equal(video.hasAttribute('playsinline'),true);
  const menu=new h.Event('contextmenu',{cancelable:true});video.dispatchEvent(menu);assert.equal(menu.defaultPrevented,true);
  const mark=h.document.querySelector('.video-watermark');
  assert.equal(mark.getAttribute('aria-hidden'),'true');assert.equal(mark.textContent,'知守 · 家长甲 · ID 201');assert.doesNotMatch(mark.textContent,/138/);
+ assert.equal(!!h.document.querySelector('.audio-only-tip'),false);
  const css=fs.readFileSync(path.join(__dirname,'../../web/replica/course-detail.css'),'utf8');
  assert.match(css,/\.video-watermark \{[^}]*pointer-events: none/);
  h.host.wx.removeStorageSync('zionJwt');h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
  assert.equal(h.document.querySelector('.video-watermark').textContent,'知守 · 访客观看');
 });
-
-const openPublicLesson=async h=>{
- const course={id:'15',title:'沉迷手机',description:'',enabled:true,chapters:[{id:'24',title:'沉迷手机',duration:'11:42',sortOrder:1,hasVideo:true,videoUrl:''}]};
- h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
- h.host.requireModule('utils/consultationService').call=async()=>({canWatch:true,isPublic:true,reason:'',lessons:[{id:'24',hasVideo:true,videoUrl:'https://cdn.test/phone.mp4'}]});
- h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();await tick();
- h.host.current.videoContext={play(){},pause(){},stop(){}};
- h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
-};
-test('夸克、UC 等自带视频下载的浏览器不加载视频，提示复制链接到微信观看',async()=>{
- for(const ua of['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Quark/7.4.5.2088','Mozilla/5.0 (Linux; U; Android 14) UCBrowser/17.2.0.1380 Mobile Safari/537.36','Mozilla/5.0 (Linux; Android 14) Mobile Safari/537.36 baiduboxapp/13.60.0.10','Mozilla/5.0 (Linux; Android 14) MQQBrowser/14.8 Mobile Safari/537.36']){
-  const h=await host({navigator:{userAgent:ua}});await openPublicLesson(h);
-  assert.equal(!!h.document.querySelector('#courseVideo'),false,ua);assert.equal(h.host.current.data.showVideoPlayer,false);
+test('微信（含安卓 X5 的 MQQBrowser 标识）照常播放课程画面',async()=>{
+ for(const ua of['Mozilla/5.0 (Linux; Android 14) MQQBrowser/6.2 TBS/046011 Mobile Safari/537.36 MicroMessenger/8.0.49',WECHAT_UA,'Mozilla/5.0 (Windows NT 10.0) wxwork/4.1 MicroMessenger/7.0.1']){
+  const h=await host({navigator:{userAgent:ua}});await openLesson(h,mp4Lesson);
+  assert.equal(h.document.querySelector('#courseVideo')?.getAttribute('src'),'https://cdn.test/phone.mp4',ua);assert.equal(h.host.current.data.audioOnly,false);
+ }
+});
+test('微信以外的浏览器只播放加密课时的声音版，显示封面和提示，不登记画面',async()=>{
+ for(const ua of['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Quark/7.4.5.2088','Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/141.0 Safari/537.36']){
+  const h=await host({navigator:{userAgent:ua}});await openLesson(h,hlsLesson());
+  const video=h.document.querySelector('#courseVideo');
+  assert.equal(!!video,true,ua);assert.equal(video._mediaSrc,'zshls://24/1');assert.equal(video.getAttribute('src'),null);
+  assert.equal(h.host.current.data.audioOnly,true);assert.match(h.document.querySelector('.audio-only-tip').textContent,/仅播放声音/);
+  assert.equal(!!h.document.querySelector('#modal').open,false,ua);
+ }
+});
+test('微信以外的浏览器遇到未加密或没有声音版的课时，提示复制链接到微信观看',async()=>{
+ for(const lesson of[mp4Lesson,hlsLesson(false)]){
+  const h=await host({navigator:{userAgent:'Mozilla/5.0 (iPhone) Quark/7.4'}});await openLesson(h,lesson);
+  assert.equal(!!h.document.querySelector('#courseVideo'),false);assert.equal(h.host.current.data.showVideoPlayer,false);
   const modal=h.document.querySelector('#modal');assert.equal(modal.open,true);assert.match(modal.textContent,/请在微信中观看/);assert.match(modal.textContent,/复制链接/);
  }
 });
-test('微信（含安卓 X5 的 MQQBrowser 标识）和普通浏览器照常播放课程视频',async()=>{
- for(const ua of['Mozilla/5.0 (Linux; Android 14) MQQBrowser/6.2 TBS/046011 Mobile Safari/537.36 MicroMessenger/8.0.49','Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 MicroMessenger/8.0.50','Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1']){
-  const h=await host({navigator:{userAgent:ua}});await openPublicLesson(h);
-  assert.equal(h.document.querySelector('#courseVideo')?.getAttribute('src'),'https://cdn.test/phone.mp4',ua);
- }
-});
 test('播放中页面 setData 不会重建视频元素，避免课程从头播放',async()=>{
- const h=await host();await openPublicLesson(h);
+ const h=await host({navigator:{userAgent:WECHAT_UA}});await openLesson(h,mp4Lesson);
  const video=h.document.querySelector('#courseVideo');
  h.host.current.setData({showSharePanel:true});await tick();
  assert.equal(h.document.querySelector('#courseVideo')===video,true);
  h.host.current.stopVideo();await tick();assert.equal(!!h.document.querySelector('#courseVideo'),false);
 });
-
 test('加密课时只在页面内存登记播放列表，视频元素不出现 MP4 或密钥地址',async()=>{
- const h=await host();
- const course={id:'15',title:'沉迷手机',description:'',enabled:true,chapters:[{id:'24',title:'沉迷手机',duration:'11:42',sortOrder:1,hasVideo:true,videoUrl:''}]};
- const playlist='#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="zskey://24/1",IV=0x'+'0'.repeat(32)+'\n#EXTINF:6.000000,\nhttps://fz-zion-static.functorz.com/a/seg.ts\n#EXT-X-ENDLIST\n';
- h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
- h.host.requireModule('utils/consultationService').call=async()=>({canWatch:true,isPublic:true,reason:'',lessons:[{id:'24',hasVideo:true,videoUrl:'',hls:{version:1,key:'ab'.repeat(16),playlist}}]});
- h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();await tick();
+ const h=await host({navigator:{userAgent:WECHAT_UA}});await openLesson(h,hlsLesson());
  assert.equal(h.host.current.data.course.chapters[0].videoUrl,'zshls://24/1');assert.match(h.document.querySelector('#page').textContent,/可播放/);
- h.host.current.videoContext={play(){},pause(){},stop(){}};
- h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
  const video=h.document.querySelector('#courseVideo');
  assert.equal(!!video,true);assert.equal(video.getAttribute('src'),null);assert.equal(video._mediaSrc,'zshls://24/1');
- assert.doesNotMatch(h.document.querySelector('#page').outerHTML,/zskey|fz-zion-static|abababab/);
- assert.equal(h.host.wx.registerHls('24',{version:1,key:'not-hex',playlist}),'');
+ assert.doesNotMatch(h.document.querySelector('#page').outerHTML,/zskey|fz-zion-static|abababab|cdcdcdcd/);
+ assert.equal(h.host.wx.hlsAudioReady('zshls://24/1'),true);
+ assert.equal(h.host.wx.registerHls('24',{version:1,key:'not-hex',playlist:lessonPlaylist('zskey://24/1')}),'');
 });
