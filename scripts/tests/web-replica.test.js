@@ -783,7 +783,7 @@ test('所有家长共用反馈模板：无审核与历史入口，单档案头�
  assert.doesNotMatch(h.document.querySelector('.service-chat-content').textContent,/监护专员整理|总监复核|总管终审/);assert.match(h.document.querySelector('.teacher-message').textContent,/老师公开回复/);assert.deepEqual(h.errors,[]);
 });
 
-test('视频课从无hash分享链接直达，展示图片介绍且受限课不播放，复制与系统分享使用本课链接',async()=>{
+test('课程标题右侧只有转发按钮，弹出本课程封面卡片，不复制或发送裸链接',async()=>{
  const copied=[],shared=[];
  const row={id:'15',title:'沉迷手机',subtitle:'孩子系列课程',description:'## 课程介绍\n理解孩子使用手机的原因',enabled:true,cover_image:{url:'https://example.invalid/phone.jpg'},course_lesson:[{id:'25',title:'沉迷手机'}]};
  const fetch=async(url,options)=>{
@@ -796,11 +796,17 @@ test('视频课从无hash分享链接直达，展示图片介绍且受限课不�
  assert.match(h.document.getElementById('page').textContent,/理解孩子使用手机的原因|视频需开通观看权限/);
  assert.equal(h.document.querySelector('.hero-cover').getAttribute('src'),row.cover_image.url);
  assert.equal(h.document.querySelector('#page video'),null);
- h.document.querySelector('.course-share-secondary').dispatchEvent(new h.Event('click'));await tick();
- assert.equal(copied[0],'http://localhost/web/?course=15#/pages/course-detail/course-detail?id=15');
- h.document.querySelector('.course-share-primary').dispatchEvent(new h.Event('click'));await tick();
- assert.equal(shared[0].title,row.title);assert.equal(shared[0].url,copied[0]);
- assert.doesNotMatch(shared[0].url,/token|canWatch|ref=/);
+ const forward=h.document.querySelector('.course-title-row .course-forward');assert.ok(forward);
+ assert.equal(h.document.querySelectorAll('.course-share-primary,.course-share-secondary,.course-share-panel').length,0);
+ forward.dispatchEvent(new h.Event('click'));await tick();
+ assert.equal(h.host.current.data.showSharePanel,true);
+ assert.equal(h.document.querySelector('.forward-card-title').textContent,row.title);
+ assert.equal(h.document.querySelector('.forward-card-cover').getAttribute('src'),row.cover_image.url);
+ assert.equal(h.document.querySelectorAll('.forward-submit').length,0);
+ assert.deepEqual(copied,[]);assert.deepEqual(shared,[]);
+ assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/微信内打开/);
+ h.document.querySelector('.forward-close').dispatchEvent(new h.Event('click'));await tick();
+ assert.equal(h.host.current.data.showSharePanel,false);
  assert.deepEqual(h.errors,[]);
 });
 
@@ -808,10 +814,25 @@ test('微信课程卡片配置带课程封面，不继承其他代理的报名�
  const h=await host();h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=8'});await tick();
  h.host.current.setData({loading:false,error:'',course:{id:'8',title:'倾诉的陷阱',subtitle:'孩子系列课程',enabled:true,coverUrl:'https://cdn.test/talk.jpg',chapters:[]}});await tick();
  h.context.navigator.userAgent='MicroMessenger';let ready,card,timeline;
- h.context.wx={config:()=>ready(),ready:fn=>{ready=fn},error(){},updateAppMessageShareData:value=>{card=value},updateTimelineShareData:value=>{timeline=value}};
+ h.context.wx={config:()=>ready(),ready:fn=>{ready=fn},error(){},updateAppMessageShareData:value=>{card=value;value.success?.()},updateTimelineShareData:value=>{timeline=value}};
  h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})});
  await h.host.wx.prepareCourseShare(h.host.current);
  assert.equal(card.title,'倾诉的陷阱');assert.equal(card.imgUrl,'https://cdn.test/talk.jpg');
  assert.equal(card.link,'http://localhost/web/?course=8#/pages/course-detail/course-detail?id=8');
  assert.equal(timeline.link,card.link);assert.equal(timeline.imgUrl,card.imgUrl);
+});
+
+
+test('微信明确拒绝封面卡片配置时不误报准备成功，不降级复制裸链接',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=8'});await tick();
+ h.host.current.setData({loading:false,error:'',course:{id:'8',title:'倾诉的陷阱',enabled:true,coverUrl:'https://cdn.test/talk.jpg',chapters:[]}});await tick();
+ h.context.navigator.userAgent='MicroMessenger';let ready;
+ h.context.wx={config:()=>ready(),ready:fn=>{ready=fn},error(){},updateAppMessageShareData:value=>value.fail({errMsg:'permission denied'})};
+ h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'test',timestamp:1,nonceStr:'x',signature:'x'}})});
+ assert.equal(await h.host.wx.prepareCourseShare(h.host.current),false);
+ h.host.current.openSharePanel();await tick();
+ assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/重试/);
+ assert.equal(h.document.querySelectorAll('.forward-submit').length,0);
+ assert.match(h.document.querySelector('.forward-sheet-hint').textContent,/暂未准备好/);
+ assert.equal(h.document.querySelector('#modal').open,undefined);
 });

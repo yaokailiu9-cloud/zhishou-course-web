@@ -1,5 +1,5 @@
 const zion = require("../../utils/zion");
-const { courseShare, courseWebLink } = require("../../utils/coursePresentation");
+const { courseShare } = require("../../utils/coursePresentation");
 const consultationService = require("../../utils/consultationService");
 // Parents see only whether a course is open now; grant periods stay in the manager console.
 const VIEW_BLOCKED = {
@@ -22,6 +22,9 @@ Page({
     activeChapterIndex: -1,
     playingVideoUrl: "",
     showVideoPlayer: false,
+    showSharePanel: false,
+    sharePreparing: false,
+    shareHint: "转发时将附上这门课程的封面",
     viewAccess: { checked: false, canWatch: false, reason: "" }
   },
 
@@ -76,11 +79,23 @@ Page({
     });
   },
   onShareAppMessage() { return courseShare(this.data.course); },
-  copyLink() {
+  openSharePanel() {
     if (!this.data.course) return;
-    if (wx.copyCourseLink) return wx.copyCourseLink(this);
-    wx.setClipboardData({data:courseWebLink(this.data.course)});
+    this.setData({showSharePanel:true,sharePreparing:false,shareHint:'转发时将附上这门课程的封面'});
+    if (!wx.isH5) return;
+    if(wx.isWechatBrowser && !wx.isWechatBrowser()){
+      this.setData({shareHint:'请在微信内打开课程，点击右上角“…” → 发送给朋友'});
+      return;
+    }
+    const course=this.data.course;
+    this.setData({sharePreparing:true,shareHint:'正在准备课程封面卡片…'});
+    wx.prepareCourseShare(this).then(ready=>{
+      if(this.data.course!==course || !this.data.showSharePanel)return;
+      this.setData({sharePreparing:false,shareHint:ready ? '点击微信右上角“…” → 发送给朋友，转发带封面的课程卡片' : '封面卡片暂未准备好，请关闭面板后重试'});
+    });
   },
+  closeSharePanel() { this.setData({showSharePanel:false}); },
+  keepSharePanelOpen() {},
   previewCover() {
     const url = this.data.course && this.data.course.coverUrl;
     if (url) wx.previewImage({current:url,urls:[url]});

@@ -186,7 +186,7 @@
           on('compositionend',event=>{composing=false;emit(event)});
           on('input',event=>{if(!composing&&!event.isComposing)emit(event)});
         }else on(eventMap[match[2]],emit);
-        if(match[2]==='tap'&&!['button','input','textarea','navigator'].includes(tag)){el.setAttribute('role','button');el.tabIndex=0;on('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click()}})}
+        if(match[2]==='tap'&&!values.role&&!['button','input','textarea','navigator'].includes(tag)){el.setAttribute('role','button');el.tabIndex=0;on('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click()}})}
       }
       if(tag==='navigator'){
         el.setAttribute('role','link');el.tabIndex=0;
@@ -403,8 +403,17 @@
     await wechatShareReady;
     if(page!==current)return false;
     const data={title:details.title,desc:details.desc,link:details.url.href,imgUrl:details.image};
-    // Sharing is optional on the check-in screen; a share-menu failure must not disable scanning.
-    try{window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image})}catch(error){console.warn('微信分享菜单更新失败',error)}
+    if(page.route==='pages/course-detail/course-detail'){
+      if(typeof window.wx.updateAppMessageShareData!=='function')throw new Error('微信版本暂不支持课程卡片');
+      await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new Error('课程卡片配置超时')),8000);
+        window.wx.updateAppMessageShareData({...data,success:()=>{clearTimeout(timer);resolve()},fail:error=>{clearTimeout(timer);reject(new Error(error?.errMsg||'课程卡片配置失败'))}});
+      });
+      try{window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image})}catch(_){}
+    }else{
+      // An optional share-menu error must not disable check-in scanning.
+      try{window.wx.updateAppMessageShareData?.(data);window.wx.updateTimelineShareData?.({title:details.title,link:details.url.href,imgUrl:details.image})}catch(error){console.warn('微信分享菜单更新失败',error)}
+    }
     return true;
   }
   function showReferralPoster({url,title,name='',kind='course'}){
@@ -420,14 +429,7 @@
   }
   async function share(page){
     if(page.route==='pages/course-detail/course-detail'){
-      const details=shareDetails(page);
-      try {
-        if(/MicroMessenger/i.test(navigator.userAgent)){
-          if(!await prepareWechatShare(page))return;
-          wx.showModal({title:'分享课程',content:'课程封面和介绍已准备好，点击微信右上角“…”发送给朋友或群。',showCancel:false,confirmText:'知道了'});
-        }else if(navigator.share)await navigator.share({title:details.title,text:details.desc,url:details.url.href});
-        else await wx.setClipboardData({data:details.url.href});
-      }catch(error){if(error.name!=='AbortError')wx.showModal({title:'分享课程',content:'微信分享暂不可用，可以复制课程链接发送给朋友。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:details.url.href})}});}
+      page.openSharePanel();
       return;
     }
     try{await getReferralContext(shareClassId(page));}catch(_){if(session){wx.showToast({title:'分享信息加载失败，请重试'});return;}}
@@ -522,6 +524,7 @@
     enableAlertBeforeUnload:o=>unloadMessage=o.message||'修改尚未保存，确定离开？',disableAlertBeforeUnload:()=>unloadMessage='',
     login:o=>{complete(o,{errMsg:'网页请通过公众号授权登录'},true);webLogin()},
     isH5:true,
+    isWechatBrowser:()=>/MicroMessenger/i.test(navigator.userAgent),
     getReferralContext,
     showReferralPoster,
     getInvitationError:()=>invitationError,
@@ -533,7 +536,6 @@
       else if(invitation)navigate(invitation.returnTo.split('#')[1],'replace');
       else webLogin();
     },
-    copyCourseLink:page=>wx.setClipboardData({data:shareDetails(page).url.href}),
     prepareCourseShare:page=>prepareWechatShare(page).catch(()=>false),
     getReferralToken:()=>new URLSearchParams(location.search).get('ref')||'',
     canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,

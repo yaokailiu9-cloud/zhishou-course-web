@@ -33,14 +33,10 @@
 
     <view class="detail-main">
       <view class="title-block">
-        <text class="course-title">{{course.title}}</text>
+        <view class="course-title-row"><text class="course-title">{{course.title}}</text><button class="course-forward" open-type="share" aria-label="转发课程"><image class="course-forward-icon" src="/assets/icons/course-forward-blue.svg" mode="aspectFit"></image><text>转发</text></button></view>
         <text wx:if="{{course.subtitle}}" class="course-subtitle">{{course.subtitle}}</text>
       </view>
 
-      <view class="course-share-panel">
-        <view class="course-share-copy"><text class="course-share-title">把这堂课分享给朋友</text><text class="course-share-note">分享课程图片与介绍，视频按观看权限开放</text></view>
-        <view class="course-share-actions"><button class="course-share-primary" open-type="share">分享课程</button><button class="course-share-secondary" bindtap="copyLink">复制链接</button></view>
-      </view>
       <view wx:if="{{viewAccess.checked}}" class="course-access-note">{{viewAccess.isPublic ? '本课程对外开放，可直接观看' : (viewAccess.canWatch ? '已为你开通观看' : '可查看课程图片与介绍，视频需开通观看权限')}}</view>
 
       <view wx:for="{{contentSections}}" wx:key="title" class="course-info-section"><text class="course-info-title">{{item.title}}</text><text class="course-info-body">{{item.body}}</text></view>
@@ -67,4 +63,11 @@
       </view>
     </view>
   </scroll-view>
+  <view wx:if="{{showSharePanel && course}}" class="course-forward-mask" bindtap="closeSharePanel">
+    <view class="course-forward-sheet" catchtap="keepSharePanelOpen" role="dialog" aria-modal="true" aria-label="转发课程">
+      <view class="forward-sheet-head"><text>分享课程</text><button class="forward-close" bindtap="closeSharePanel" aria-label="关闭转发">×</button></view>
+      <view class="forward-card"><text class="forward-card-brand">知守 · 课程</text><text class="forward-card-title">{{course.title}}</text><image wx:if="{{course.coverUrl}}" class="forward-card-cover" src="{{course.coverUrl}}" mode="aspectFit" aria-label="课程分享封面"></image><text wx:if="{{course.subtitle}}" class="forward-card-subtitle">{{course.subtitle}}</text></view>
+      <text class="forward-sheet-hint">{{shareHint}}</text>
+    </view>
+  </view>
 </view>
