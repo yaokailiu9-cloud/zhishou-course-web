@@ -19,7 +19,7 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
   }
   if (op === 'COURSE_VIEW_ACCESS') {
     var course = viewCourse(p.courseId);
-    var lessons = gql('query CourseViewLessons($where:course_lesson_bool_exp!){rows:course_lesson(where:$where,order_by:{sort_order:asc},limit:100){id video_url video{id url}}}', {where:eq('course_id', course.id)}).rows || [];
+    var lessons = gql('query CourseViewLessons($where:course_lesson_bool_exp!){rows:course_lesson(where:$where,order_by:{sort_order:asc},limit:100){id video_url video{id url} hls{id status version key_hex target_duration}}}', {where:eq('course_id', course.id)}).rows || [];
     // Only the server-stored flag opens video; a share URL never grants access.
     var isPublic = course.enabled === true && course.public_video === true;
     var canWatch = isPublic || viewStaff, reason = '';
@@ -29,9 +29,25 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
       canWatch = grants.some(viewActive);
       reason = canWatch ? '' : grants.length ? 'ENDED' : 'NOT_GRANTED';
     }
+    // Encrypted HLS replaces the MP4 address once a lesson is packaged (scripts/hls-package.js); segment URLs are
+    // signed per request and expire, so the playlist is rebuilt each time. The key goes only to viewers who may watch.
+    function viewHls(l) {
+      var h = l.hls;
+      if (!h || h.status !== 'READY') return null;
+      var segs = gql('query CourseViewHls($where:course_lesson_hls_segment_bool_exp!){rows:course_lesson_hls_segment(where:$where,order_by:{seq:asc},limit:5000){seq duration segment_file{url}}}', {where:eq('hls_id', h.id)}).rows || [];
+      var parts = String(h.key_hex || '').split(':');
+      if (!segs.length || parts.length !== 2 || segs.some(function(x) { return !x.segment_file || !x.segment_file.url; })) return null;
+      var lines = ['#EXTM3U', '#EXT-X-VERSION:3', '#EXT-X-TARGETDURATION:' + h.target_duration, '#EXT-X-MEDIA-SEQUENCE:0', '#EXT-X-PLAYLIST-TYPE:VOD',
+        '#EXT-X-KEY:METHOD=AES-128,URI="zskey://' + l.id + '/' + h.version + '",IV=0x' + parts[1]];
+      segs.forEach(function(x) { lines.push('#EXTINF:' + Number(x.duration).toFixed(6) + ',', x.segment_file.url); });
+      lines.push('#EXT-X-ENDLIST');
+      return {version:h.version, key:parts[0], playlist:lines.join('\n') + '\n'};
+    }
     result(s, {canWatch:canWatch, isPublic:isPublic, reason:reason, lessons:lessons.map(function(l) {
       var url = (l.video && l.video.url) || l.video_url || '';
-      return {id:String(l.id), hasVideo:!!url, videoUrl:canWatch ? url : ''};
+      var packaged = !!(l.hls && l.hls.status === 'READY'), hls = canWatch && packaged ? viewHls(l) : null;
+      // A packaged lesson whose playlist cannot be built still plays the MP4 rather than going dark.
+      return {id:String(l.id), hasVideo:!!url || packaged, videoUrl:canWatch && !hls ? url : '', hls:hls};
     })});
   }
   if (op === 'COURSE_VIEW_ADMIN') {

@@ -8278,7 +8278,9 @@ Page({
       (access.lessons || []).forEach((item) => { lessons[String(item.id)] = item; });
       const chapters = course.chapters.map((chapter) => {
         const item = lessons[chapter.id] || {};
-        return { ...chapter, hasVideo: !!item.hasVideo, videoUrl: access.canWatch ? item.videoUrl || "" : "" };
+        // Encrypted lessons play from page memory on the web (wx.registerHls); the MP4 address is no longer sent for them.
+        const hls = access.canWatch && item.hls && wx.registerHls ? wx.registerHls(item.id, item.hls) : "";
+        return { ...chapter, hasVideo: !!item.hasVideo, videoUrl: access.canWatch ? hls || item.videoUrl || "" : "" };
       });
       this.setData({ "course.chapters": chapters, viewAccess: { checked: true, canWatch: !!access.canWatch, reason: access.reason || "", isPublic: !!access.isPublic } });
     }).catch(() => {

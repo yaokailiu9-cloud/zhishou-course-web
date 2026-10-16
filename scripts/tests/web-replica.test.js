@@ -943,3 +943,19 @@ test('播放中页面 setData 不会重建视频元素，避免课程从头播�
  assert.equal(h.document.querySelector('#courseVideo')===video,true);
  h.host.current.stopVideo();await tick();assert.equal(!!h.document.querySelector('#courseVideo'),false);
 });
+
+test('加密课时只在页面内存登记播放列表，视频元素不出现 MP4 或密钥地址',async()=>{
+ const h=await host();
+ const course={id:'15',title:'沉迷手机',description:'',enabled:true,chapters:[{id:'24',title:'沉迷手机',duration:'11:42',sortOrder:1,hasVideo:true,videoUrl:''}]};
+ const playlist='#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="zskey://24/1",IV=0x'+'0'.repeat(32)+'\n#EXTINF:6.000000,\nhttps://fz-zion-static.functorz.com/a/seg.ts\n#EXT-X-ENDLIST\n';
+ h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
+ h.host.requireModule('utils/consultationService').call=async()=>({canWatch:true,isPublic:true,reason:'',lessons:[{id:'24',hasVideo:true,videoUrl:'',hls:{version:1,key:'ab'.repeat(16),playlist}}]});
+ h.host.wx.navigateTo({url:'/pages/course-detail/course-detail?id=15'});await tick();await tick();
+ assert.equal(h.host.current.data.course.chapters[0].videoUrl,'zshls://24/1');assert.match(h.document.querySelector('#page').textContent,/可播放/);
+ h.host.current.videoContext={play(){},pause(){},stop(){}};
+ h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+ const video=h.document.querySelector('#courseVideo');
+ assert.equal(!!video,true);assert.equal(video.getAttribute('src'),null);assert.equal(video._mediaSrc,'zshls://24/1');
+ assert.doesNotMatch(h.document.querySelector('#page').outerHTML,/zskey|fz-zion-static|abababab/);
+ assert.equal(h.host.wx.registerHls('24',{version:1,key:'not-hex',playlist}),'');
+});

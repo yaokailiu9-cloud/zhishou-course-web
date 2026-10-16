@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const {createHlsSession} = require("./hls-gateway");
 
 const DEFAULT_ZION_GRAPHQL_URL = "https://zion-app.functorz.com/zero/JmAxbl1MMe4/api/graphql-v2";
 const DEFAULT_WECHAT_OA_APP_ID = "wx6dafecca8d5fd24e";
@@ -419,7 +420,7 @@ async function handleApi(req, res) {
       if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
       return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
     }
-    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status", "questionnaire-pay"].includes(action)) {
+    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status", "questionnaire-pay", "hls-session"].includes(action)) {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
       if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
@@ -427,6 +428,8 @@ async function handleApi(req, res) {
         return json(res, 403, {ok:false,message:"请求来源无效"});
       }
     }
+    // Native HLS players (iPhone) get short-lived same-origin URLs for the playlist the page already holds.
+    if (action === "hls-session") return json(res, 200, {ok:true, data:await createHlsSession(req)});
     if(action==='capture-referral') {
       const input=await body(req), current=readSession(req), previous=readInvitation(req,current);
       const requested=invitationReturn(input.returnTo);

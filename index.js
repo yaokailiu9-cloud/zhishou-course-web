@@ -4,6 +4,7 @@ const path = require('node:path');
 const {handleApi, handleOauthCallback, handlePaymentNotify} = require('./server/h5');
 
 const {courseShareHead} = require('./server/h5/course-share');
+const {serveHls} = require('./server/h5/hls-gateway');
 
 const WEB_ROOT = path.join(__dirname, 'web');
 const MIME_TYPES = {
@@ -94,6 +95,10 @@ function createServer() {
     }
     if (url.pathname === '/api/h5') {
       await handleApi(req, res);
+      return;
+    }
+    if (url.pathname.startsWith('/api/hls/')) {
+      serveHls(req, res, url.pathname);
       return;
     }
     if (url.pathname === '/api/wechat-pay-notify') {
