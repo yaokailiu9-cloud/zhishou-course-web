@@ -11,6 +11,7 @@ Page({
     navHeight: 104,
     isLoggedIn: false,
     canCheckin: false,
+    isSuperAdmin: false,
     canInvite: false,
     userInfo: {},
     defaultPortrait: userPortrait,
@@ -76,6 +77,7 @@ Page({
       this.setData({
         isLoggedIn: false,
         canCheckin: false,
+        isSuperAdmin: false,
         canInvite: false,
         userInfo: {},
         avatarText: "客",
@@ -133,41 +135,41 @@ Page({
     const identity = viewSession.capture();
     const generation = this.accessGeneration = (this.accessGeneration || 0) + 1;
     const current = () => generation === this.accessGeneration && viewSession.current(identity);
-    // No cached role or referral response may expose staff/agent menus.
-    this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessError:"",managerAccessLoading:!!(userInfo && userInfo.id)});
+    // Every capability is confirmed by the backend for the current login.
+    this.setData({canInvite:false,canCheckin:false,isSuperAdmin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessError:"",managerAccessLoading:!!(userInfo && userInfo.id)});
     if (!userInfo || !userInfo.id || String(userInfo.id) !== identity.accountId) return null;
-    try {
-      const provider = await zion.getServiceProviderByAccount(userInfo.id);
-      if (!current()) return null;
-      const active = !!(provider && String(provider.accountId) === String(userInfo.id) && provider.serviceStatus === 'ACTIVE');
-      const manager = active && zion.isManagerProvider(provider);
-      const agent = active && provider.serviceKind === 'AGENT';
-      this.setData({canInvite:agent || manager,isServiceProvider:manager,serviceProvider:manager ? provider : null,managerAccessLoading:false});
-      // Ordinary users have exactly two business entries and make no staff requests.
-      if (!manager) return null;
-      const [checkin, sessionsResult, unread] = await Promise.allSettled([
-        checkinService.call('CHECKIN_ACCESS'),
-        zion.listManagerSessions({serviceProviderId:provider.id,managerAccountId:provider.accountId}),
-        // New parent messages in plan feedback, shown on the workbench entry before it is opened.
-        checkinService.call('DIALOGUE_UNREAD_TOTAL')
-      ]);
-      if (!current()) return null;
-      let servingCount = 0, completedCount = 0;
-      const sessions = sessionsResult.status === 'fulfilled' ? sessionsResult.value && sessionsResult.value.sessions || [] : [];
-      sessions.forEach(item => {
-        const expiry = zion.resolveEffectiveSessionExpiry(item);
-        const status = String(item.status || '').toLowerCase();
-        if (item.endedAt || expiry > 0 && expiry <= Date.now() || ['closed','completed','finished','ended'].includes(status)) completedCount++;
-        else if (status === 'active' || status === 'waiting') servingCount++;
-      });
-      this.setData({feedbackUnread:unread.status === 'fulfilled' && Number(unread.value && unread.value.staff) || 0,canCheckin:checkin.status === 'fulfilled' && checkin.value.allowed === true,managerStats:[{label:'服务中',value:servingCount},{label:'已完成',value:completedCount}]});
-      return provider;
-    } catch (error) {
-      if (!current()) return null;
-      console.warn('loadManagerAccess failed', error);
-      this.setData({canInvite:false,canCheckin:false,isServiceProvider:false,serviceProvider:null,feedbackUnread:0,managerAccessLoading:false,managerAccessError:'身份读取失败，请重试。'});
+    const [providerResult, checkinResult] = await Promise.allSettled([
+      zion.getServiceProviderByAccount(userInfo.id),
+      checkinService.call('CHECKIN_ACCESS')
+    ]);
+    if (!current()) return null;
+    const checkin = checkinResult.status === 'fulfilled' ? checkinResult.value : null;
+    this.setData({canCheckin:!!(checkin && checkin.allowed === true),isSuperAdmin:!!(checkin && checkin.isSuperAdmin === true)});
+    if (providerResult.status === 'rejected') {
+      this.setData({managerAccessLoading:false,managerAccessError:'身份读取失败，请重试。'});
       return null;
     }
+    const provider = providerResult.value;
+    const active = !!(provider && String(provider.accountId) === String(userInfo.id) && provider.serviceStatus === 'ACTIVE');
+    const manager = active && zion.isManagerProvider(provider);
+    const agent = active && provider.serviceKind === 'AGENT';
+    this.setData({canInvite:agent || manager,isServiceProvider:manager,serviceProvider:manager ? provider : null,managerAccessLoading:false,managerAccessError:checkinResult.status === 'rejected' ? '签到权限读取失败，请重试。' : ''});
+    if (!manager) return null;
+    const [sessionsResult, unread] = await Promise.allSettled([
+      zion.listManagerSessions({serviceProviderId:provider.id,managerAccountId:provider.accountId}),
+      checkinService.call('DIALOGUE_UNREAD_TOTAL')
+    ]);
+    if (!current()) return null;
+    let servingCount = 0, completedCount = 0;
+    const sessions = sessionsResult.status === 'fulfilled' ? sessionsResult.value && sessionsResult.value.sessions || [] : [];
+    sessions.forEach(item => {
+      const expiry = zion.resolveEffectiveSessionExpiry(item);
+      const status = String(item.status || '').toLowerCase();
+      if (item.endedAt || expiry > 0 && expiry <= Date.now() || ['closed','completed','finished','ended'].includes(status)) completedCount++;
+      else if (status === 'active' || status === 'waiting') servingCount++;
+    });
+    this.setData({feedbackUnread:unread.status === 'fulfilled' && Number(unread.value && unread.value.staff) || 0,managerStats:[{label:'服务中',value:servingCount},{label:'已完成',value:completedCount}]});
+    return provider;
   },
 
   retryManagerAccess() { return this.loadManagerAccess(this.data.userInfo); },
@@ -300,6 +302,7 @@ Page({
       isLoggedIn: false,
       canInvite: false,
       canCheckin: false,
+      isSuperAdmin: false,
       userInfo: {},
       avatarText: "客",
       isServiceProvider: false,

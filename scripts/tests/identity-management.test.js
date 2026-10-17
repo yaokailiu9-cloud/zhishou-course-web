@@ -94,3 +94,12 @@ test('管理可以为普通用户创建管理身份，但不能修改自己的�
   assert.equal(target.service_provider.can_accept_order, true);
   assert.throws(() => run(db, 101, 'SET_ACCOUNT_IDENTITY', { targetAccountId: 101, identity: 'USER' }), /不能在此处修改自己/);
 });
+
+ test('超管保持完整管理能力，其他管理不能降级或伪造超管',()=>{
+ const db=fixture();db.accounts[0].service_provider.review_role='SUPER_ADMIN';
+ const state=run(db,101,'LIST_ACCOUNT_IDENTITIES');assert.equal(state.actor.isSuperAdmin,true);assert.equal(state.actor.reviewRole,'GENERAL');assert.equal(state.result.data.items[0].identity,'SUPER_ADMIN');
+ db.accounts.push({id:103,service_provider:{id:4,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true,review_role:'GENERAL'}});
+ assert.throws(()=>run(db,103,'SET_ACCOUNT_IDENTITY',{targetAccountId:101,identity:'USER'}),/超级管理员/);
+ assert.throws(()=>run(db,103,'SET_ACCOUNT_IDENTITY',{targetAccountId:201,identity:'SUPER_ADMIN'}),/身份选项/);
+ const ordinary=run(db,201,'OTHER',{isSuperAdmin:true,reviewRole:'SUPER_ADMIN'});assert.equal(ordinary.actor.isSuperAdmin,false);
+ });

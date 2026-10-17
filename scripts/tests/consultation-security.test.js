@@ -324,3 +324,16 @@ test('方案反馈：所有可接单经理看到同一对话，新消息按各�
  e.run(201,'GET_CONSULTATION_DIALOGUE',{appointmentId:31});assert.equal(e.run(201,'GET_APPOINTMENT',{appointmentId:31}).data.dialogueUnread,0);
  assert.equal(e.db.consultation_dialogue_read.length,2);assert.throws(()=>e.run(null,'DIALOGUE_UNREAD_TOTAL'),/登录/);
 });
+
+ test('超管跨负责人查看和维护全部课程，保存保留原负责人，普通管理仍受归属限制',()=>{
+ const db=fixture();db.service_provider[1].review_role='SUPER_ADMIN';db.public_class.forEach(c=>c.revision=0);const e=engine(db);
+ assert.equal(e.run(101,'STAFF_CLASSES').data.classes.length,3);
+ assert.equal(e.run(101,'GET_CLASS',{classId:12}).data.canManage,true);
+ const before=e.run(101,'GET_STAFF_CLASS',{classId:12}).data.classInfo;
+ e.run(101,'SAVE_CLASS',{id:12,status:'PUBLISHED',title:'超管调整乙课',startsAt:before.starts_at,groupGuide:'原进群指引',capacity:0,registrationFee:100});
+ assert.equal(db.public_class.find(c=>c.id===12).organizer_id,2);assert.equal(db.public_class.find(c=>c.id===12).title,'超管调整乙课');
+ assert.throws(()=>e.run(102,'GET_STAFF_CLASS',{classId:11,isSuperAdmin:true}),/本人负责/);
+ assert.equal(e.run(102,'STAFF_CLASSES').data.classes.length,1);
+ assert.equal(e.run(101,'STAFF_OVERVIEW').data.classes.length,3);
+ assert.ok(e.run(101,'COURSE_ROSTER',{classId:12}).data);
+ });

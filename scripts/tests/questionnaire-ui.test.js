@@ -4,7 +4,8 @@ test('普通用户固定显示公开课和本人方案，代理功能在独立�
  const w=read('pages/profile/profile.wxml'),j=read('pages/profile/profile.js'),customer=read('pages/customer/customer.wxml');
  const mine=w.slice(w.indexOf('settings-caption">我的服务'),w.indexOf('<view wx:if="{{canInvite}}"'));
  assert.match(mine,/bindtap="goMyPlan"/);assert.match(mine,/bindtap="goPublicClasses"/);
- assert.doesNotMatch(mine,/wx:if|进入客户端|简易方案梳理|推荐客户|扫码进场/);
+ assert.doesNotMatch(mine,/进入客户端|简易方案梳理|推荐客户/);
+ assert.match(mine,/wx:if="\{\{canCheckin\}\}"[^>]*bindtap="goCheckin"/);
  assert.match(w,/<view wx:if="\{\{canInvite\}\}" class="settings-section">/);
  assert.doesNotMatch(j,/loadMyPlan|loadReferralAccess|loadCheckinAccess/);
  assert.match(j,/String\(provider.accountId\) === String\(userInfo.id\)/);

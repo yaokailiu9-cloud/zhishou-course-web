@@ -593,7 +593,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
  page=h.document.querySelector('#page');assert.doesNotMatch(page.textContent,/老师给出的方案内容/);page.querySelector('.archive-toggle').dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/发送消息/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
 
- test('普通用户返回我的页不查询推荐或签到，也不显示聊天页签',async()=>{
+ test('普通用户返回我的页独立校验签到授权，不查询推荐或会话，也不显示聊天页签',async()=>{
   const requests=[];
   const h=await host({fetch:async(url,options={})=>{
    if(String(url).includes('action=graphql')){const input=JSON.parse(options.body);requests.push(input);return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:201,wechat_nickname:'合成客户'}}})};}
@@ -609,7 +609,8 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
   }
   // 我的页只在onShow校验身份；另有启动和每次切换页签时的聊天入口校验各一次。
   assert.equal(requests.filter(r=>r.query.includes('GetServiceProviderByAccount')).length,10,'只在onShow校验身份，onLoad不重复请求');
-  assert.equal(requests.filter(r=>r.variables?.args).length,0,'普通用户不请求推荐、签到、会话或方案入口权限');
+  assert.equal(requests.filter(r=>r.variables?.args).length,6,'每次展示只独立查询签到授权');
+  assert.ok(requests.filter(r=>r.variables?.args).every(r=>r.variables.args.operation==='CHECKIN_ACCESS'));
  });
 
  test('不同后台身份登录后的入口严格隔离，包括旧user_type不一致的账号',async()=>{
@@ -634,7 +635,8 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    if(record.identity==='USER'){
     assert.doesNotMatch(text,/简易方案梳理|推荐客户|扫码进场|工作台/,'普通账号'+record.id);
     assert.equal(h.host.current.data.canInvite,false);assert.equal(h.host.current.data.isServiceProvider,false);
-    assert.equal(requests.filter(r=>r.variables?.args).length,0);
+    assert.equal(requests.filter(r=>r.variables?.args).length,1);
+    assert.equal(requests.find(r=>r.variables?.args).variables.args.operation,'CHECKIN_ACCESS');
     assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null);
    }else {
     assert.match(text,/简易方案梳理/);assert.match(text,/推荐客户/);
@@ -961,3 +963,17 @@ test('加密课时只在页面内存登记播放列表，视频元素不出现 M
  assert.equal(h.host.wx.hlsAudioReady('zshls://24/1'),true);
  assert.equal(h.host.wx.registerHls('24',{version:1,key:'not-hex',playlist:lessonPlaylist('zskey://24/1')}),'');
 });
+
+ test('网页指定普通签到员可从我的页进入已授权课程，撤销后入口消失',async()=>{
+ let allowed=true;const calls=[];
+ const h=await host({fetch:async(url,options={})=>{
+  if(String(url).includes('action=graphql')){const input=JSON.parse(options.body);const op=input.variables?.args?.operation;if(op)calls.push(op);
+   const result=op==='CHECKIN_ACCESS'?{allowed}:op==='CHECKIN_CLASSES'?{items:[{id:6,title:'授权课程'}],isManager:false}:{};
+   return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:42,wechat_nickname:'罗琦'},fz_invoke_action_flow:{result:{ok:true,data:result}}}})};
+  }
+  return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:42,name:'罗琦'}}:{}})};
+ }});
+ h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();let page=h.document.querySelector('#page');assert.match(page.textContent,/签到人员/);assert.match(page.textContent,/扫码进场/);assert.doesNotMatch(page.textContent,/代理与管理|工作台|课程观看授权/);
+ [...page.querySelectorAll('.settings-row')].find(r=>r.textContent.includes('扫码进场')).dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/checkin/checkin');assert.match(h.document.querySelector('#page').textContent,/授权课程/);assert.ok(calls.includes('CHECKIN_CLASSES'));
+ allowed=false;h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();assert.doesNotMatch(h.document.querySelector('#page').textContent,/扫码进场|签到人员/);
+ });

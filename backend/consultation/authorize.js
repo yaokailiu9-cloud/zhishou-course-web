@@ -3,7 +3,7 @@ var operation = text(context.getArg("operation"), "操作", 60, true);
 var payload = context.getArg("payload") || {};
 if (typeof payload === "string") payload = JSON.parse(payload);
 if (!payload || Array.isArray(payload) || typeof payload !== "object" || JSON.stringify(payload).length > 100000) fail("请求格式无效");
-var actor = {accountId: accountId ? id(accountId) : null, providerId: null, serviceKind: "", canReply: false, canAccept: false, agentId: null, canInvite: false, reviewRole: ""};
+var actor = {accountId: accountId ? id(accountId) : null, providerId: null, serviceKind: "", canReply: false, canAccept: false, agentId: null, canInvite: false, reviewRole: "", isSuperAdmin: false};
 if (actor.accountId) {
   var provider = list("service_provider", and(eq("account_id", actor.accountId), eq("service_status", "ACTIVE", "text")), "id service_kind can_reply can_accept_order review_role", 1)[0];
   if (provider && provider.service_kind === "AGENT") {
@@ -16,7 +16,8 @@ if (actor.accountId) {
     actor.canReply = provider.can_reply === true;
     actor.canAccept = provider.can_accept_order === true;
     actor.canInvite = actor.canAccept;
-    actor.reviewRole = provider.review_role || (provider.service_kind === "GUARDIAN" ? "GUARDIAN" : actor.canAccept && actor.canReply ? "GENERAL" : "GUARDIAN");
+    actor.isSuperAdmin = actor.serviceKind === "STAFF" && actor.canAccept && actor.canReply && provider.review_role === "SUPER_ADMIN";
+    actor.reviewRole = actor.isSuperAdmin ? "GENERAL" : provider.review_role || (provider.service_kind === "GUARDIAN" ? "GUARDIAN" : actor.canAccept && actor.canReply ? "GENERAL" : "GUARDIAN");
   }
 }
 var state = {operation:operation, payload:payload, actor:actor, result:null};
@@ -36,6 +37,7 @@ function requireManager() {
 function businessIdentity(item) {
   var linked = item && item.service_provider;
   if (!linked || linked.service_status !== "ACTIVE") return "USER";
+  if (linked.service_kind === "STAFF" && linked.review_role === "SUPER_ADMIN" && linked.can_reply && linked.can_accept_order) return "SUPER_ADMIN";
   return linked.service_kind === "AGENT" ? "AGENT" : linked.service_kind === "GUARDIAN" ? "GUARDIAN" : linked.review_role === "DIRECTOR" ? "DIRECTOR" : "MANAGER";
 }
 function accountDisplayName(item) {
@@ -58,6 +60,7 @@ if (operation === "SET_ACCOUNT_IDENTITY") {
   var target=(gql("query IdentityTarget($id:bigint!){account_by_pk(id:$id){id username wechat_nickname user_type account_profile{user_name} service_provider{id service_kind service_status review_role}}}",{id:targetId}).account_by_pk);
   if(!target)fail("目标用户不存在");
   var previous=businessIdentity(target);
+  if(previous === "SUPER_ADMIN") fail("超级管理员身份不能在此处修改");
   if(previous===next){result(state,{id:target.id,name:accountDisplayName(target),identity:next,unchanged:true});}
   else {
     var accountData={user_type:["MANAGER","DIRECTOR"].indexOf(next)>=0?"manager":next==="GUARDIAN"?"guardian":next==="AGENT"?"agent":"customer"};

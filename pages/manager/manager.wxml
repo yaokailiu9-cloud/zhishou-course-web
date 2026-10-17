@@ -122,12 +122,12 @@
           range-key="label"
           value="{{item.identityIndex}}"
           data-id="{{item.id}}"
-          disabled="{{item.isSelf || changingAccountId === item.id}}"
+          disabled="{{item.isSelf || item.identity === 'SUPER_ADMIN' || changingAccountId === item.id}}"
           bindchange="onIdentityChange"
         >
-          <view class="identity-picker {{item.isSelf ? 'disabled' : ''}}">
+          <view class="identity-picker {{item.isSelf || item.identity === 'SUPER_ADMIN' ? 'disabled' : ''}}">
             <text>{{item.identityLabel}}</text>
-            <text wx:if="{{!item.isSelf}}" class="identity-picker-arrow">⌄</text>
+            <text wx:if="{{!item.isSelf && item.identity !== 'SUPER_ADMIN'}}" class="identity-picker-arrow">⌄</text>
           </view>
         </picker>
       </view>

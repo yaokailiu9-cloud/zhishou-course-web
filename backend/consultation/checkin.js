@@ -36,7 +36,7 @@ if (operation.indexOf('CHECKIN_') === 0) {
     return and(scope,{_or:columns.map(function(column){return compare('_ilike',column,pattern,'text');})});
   }
   if(operation==='CHECKIN_ACCESS') {
-    result(state,{allowed:isCheckinManager||list('class_checkin_staff',and(eq('staff_account_id',actor.accountId),eq('active',true,'boolean')),'id',1).length>0,isManager:isCheckinManager});
+    result(state,{allowed:isCheckinManager||list('class_checkin_staff',and(eq('staff_account_id',actor.accountId),eq('active',true,'boolean')),'id',1).length>0,isManager:isCheckinManager,isSuperAdmin:actor.isSuperAdmin===true});
   }
   if(operation==='CHECKIN_CLASSES') {
     var classes=checkinPage('public_class',checkinSearch(checkinScope(),['title']),CHECKIN_CLASS_FIELDS);

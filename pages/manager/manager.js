@@ -317,7 +317,7 @@ Page({
       id: String(item.id || ""),
       avatarText: item.name ? item.name.slice(0, 1) : "用",
       identityIndex: index,
-      identityLabel: identityOptions[index].label
+      identityLabel: item.identity === "SUPER_ADMIN" ? "超级管理员" : identityOptions[index].label
     };
   },
 
@@ -353,7 +353,7 @@ Page({
     const dataset = event.currentTarget.dataset || {};
     const target = (this.allIdentityUsers || []).find((item) => String(item.id) === String(dataset.id));
     const option = identityOptions[Number(event.detail.value)];
-    if (!target || !option || target.isSelf || target.identity === option.value) return;
+    if (!target || !option || target.isSelf || target.identity === "SUPER_ADMIN" || target.identity === option.value) return;
     wx.showModal({
       title: "确认修改身份",
       content: `将“${target.name}”从${target.identityLabel}改为${option.label}？`,
