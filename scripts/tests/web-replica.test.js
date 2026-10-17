@@ -977,3 +977,26 @@ test('加密课时只在页面内存登记播放列表，视频元素不出现 M
  [...page.querySelectorAll('.settings-row')].find(r=>r.textContent.includes('扫码进场')).dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/checkin/checkin');assert.match(h.document.querySelector('#page').textContent,/授权课程/);assert.ok(calls.includes('CHECKIN_CLASSES'));
  allowed=false;h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();assert.doesNotMatch(h.document.querySelector('#page').textContent,/扫码进场|签到人员/);
  });
+
+test('从名单底部扫码后显示核对卡片并滚入视野，确认后回到签到结果',async()=>{
+ const h=await host({fetch:sessionFetch({id:'2',name:'签到员'},null)});await tick();
+ h.host.wx.navigateTo({url:'/pages/checkin/checkin?id=16'});await tick();
+ const page=h.host.current;page.setData({allowed:true,loading:false,items:[{id:30,name:'合成报名人',attendanceStatus:'PENDING',phone:'13800000000'}]});await tick();
+ const scrolls=[],calls=[];h.host.wx.pageScrollTo=o=>scrolls.push(o);
+ h.host.wx.scanCode=o=>o.success({result:'EMPATH-ENTRY:'+'A'.repeat(24)});
+ h.context.fetch=async(_url,options)=>{
+   const operation=JSON.parse(options.body).variables?.args?.operation;calls.push(operation);
+   const data=operation==='CHECKIN_ROSTER'?{items:[],isManager:false,classInfo:{title:'合成课程'},stats:{attended:1,remaining:0}}:{enrollment:{id:30,name:'合成报名人',phone:'13800000000',attendanceStatus:operation==='CHECKIN_CONFIRM'?'ATTENDED':'PENDING'},stats:{attended:0,remaining:1}};
+   const body={data:{fz_invoke_action_flow:{result:{ok:true,data}}}};
+   return {ok:true,status:200,headers:[],text:async()=>JSON.stringify(body)};
+ };
+ page.scan();await tick();await tick();
+ assert.equal(page.data.busy,false);assert.ok(h.document.querySelector('#checkin-candidate'));
+ assert.equal(scrolls.at(-1).selector,'#checkin-candidate');
+ assert.match(h.document.querySelector('#toast').textContent,/已识别/);
+ assert.match(h.document.querySelector('#page').textContent,/确认本人到场/);
+ await page.confirmScan();await tick();
+ assert.equal(page.data.scanResult.title,'签到成功');assert.equal(page.data.stats.attended,1);
+ assert.ok(scrolls.some(o=>o.scrollTop===0));assert.match(h.document.querySelector('#toast').textContent,/签到成功/);
+ assert.deepEqual(calls,['CHECKIN_LOOKUP','CHECKIN_CONFIRM','CHECKIN_ROSTER']);assert.deepEqual(h.errors,[]);
+});

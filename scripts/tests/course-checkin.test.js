@@ -60,19 +60,28 @@ test('签到名单可以完整翻页，不重复也不跨课',()=>{const e=setup
 test('真实页面参数：选人、核对、确认、刷新人数与重复扫码提示',async()=>{
   const e=setup();let page,actor=1,scan='EMPATH-ENTRY:'+'A'.repeat(24),pending;
   const service={...require('../../utils/consultationService'),call:async(op,p)=>e.run(actor,op,p),error:(p,e)=>p.setData({error:e.message})};
-  const wx={showToast(){},showModal:r=>r.success({confirm:true}),scanCode:r=>{pending=r.success({result:scan});}};
+  const wx={showLoading(){},hideLoading(){},pageScrollTo(){},showToast(){},showModal:r=>r.success({confirm:true}),scanCode:r=>{pending=r.success({result:scan});}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../pages/checkin/checkin.js'),'utf8'),{Page:p=>page=p,require:r=>r.includes('consultationService')?service:r.includes('/auth')?{requireLogin:()=>true}:{capture:()=>actor,current:a=>a===actor},wx,encodeURIComponent,setTimeout,clearTimeout});
   page.setData=v=>Object.assign(page.data,v);page.onLoad({id:20});await page.onShow();assert.equal(page.data.isManager,true);assert.equal(page.data.items.find(x=>x.id===30).phone,'13800000000');await page.saveStaff(3,true);actor=3;await page.onShow();assert.equal(page.data.isManager,false);page.scan();await pending;assert.equal(page.data.candidate.name,'家长甲');assert.equal(page.data.candidate.phone,'13800000000');await page.confirmScan();assert.equal(page.data.stats.remaining,1);assert.equal(page.data.scanResult.title,'签到成功');page.scan();await pending;await page.confirmScan();assert.equal(page.data.scanResult.title,'已签到，无需重复');
   page.inputEntryCode({detail:{value:'abc'}});page.manualLookup();assert.match(page.data.error,/24 位/);
   page.inputEntryCode({detail:{value:'b'.repeat(24)}});await page.manualLookup();assert.equal(page.data.candidate.name,'家长乙');assert.equal(page.scanValue,'B'.repeat(24));
 });
-test('扫码无回调时恢复按钮，迟到的旧扫码结果不会误核对',async()=>{
+test('相机扫描超过30秒仍接收结果，重试后忽略上一轮回调',async()=>{
   let page,scan,timeout,lookup=0;
   const service={call:async operation=>{if(operation==='CHECKIN_ROSTER')return{items:[],stats:{registered:1,attended:0,remaining:1},classInfo:{title:'测试课程'}};if(operation==='CHECKIN_LOOKUP'){lookup++;return{enrollment:{name:'报名人'},stats:{}};}},formatTime:()=>'',error:(p,e)=>p.setData({error:e.message})};
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../pages/checkin/checkin.js'),'utf8'),{Page:p=>page=p,require:r=>r.includes('consultationService')?service:r.includes('/auth')?{requireLogin:()=>true}:{capture:()=>1,current:()=>true},wx:{scanCode:o=>{scan=o}},setTimeout:fn=>{timeout=fn;return 1},clearTimeout(){},encodeURIComponent});
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../pages/checkin/checkin.js'),'utf8'),{Page:p=>page=p,require:r=>r.includes('consultationService')?service:r.includes('/auth')?{requireLogin:()=>true}:{capture:()=>1,current:()=>true},wx:{scanCode:o=>{scan=o},showLoading(){},hideLoading(){},pageScrollTo(){},showToast(){}},setTimeout:fn=>{timeout=fn;return 1},clearTimeout(){},encodeURIComponent});
   page.setData=v=>Object.assign(page.data,v);page.onLoad({id:20});await page.onShow();page.scan();assert.equal(page.data.busy,true);
-  timeout();assert.equal(page.data.busy,false);assert.match(page.data.error,/超时/);
-  scan.success({result:'EMPATH-ENTRY:'+'A'.repeat(24)});await Promise.resolve();assert.equal(lookup,0);
+  timeout();assert.equal(page.data.busy,false);assert.match(page.data.error,/等待结果/);
+  await scan.success({result:'EMPATH-ENTRY:'+'A'.repeat(24)});assert.equal(lookup,1);assert.equal(page.data.candidate.name,'报名人');
+  page.scan();const oldScan=scan;timeout();page.scan();await oldScan.success({result:'EMPATH-ENTRY:'+'B'.repeat(24)});assert.equal(lookup,1);assert.equal(page.data.candidate,null);
+  scan.fail({errMsg:'cancel'});page.onHide();
   page.scan();scan.fail({errMsg:'未识别到二维码，请将整个入场码拍清楚后重试。'});
   assert.equal(page.data.busy,false);assert.match(page.data.error,/未识别到二维码/);
+});
+
+test('已核实的签到业务失败会显示具体原因，后台异常仍隐藏内部详情',()=>{
+ const {readableError}=require('../../utils/serviceError');
+ for(const message of ['没有本场课程的签到权限，请联系管理人员','请扫描用户的个人入场二维码','入场码无效、已取消或不属于本场课程','本场签到在开课前两小时开放','本场签到时间已结束'])
+   assert.equal(readableError('org.graalvm.polyglot.PolyglotException: Error: '+message),message);
+ assert.equal(readableError('org.graalvm.polyglot.PolyglotException: Error: SQL internal failure'),'服务暂时无法连接，请稍后重试。');
 });

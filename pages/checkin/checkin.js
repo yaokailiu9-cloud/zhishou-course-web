@@ -6,7 +6,7 @@ Page({
   data: {loading:false,busy:false,error:'',allowed:false,isManager:false,classId:'',classInfo:null,items:[],stats:{registered:0,attended:0,remaining:0},search:'',entryCode:'',filter:'ALL',nextCursor:null,candidate:null,scanResult:null,staffOpen:false,staff:[],staffLoading:false,staffSearch:'',candidates:[],candidateCursor:null,staffError:'',tabs:[{key:'ALL',label:'全部报名'},{key:'REMAINING',label:'未签到'},{key:'ATTENDED',label:'已签到'}]},
   onLoad(q={}) { this.setData({classId:q.id||''}); },
   onShow() { clearTimeout(this.scanTimer);this.scanAttempt=(this.scanAttempt||0)+1;this.scanValue=null;this.setData({busy:false,allowed:false,isManager:false,items:[],classInfo:null,candidate:null,scanResult:null,entryCode:'',staffOpen:false,staff:[],candidates:[]});return this.refresh(); },
-  onHide() { clearTimeout(this.scanTimer);this.scanAttempt=(this.scanAttempt||0)+1;this.generation=(this.generation||0)+1;this.scanValue=null;this.setData({candidate:null,busy:false,entryCode:'',staff:[],candidates:[]}); },
+  onHide() { wx.hideLoading();clearTimeout(this.scanTimer);this.scanAttempt=(this.scanAttempt||0)+1;this.generation=(this.generation||0)+1;this.scanValue=null;this.setData({candidate:null,busy:false,entryCode:'',staff:[],candidates:[]}); },
   onUnload() { this.onHide(); },
   refresh() { return this.load(false); },
   more() { return this.load(true); },
@@ -35,24 +35,31 @@ Page({
     const identity=session.capture(),generation=this.generation,attempt=this.scanAttempt=(this.scanAttempt||0)+1;
     this.setData({busy:true,error:'',candidate:null,scanResult:null});this.scanValue=null;
     clearTimeout(this.scanTimer);
-    this.scanTimer=setTimeout(()=>{if(attempt!==this.scanAttempt||!session.current(identity)||generation!==this.generation)return;this.scanAttempt++;this.setData({busy:false,error:'扫码等待超时，请重试或输入入场码。'});},30000);
-    wx.scanCode({onlyFromCamera:true,scanType:['qrCode'],success:r=>{if(attempt!==this.scanAttempt)return;clearTimeout(this.scanTimer);return this.lookupEntryCode(r.result,identity,generation);},fail:e=>{if(attempt!==this.scanAttempt||!session.current(identity)||generation!==this.generation)return;clearTimeout(this.scanTimer);const message=e.errMsg||'';this.setData({busy:false,error:/cancel/i.test(message)?'':/^(未识别到二维码|无法读取照片|照片无效|识码组件未加载|无法打开相机)/.test(message)?message:'微信扫一扫暂不可用，请拍照识码或输入入场码。'});}});
+    // Scanning a physical ticket can take longer than 30 seconds. Release the
+    // button without discarding a valid result from the still-open camera.
+    this.scanTimer=setTimeout(()=>{if(!this.scanCurrent(identity,generation,attempt))return;this.setData({busy:false});service.error(this,new Error('扫码仍在等待结果，可继续扫描，或返回重试、输入入场码。'));},30000);
+    wx.scanCode({onlyFromCamera:true,scanType:['qrCode'],success:r=>{if(!this.scanCurrent(identity,generation,attempt))return;clearTimeout(this.scanTimer);return this.lookupEntryCode(r.result,identity,generation,attempt);},fail:e=>{if(!this.scanCurrent(identity,generation,attempt))return;clearTimeout(this.scanTimer);const message=e.errMsg||'';this.setData({busy:false});if(!/cancel/i.test(message))service.error(this,new Error(/^(未识别到二维码|无法读取照片|照片无效|识码组件未加载|无法打开相机)/.test(message)?message:'微信扫一扫暂不可用，请拍照识码或输入入场码。'));}});
   },
+  scanCurrent(identity,generation,attempt) {return session.current(identity)&&generation===this.generation&&attempt===this.scanAttempt;},
   manualLookup() {
     if(this.data.busy||!this.data.allowed||!this.data.classId)return;
     const code=String(this.data.entryCode||'').trim().toUpperCase();
     if(!/^[A-Z2-9]{24}$/.test(code)){this.setData({error:'请输入凭证下方的 24 位个人入场码。'});return;}
     this.setData({busy:true,error:'',candidate:null,scanResult:null});this.scanValue=null;
-    return this.lookupEntryCode(code,session.capture(),this.generation);
+    clearTimeout(this.scanTimer);
+    return this.lookupEntryCode(code,session.capture(),this.generation,this.scanAttempt=(this.scanAttempt||0)+1);
   },
-  async lookupEntryCode(code,identity,generation) {
-    if(!session.current(identity)||generation!==this.generation)return;
+  async lookupEntryCode(code,identity,generation,attempt) {
+    if(!this.scanCurrent(identity,generation,attempt))return;
+    this.setData({busy:true,error:''});
+    wx.showLoading({title:'正在核对入场码…'});
     try {
       const out=await service.call('CHECKIN_LOOKUP',{classId:this.data.classId,entryCode:code});
-      if(!session.current(identity)||generation!==this.generation)return;
-      this.scanValue=code;this.setData({candidate:out.enrollment,stats:out.stats,entryCode:''});
-    } catch(e) { if(session.current(identity)&&generation===this.generation)service.error(this,e); }
-    finally { if(session.current(identity)&&generation===this.generation)this.setData({busy:false}); }
+      if(!this.scanCurrent(identity,generation,attempt))return;
+      this.scanValue=code;this.setData({candidate:out.enrollment,stats:out.stats,entryCode:''},()=>{if(this.scanCurrent(identity,generation,attempt))wx.pageScrollTo({selector:'#checkin-candidate',offsetTop:-72,duration:200});});
+      wx.showToast({title:'已识别，请核对并确认到场',icon:'none'});
+    } catch(e) { if(this.scanCurrent(identity,generation,attempt))service.error(this,e); }
+    finally { if(this.scanCurrent(identity,generation,attempt)){wx.hideLoading();this.setData({busy:false});} }
   },
   closeScan() {this.scanValue=null;this.setData({candidate:null});},
   async confirmScan() {
@@ -63,6 +70,8 @@ Page({
       const out=await service.call('CHECKIN_CONFIRM',{classId:this.data.classId,entryCode:this.scanValue});
       if(!session.current(identity)||generation!==this.generation)return;
       this.closeScan();this.setData({stats:out.stats,scanResult:{name:out.enrollment.name,title:out.alreadyCheckedIn?'已签到，无需重复':'签到成功'}});
+      wx.showToast({title:out.alreadyCheckedIn?'已签到，无需重复':'签到成功',icon:'success'});
+      wx.pageScrollTo({scrollTop:0,duration:200});
       await this.refresh();
     } catch(e) {if(session.current(identity)&&generation===this.generation)service.error(this,e);}
     finally {if(session.current(identity))this.setData({busy:false});}
