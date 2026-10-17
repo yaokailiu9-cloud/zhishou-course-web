@@ -10,7 +10,7 @@ function packageProduct(){
 function archivedConsultation(accountId){
   var held={_or:[eq('status','COMPLETED','text'),and(eq('status','CONFIRMED','text'),compare('_lt','confirmed_at',new Date().toISOString(),'timestamptz'))]};
   return list('offline_appointment',and(eq('customer_id',accountId),held),'id enrollment_id child_info contact_name phone',50).filter(function(a){
-    return !!a.enrollment_id&&!!a.child_info&&typeof a.child_info==='object'&&!Array.isArray(a.child_info);
+    return !!a.child_info&&typeof a.child_info==='object'&&!Array.isArray(a.child_info)&&!!a.child_info.name;
   })[0]||null;
 }
 function ownedPackage(accountId,product){
@@ -25,7 +25,7 @@ if (op === 'GET_PACKAGE') {
   var active=pkg?packageBookings(pkg).filter(function(a){return a.status!=='CANCELED';}):[],total=pkg?packageTotal(s.actor.accountId,product):0;
   result(s,{offer:product?{id:product.id,title:product.title,price:Number(product.registration_fee||0),sessions:PACKAGE_SESSIONS,unitPrice:PACKAGE_UNIT_PRICE}:null,eligible:!!archived,
     package:pkg?{id:pkg.id,total:total,used:active.length,remaining:Math.max(0,total-active.length),hasPending:active.some(function(a){return a.status==='PENDING';})}:null,
-    defaults:archived?{name:archived.contact_name||'',phone:archived.phone||''}:null});
+    defaults:archived?{name:archived.contact_name||archived.child_info.guardian||'',phone:archived.phone||archived.child_info.phone||''}:null});
 }
 if (op === 'CREATE_APPOINTMENT') {
   login(s);var product=packageProduct(),pkg=ownedPackage(s.actor.accountId,product),total=pkg?packageTotal(s.actor.accountId,product):0;
@@ -40,8 +40,9 @@ if (op === 'CREATE_APPOINTMENT') {
   var key='package:'+pkg.id+':'+slot,reuse=booked.filter(function(a){return a.request_key===key;})[0];
   var requested=date(p.requestedTime,'期望咨询时间');
   if (new Date(requested).getTime()<=Date.now()) fail('请选择未来的咨询时间');
-  // enrollment_id keeps pointing at the verified public class so the existing confirmation check applies.
-  var object={request_key:key,customer_id:s.actor.accountId,enrollment_id:archived.enrollment_id,provider_id:consultationSupervisor().id,requested_time:requested,contact_name:text(p.name||archived.contact_name,'家长姓名',60,true),phone:phone(p.phone||archived.phone),concerns:text(p.concerns,'本次困扰',4000,true),status:'PENDING',child_info:archived.child_info,staff_note:'5次咨询 · 第'+slot+'次',confirmed_at:null,completed_at:null};
+  // Historical archived consultations may have no public-class enrollment. Paid confirmation validates the package instead.
+  var childInfo=Object.assign({},archived.child_info);delete childInfo._archive;
+  var object={request_key:key,customer_id:s.actor.accountId,enrollment_id:archived.enrollment_id,provider_id:consultationSupervisor().id,requested_time:requested,contact_name:text(p.name||archived.contact_name,'家长姓名',60,true),phone:phone(p.phone||archived.phone),concerns:text(p.concerns,'本次困扰',4000,true),status:'PENDING',child_info:childInfo,staff_note:'5次咨询 · 第'+slot+'次',confirmed_at:null,completed_at:null};
   if (reuse) update('offline_appointment',and(eq('id',reuse.id),eq('status','CANCELED','text')),object);
   else insert('offline_appointment',object,'offline_appointment_request_key');
   var saved=list('offline_appointment',eq('request_key',key,'text'),'id status',1)[0];

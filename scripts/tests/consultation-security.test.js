@@ -337,3 +337,24 @@ test('方案反馈：所有可接单经理看到同一对话，新消息按各�
  assert.equal(e.run(101,'STAFF_OVERVIEW').data.classes.length,3);
  assert.ok(e.run(101,'COURSE_ROSTER',{classId:12}).data);
  });
+
+test('纸质档案只有登记已完成首次咨询后才有套餐资格，不要求补造公开课报名',()=>{
+ const db=packageDb();Object.assign(db.offline_appointment[0],{status:'孩子档案',enrollment_id:null,confirmed_at:null,contact_name:null,phone:null,child_info:{name:'合成纸质档案',guardian:'合成家长',_archive:{recordType:'CHILD_ARCHIVE_ONLY'}}});
+ const e=engine(db);assert.equal(e.run(201,'GET_PACKAGE').data.eligible,false);
+ db.offline_appointment[0].status='COMPLETED';const r=e.run(201,'GET_PACKAGE').data;
+ assert.equal(r.eligible,true);assert.equal(r.defaults.name,'合成家长');assert.equal(r.defaults.phone,'');assert.equal(db.public_class_enrollment.filter(x=>x.customer_id===201).length,2);
+ db.offline_appointment[0].child_info={};assert.equal(e.run(201,'GET_PACKAGE').data.eligible,false);
+});
+test('历史首咨家长实付后可预约并由主管确认，原纸质档案保留，后续预约使用普通咨询界面',()=>{
+ const db=packageDb();Object.assign(db.offline_appointment[0],{status:'COMPLETED',enrollment_id:null,confirmed_at:null,child_info:{name:'合成纸质孩子',guardian:'合成家长',_archive:{recordType:'CHILD_ARCHIVE_ONLY'}}});
+ const e=engine(db),when=new Date(Date.now()+86400000).toISOString(),saved=e.run(201,'CREATE_APPOINTMENT',{name:'合成家长',phone:'13800000000',requestedTime:when,concerns:'后续沟通'}).data;
+ const a=db.offline_appointment.find(x=>x.id===saved.id);assert.equal(a.enrollment_id,null);assert.equal(a.child_info.name,'合成纸质孩子');assert.equal(a.child_info._archive,undefined);assert.equal(db.offline_appointment[0].child_info._archive.recordType,'CHILD_ARCHIVE_ONLY');
+ e.run(121,'CONFIRM_APPOINTMENT',{appointmentId:a.id,confirmedAt:when});assert.equal(a.status,'CONFIRMED');assert.equal(e.run(201,'GET_PACKAGE').data.package.remaining,4);
+});
+test('无公开课关联的预约不能伪造付费次数、其他家长套餐或普通免费预约请求键',()=>{
+ for(const key of ['agent-first:201','package:999:1','package:91:6','package:91:0']){
+  const db=packageDb();Object.assign(db.offline_appointment[0],{status:'COMPLETED',enrollment_id:null});db.offline_appointment.push({id:399,customer_id:201,provider_id:15,status:'PENDING',enrollment_id:null,request_key:key});
+  const e=engine(db);assert.throws(()=>e.run(121,'CONFIRM_APPOINTMENT',{appointmentId:399,confirmedAt:new Date(Date.now()+86400000).toISOString()}),/首次咨询档案和已支付/);assert.equal(db.offline_appointment.at(-1).status,'PENDING');
+ }
+ const db=packageDb();Object.assign(db.offline_appointment[0],{status:'COMPLETED',enrollment_id:null});db.course_registration_order[0].status='PENDING';const e=engine(db);assert.throws(()=>e.run(201,'CREATE_APPOINTMENT',{name:'家长',phone:'13800000000',requestedTime:new Date(Date.now()+86400000).toISOString(),concerns:'沟通'}),/购买5次/);
+});
