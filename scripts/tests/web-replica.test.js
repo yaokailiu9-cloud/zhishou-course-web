@@ -126,6 +126,28 @@ test('邀请保存失败时不能继续报名；已有登录遇到有效推荐�
     assert.equal(h.host.current.route,fail?'pages/invite-login/invite-login':'pages/public-class-detail/public-class-detail');assert.equal(h.host.wx.getStorageSync('userInfo').id,'18');
   }
 });
+test('已截止或失效的报名码不锁住页面：回到带「我的」的首页并引导查看入场码',async()=>{
+  for(const loggedIn of [false,true]){
+    const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=closed-course',hash:'#/pages/public-class-detail/public-class-detail?id=16'},fetch:async url=>{
+      if(String(url).includes('capture-referral'))return {ok:false,status:400,json:async()=>({ok:false,code:'INVITATION_UNAVAILABLE',message:'本场报名已截止，请查看其他课程'})};
+      return {ok:true,status:200,headers:[],json:async()=>({ok:true,data:String(url).includes('action=session')?(loggedIn?{loggedIn:true,user:{id:'18',name:'家长'},invitation:null}:{loggedIn:false,invitation:null}):{}}),text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data:{classes:[],items:[]}}}}})};
+    }});
+    assert.equal(h.host.current.route,'pages/index/index');assert.equal(h.document.querySelector('#tabbar').hidden,false,'底部导航可用');
+    assert.ok(h.replacements.some(url=>!url.includes('ref=')&&url.endsWith('#/pages/index/index')),'去掉失效报名码，刷新不再重复报错');
+    const modal=h.document.querySelector('#modal');assert.equal(modal.open,true);assert.match(modal.textContent,/报名已截止[\s\S]*我的报名/);
+    h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();assert.equal(h.host.current.route,'pages/profile/profile');
+    [...modal.querySelectorAll('button')].find(b=>b.textContent==='查看我的报名').onclick();await tick();assert.equal(h.host.current.route,'pages/my-enrollments/my-enrollments');
+  }
+});
+test('已登录家长遇到可重试的报名入口错误，仍可进入底部「我的」',async()=>{
+  const h=await host({location:{search:'?ref=signed',hash:'#/pages/public-class-detail/public-class-detail?id=7'},fetch:async url=>{
+    if(String(url).includes('capture-referral'))throw Error('网络连接中断');
+    return {ok:true,status:200,headers:[],json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:'18',name:'家长'},invitation:{returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=7'}}:{}}),text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data:{classes:[],items:[]}}}}})};
+  }});
+  assert.equal(h.host.current.route,'pages/invite-login/invite-login');
+  h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();assert.equal(h.host.current.route,'pages/profile/profile');
+  h.host.wx.navigateTo({url:'/pages/public-class-detail/public-class-detail?id=7'});await tick();assert.equal(h.host.current.route,'pages/invite-login/invite-login','课程报名仍需先保存邀请');
+});
 test('扫码网络故障重试恢复原课程并发起授权，不再刷新错误页',async()=>{
   const returnTo='/web/#/pages/public-class-detail/public-class-detail?id=16';let captures=0;
   const h=await host({navigator:{userAgent:'MicroMessenger'},location:{search:'?ref=signed-course',hash:returnTo.split('/web/')[1]},fetch:async(url,options={})=>{

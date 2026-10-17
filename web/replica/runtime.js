@@ -19,7 +19,7 @@
   root.addEventListener('focusout',finishComposition);
   const HOME = 'pages/index/index';
   const INVITE_LOGIN = 'pages/invite-login/invite-login';
-  let invitation=null,invitationError='',invitationNeedsLogin=false;
+  let invitation=null,invitationError='',invitationNeedsLogin=false,invitationNotice='';
   const invitationTarget='/web/'+(location.hash||'#/pages/plaza/plaza');
   const webFeatures = source.config.webFeatures || {};
   const chatEntryVisible = webFeatures.chatEntryVisible === true;
@@ -498,7 +498,7 @@
   function parseRoute(url){const raw=String(url||'').replace(/^#?\/?/,'');const [path,query]=raw.split('?');return{route:source.pages[path]?path:HOME,options:Object.fromEntries(new URLSearchParams(query))}}
   function navigate(url,mode='push',fromHistory=false){
     let {route,options}=parseRoute(url);
-    if(invitationError||(invitation&&!storage.get('zionJwt'))){route=INVITE_LOGIN;options={};}
+    if((invitationError&&!(session&&tabRoutes.includes(route)))||(invitation&&!storage.get('zionJwt'))){route=INVITE_LOGIN;options={};}
     if(!fromHistory&&unloadMessage){wx.showModal({title:'尚未保存',content:unloadMessage,success:r=>{if(r.confirm){unloadMessage='';navigate(url,mode)}}});return}
     if(current){current._scroll=window.scrollY;lifecycle(current,'onHide')}
     if(mode==='tab')refreshChatEntry();
@@ -729,6 +729,7 @@
     getInvitationError:()=>invitationError,
     retryInvitation:async()=>{
       await captureInvitation();
+      if(invitationNotice){navigate('/'+HOME,'tab');showInvitationNotice();return;}
       if(invitationError&&!invitationNeedsLogin)throw new Error(invitationError);
       if(invitationNeedsLogin){webLogin();return;}
       if(invitation&&!storage.get('zionJwt'))webLogin();
@@ -783,13 +784,23 @@
     invitationError='';invitationNeedsLogin=false;
     const incomingRef=new URLSearchParams(location.search).get('ref');
     if(incomingRef){
-      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:invitation?.returnTo||invitationTarget})});const body=await response.json();if(!response.ok||!body.ok){invitationNeedsLogin=body.code==='INVITATION_LOGIN_REQUIRED';throw new Error(body.message||'报名入口暂时无法打开，请重试');}invitation=body.data.invitation;}
+      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:invitation?.returnTo||invitationTarget})});const body=await response.json();if(body.code==='INVITATION_UNAVAILABLE'){dropInvitation(body.message);return;}if(!response.ok||!body.ok){invitationNeedsLogin=body.code==='INVITATION_LOGIN_REQUIRED';throw new Error(body.message||'报名入口暂时无法打开，请重试');}invitation=body.data.invitation;}
       catch(e){invitationError=e.message||'报名入口暂时无法打开，请重新加载';}
     }
   }
+  // A closed course or dead code is final: forget it so the parent can still sign in and open 我的.
+  function dropInvitation(message){
+    invitation=null;invitationNotice=message||'报名二维码已失效，请联系分享人重新发送';
+    const clean=new URL(location.href);clean.searchParams.delete('ref');clean.hash='#/'+HOME;history.replaceState({},'',clean.pathname+clean.search+clean.hash);
+  }
+  function showInvitationNotice(){
+    const notice=invitationNotice||new URLSearchParams(location.search).get('inviteNotice');if(!notice)return;
+    invitationNotice='';const clean=new URL(location.href);clean.searchParams.delete('inviteNotice');history.replaceState({},'',clean.pathname+clean.search+clean.hash);
+    wx.showModal({title:'报名码暂不可用',content:notice+'。已报名的家长可在「我的报名」查看入场码。',cancelText:'先看看',confirmText:'查看我的报名',success:r=>{if(r.confirm)navigate('/pages/my-enrollments/my-enrollments')}});
+  }
   async function start(){
-    const incomingRef=new URLSearchParams(location.search).get('ref');
     await captureInvitation();
+    const incomingRef=new URLSearchParams(location.search).get('ref');
     try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载报名页面';}
     const loginError=new URLSearchParams(location.search).get('loginError');
     if(loginError&&invitation&&!session)invitationError=loginError;
@@ -799,9 +810,10 @@
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};
     const courseId=new URLSearchParams(location.search).get('course');
     const initial=location.hash.slice(1)||(/^[1-9][0-9]*$/.test(courseId||'')?'/pages/course-detail/course-detail?id='+courseId:'');
-    const target=aliases[initial]||(parseRoute(initial).route===INVITE_LOGIN&&session?invitation?.returnTo?.split('#')[1]||HOME:initial)||HOME;
+    const target=invitationNotice?HOME:aliases[initial]||(parseRoute(initial).route===INVITE_LOGIN&&session?invitation?.returnTo?.split('#')[1]||HOME:initial)||HOME;
     navigate(parseRoute(target).route==='pages/profile/profile'?HOME:target,'replace');
     const error=new URLSearchParams(location.search).get('loginError');if(error)wx.showToast({title:error});
+    showInvitationNotice();
   }
   window.MiniHost={start,parseRoute,value,requireModule,get current(){return current},wx};
   start();
