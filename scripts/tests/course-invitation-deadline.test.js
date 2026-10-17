@@ -34,15 +34,15 @@ test('课程邀请依据实时截止时间，兼容旧码且不放宽登录凭�
  assert.equal((await capture(token.slice(0,-1)+(token.endsWith('a')?'b':'a'))).status,400);
  assert.equal((await req('capture-referral',{ref:token,returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=99'})).status,400,'绑定课程不能篡改');
  const saved={...course};course={...saved,registration_closes_at:new Date(Date.now()-1000).toISOString()};
- const closed=await capture(token);assert.equal(closed.status,400);assert.equal(closed.body.code,'INVITATION_UNAVAILABLE','截止是最终结果，前端不再锁住全部页面');assert.match(closed.body.message,/报名已截止/);
+ const closed=await capture(token);assert.equal(closed.status,400);assert.equal(closed.body.code,'INVITATION_UNAVAILABLE','截止是最终结果，前端不再锁住全部页面');assert.match(closed.body.message,/报名已截止/);assert.equal(closed.body.ticketClass,'16','截止后报名码改为打开本人入场码');
  course={...saved,registration_closes_at:null,starts_at:new Date(Date.now()-1000).toISOString()};assert.match((await capture(token)).body.message,/报名已截止/);
  course={...saved,status:'CLOSED'};assert.match((await capture(token)).body.message,/暂未开放/);
  course=saved;assert.equal((await capture(token)).status,200,'延后截止时间时原二维码恢复，无需重发');
  const login=await req('login');assert.equal(login.status,302);const state=new URL(login.headers.location).searchParams.get('state');
  course={...saved,registration_closes_at:new Date(Date.now()-1000).toISOString()};const before=operations.filter(c=>c.operation==='BIND_INVITATION').length;
- const callback=await req('/api/wechat-oauth-callback?'+new URLSearchParams({state,code:'test-only-code'}));assert.match(callback.headers.location,/^\/web\/\?inviteNotice=.*#\/pages\/index\/index$/,'授权期间截止仍完成登录，回到首页并说明原因');assert.match(decodeURIComponent(callback.headers.location),/报名已截止/);assert.equal(operations.filter(c=>c.operation==='BIND_INVITATION').length,before,'授权期间截止，不写入推荐绑定');
+ const callback=await req('/api/wechat-oauth-callback?'+new URLSearchParams({state,code:'test-only-code'}));assert.equal(callback.headers.location,'/web/?ticketClass=16#/pages/index/index','授权期间截止仍完成登录，并直接打开本场入场码');assert.equal(operations.filter(c=>c.operation==='BIND_INVITATION').length,before,'授权期间截止，不写入推荐绑定');
  const signedIn=await req('session');assert.equal(signedIn.body.data.loggedIn,true,'家长登录不被已截止的报名码阻断');assert.equal(signedIn.body.data.invitation,null);
- jar.delete('zhishou_h5_session');jar.set('zhishou_invitation',encodeURIComponent(sign({kind:'invitation',referrerId:'17',returnTo,exp:Math.floor(Date.now()/1000)+600})));const relogin=await req('login');const reloginState=verify(new URL(relogin.headers.location).searchParams.get('state'));assert.equal(reloginState.referrerId,null,'已截止课程的旧邀请不再阻断重新登录');assert.match(reloginState.notice||'',/报名已截止/);assert.equal(jar.get('zhishou_invitation'),'','旧邀请随之清除');
+ jar.delete('zhishou_h5_session');jar.set('zhishou_invitation',encodeURIComponent(sign({kind:'invitation',referrerId:'17',returnTo,exp:Math.floor(Date.now()/1000)+600})));const relogin=await req('login');const reloginState=verify(new URL(relogin.headers.location).searchParams.get('state'));assert.equal(reloginState.referrerId,null,'已截止课程的旧邀请不再阻断重新登录');assert.equal(reloginState.ticketClass,'16','已截止课程的邀请登录后打开入场码');assert.equal(jar.get('zhishou_invitation'),'','旧邀请随之清除');
  assert.equal(verify(sign({kind:'oauth',exp:1})),null);assert.equal(verify(sign({account:{id:'101'},jwt:'stale',exp:1})),null);
  course=saved;expiredSession=true;jar.set('zhishou_h5_session',sign({account:{id:'101'},jwt:'stale-jwt',exp:Math.floor(Date.now()/1000)+60}));
  const stale=await capture(token);assert.equal(stale.status,401);assert.equal(stale.body.code,'INVITATION_LOGIN_REQUIRED');assert.ok(jar.get('zhishou_invitation'),'登录过期仍保存原课程');

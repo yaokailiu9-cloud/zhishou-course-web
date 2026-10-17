@@ -132,6 +132,11 @@ function clearInvitation(res) {
   appendCookie(res,`${INVITATION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
 
+// Registration closed or course no longer open; registered parents still need their entry code.
+function courseClosed(error) {
+  return /^COURSE:/.test(String(error && error.message || ''));
+}
+
 // Course closed, code tampered/expired, or course mismatch: permanent, so retrying cannot help.
 function invitationRejected(error) {
   return /^(?:COURSE|INPUT):/.test(String(error && error.message || ''));
@@ -446,7 +451,7 @@ async function handleApi(req, res) {
       // A closed course or dead code must not lock the parent out of the app; report it as final, keep any earlier valid invitation.
       let referrerId;
       try{referrerId=await captureInvitationRef(input.ref,target);if(!referrerId)throw new Error('INPUT:报名二维码已失效，请联系分享人重新发送');}
-      catch(error){if(!invitationRejected(error))throw error;return json(res,400,{ok:false,code:'INVITATION_UNAVAILABLE',message:friendly(error)});}
+      catch(error){if(!invitationRejected(error))throw error;return json(res,400,{ok:false,code:'INVITATION_UNAVAILABLE',message:friendly(error),ticketClass:courseClosed(error)?invitationClassId(target):''});}
       if(String(referrerId)===String(current?.account?.id))return json(res,200,{ok:true,data:{invitation:null}});
       const safeTarget=invitationReturn(input.returnTo);
       // Refreshing the login gate must not replace the original course with the plaza.
@@ -477,16 +482,17 @@ async function handleApi(req, res) {
       const requested=invitationReturn(url.searchParams.get('return')||invitation?.returnTo);
       const incoming=url.searchParams.get('ref');
       // Signing in is never blocked by an unusable invitation; it only skips the referral.
-      let referrerId=null,notice='';
+      // ticketClass: after registration closes, a parent's own sign-up code leads to their entry code instead.
+      let referrerId=null,notice='',ticketClass=/^[1-9][0-9]*$/.test(url.searchParams.get('ticketClass')||'')?url.searchParams.get('ticketClass'):'';
       try{
         referrerId=incoming?await captureInvitationRef(incoming,requested):invitation?.referrerId||null;
         if(incoming&&!referrerId)throw new Error('INPUT:报名二维码已失效，请联系分享人重新发送');
         if(referrerId&&!incoming)await assertInvitationCourse(invitationClassId(requested));
-      }catch(error){if(!invitationRejected(error))throw error;referrerId=null;notice=friendly(error);clearInvitation(res);}
+      }catch(error){if(!invitationRejected(error))throw error;referrerId=null;notice=friendly(error);if(courseClosed(error))ticketClass=ticketClass||invitationClassId(requested);clearInvitation(res);}
       const returnTo=referrerId?requested:'/web/#/pages/index/index';
       const invitationAccountId=current?.account?.id||invitation?.accountId||null;
       if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:invitationAccountId});
-      const state = sign({kind:"oauth", referrerId, returnTo, invitationAccountId, notice, exp:Math.floor(Date.now()/1000)+600});
+      const state = sign({kind:"oauth", referrerId, returnTo, invitationAccountId, notice, ticketClass, exp:Math.floor(Date.now()/1000)+600});
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
       const callback = `${origin.replace(/\/$/, "")}/api/wechat-oauth-callback`;
       const auth = "https://open.weixin.qq.com/connect/oauth2/authorize"
@@ -559,15 +565,16 @@ async function handleOauthCallback(req, res) {
     // Bind the authenticated customer from the verified invitation before returning to the course.
     const sameAccount=!state.invitationAccountId||String(state.invitationAccountId)===String(login.account.id);
     let referrerId = sameAccount && state.referrerId && String(state.referrerId) !== String(login.account.id) ? state.referrerId : null;
-    let returnTo=referrerId?invitationReturn(state.returnTo):'/web/#/pages/index/index',notice=state.notice||'';
+    let returnTo=referrerId?invitationReturn(state.returnTo):'/web/#/pages/index/index',notice=state.notice||'',ticketClass=/^[1-9][0-9]*$/.test(state.ticketClass||'')?state.ticketClass:'';
     if(referrerId){
       // The WeChat identity is already verified: a closed course or failed binding skips the referral, not the login.
       try{await assertInvitationCourse(invitationClassId(returnTo));await invoke(login.jwt, 'BIND_INVITATION', {referrerId});}
-      catch(error){referrerId=null;notice=friendly(error);returnTo='/web/#/pages/index/index';}
+      catch(error){if(courseClosed(error))ticketClass=invitationClassId(returnTo);referrerId=null;notice=friendly(error);returnTo='/web/#/pages/index/index';}
     }
     setSession(res, {jwt:login.jwt, account:login.account, referrerId, referralReturn:returnTo, exp:Math.floor(Date.now()/1000)+SESSION_SECONDS});
     if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:login.account.id});
     else clearInvitation(res);
+    if(ticketClass)return redirect(res, '/web/?ticketClass='+ticketClass+'#/pages/index/index');
     return redirect(res, notice?'/web/?inviteNotice='+encodeURIComponent(notice)+'#/pages/index/index':returnTo);
   } catch (error) {
     return redirect(res, `/web/?loginError=${encodeURIComponent(friendly(error))}`);

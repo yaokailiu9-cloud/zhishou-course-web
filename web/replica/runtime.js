@@ -19,7 +19,7 @@
   root.addEventListener('focusout',finishComposition);
   const HOME = 'pages/index/index';
   const INVITE_LOGIN = 'pages/invite-login/invite-login';
-  let invitation=null,invitationError='',invitationNeedsLogin=false,invitationNotice='';
+  let invitation=null,invitationError='',invitationNeedsLogin=false,invitationNotice='',invitationDropped=false,ticketClass='';
   const invitationTarget='/web/'+(location.hash||'#/pages/plaza/plaza');
   const webFeatures = source.config.webFeatures || {};
   const chatEntryVisible = webFeatures.chatEntryVisible === true;
@@ -528,12 +528,13 @@
     if(options.showCancel!==false){const cancel=document.createElement('button');cancel.className='cancel';cancel.textContent=options.cancelText||'取消';cancel.onclick=()=>finish(false);actions.append(cancel)}
     const ok=document.createElement('button');ok.textContent=options.confirmText||'确定';ok.onclick=()=>finish(true);actions.append(ok);dialog.oncancel=event=>{event.preventDefault();finish(false)};dialog.showModal();
   }
-  function webLogin(){
+  function webLogin(entryClass){
     if(invitationError&&!invitationNeedsLogin){wx.showToast({title:invitationError});return;}
     if(invitation&&!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'请在微信中登录',content:'请用微信扫一扫，或长按识别收到的报名二维码。',showCancel:false});return;}
     if(!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'微信登录',content:'请将当前网页链接在微信中打开，再点击微信登录。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:location.href})}});return}
     const ref=new URLSearchParams(location.search).get('ref')||'';
-    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(invitation?.returnTo||'/web/#/'+HOME);
+    const entry=typeof entryClass==='string'&&/^[1-9][0-9]*$/.test(entryClass)?'&ticketClass='+entryClass:'';
+    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(invitation?.returnTo||'/web/#/'+HOME)+entry;
   }
   let referralContext = null;
   async function getReferralContext(classId,target){
@@ -729,7 +730,7 @@
     getInvitationError:()=>invitationError,
     retryInvitation:async()=>{
       await captureInvitation();
-      if(invitationNotice){navigate('/'+HOME,'tab');showInvitationNotice();return;}
+      if(invitationDropped){navigate('/'+HOME,'tab');afterInvitationDropped();return;}
       if(invitationError&&!invitationNeedsLogin)throw new Error(invitationError);
       if(invitationNeedsLogin){webLogin();return;}
       if(invitation&&!storage.get('zionJwt'))webLogin();
@@ -784,13 +785,15 @@
     invitationError='';invitationNeedsLogin=false;
     const incomingRef=new URLSearchParams(location.search).get('ref');
     if(incomingRef){
-      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:invitation?.returnTo||invitationTarget})});const body=await response.json();if(body.code==='INVITATION_UNAVAILABLE'){dropInvitation(body.message);return;}if(!response.ok||!body.ok){invitationNeedsLogin=body.code==='INVITATION_LOGIN_REQUIRED';throw new Error(body.message||'报名入口暂时无法打开，请重试');}invitation=body.data.invitation;}
+      try{const response=await fetch('/api/h5?action=capture-referral',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ref:incomingRef,returnTo:invitation?.returnTo||invitationTarget})});const body=await response.json();if(body.code==='INVITATION_UNAVAILABLE'){dropInvitation(body.message,body.ticketClass);return;}if(!response.ok||!body.ok){invitationNeedsLogin=body.code==='INVITATION_LOGIN_REQUIRED';throw new Error(body.message||'报名入口暂时无法打开，请重试');}invitation=body.data.invitation;}
       catch(e){invitationError=e.message||'报名入口暂时无法打开，请重新加载';}
     }
   }
   // A closed course or dead code is final: forget it so the parent can still sign in and open 我的.
-  function dropInvitation(message){
-    invitation=null;invitationNotice=message||'报名二维码已失效，请联系分享人重新发送';
+  // After registration closes, the course's sign-up code becomes the parent's way back to their own entry code.
+  function dropInvitation(message,entryClass){
+    invitation=null;invitationDropped=true;
+    if(/^[1-9][0-9]*$/.test(String(entryClass||'')))ticketClass=String(entryClass);else invitationNotice=message||'报名二维码已失效，请联系分享人重新发送';
     const clean=new URL(location.href);clean.searchParams.delete('ref');clean.hash='#/'+HOME;history.replaceState({},'',clean.pathname+clean.search+clean.hash);
   }
   function showInvitationNotice(){
@@ -798,10 +801,27 @@
     invitationNotice='';const clean=new URL(location.href);clean.searchParams.delete('inviteNotice');history.replaceState({},'',clean.pathname+clean.search+clean.hash);
     wx.showModal({title:'报名码暂不可用',content:notice+'。已报名的家长可在「我的报名」查看入场码。',cancelText:'先看看',confirmText:'查看我的报名',success:r=>{if(r.confirm)navigate('/pages/my-enrollments/my-enrollments')}});
   }
+  function afterInvitationDropped(){if(ticketClass)openEntryCode();else showInvitationNotice();}
+  async function openEntryCode(){
+    const classId=ticketClass;ticketClass='';if(!classId)return;
+    const clean=new URL(location.href);clean.searchParams.delete('ticketClass');history.replaceState({},'',clean.pathname+clean.search+clean.hash);
+    if(!session){wx.showModal({title:'查看入场码',content:'已报名的家长，请用报名时的微信登录，登录后会直接打开本人的入场二维码。',cancelText:'先看看',confirmText:'微信登录',success:r=>{if(r.confirm)webLogin(classId)}});return;}
+    try{
+      const service=requireModule('utils/consultationService');let cursor=null,match=null;
+      for(let page=0;page<5&&!match;page++){
+        const r=await service.call('MY_ENROLLMENTS',{filter:'ALL',cursor});const items=(r.items||[]).filter(e=>String(e.public_class_id)===classId);
+        match=items.find(e=>e.status==='REGISTERED')||null;if(!match&&items.length&&!r.nextCursor)match=items[0];
+        cursor=r.nextCursor;if(!cursor)break;
+      }
+      if(match){navigate('/pages/class-ticket/class-ticket?id='+match.id);return;}
+      wx.showModal({title:'未找到本场报名',content:'当前微信账号没有这场课程的报名记录。如已缴费，请确认使用的是报名时的微信，或请现场工作人员协助核实。',cancelText:'知道了',confirmText:'查看我的报名',success:r=>{if(r.confirm)navigate('/pages/my-enrollments/my-enrollments')}});
+    }catch(_){wx.showToast({title:'入场码加载失败，请在「我的报名」中查看'});navigate('/pages/my-enrollments/my-enrollments');}
+  }
   async function start(){
     await captureInvitation();
+    const returnedTicket=new URLSearchParams(location.search).get('ticketClass');if(!ticketClass&&/^[1-9][0-9]*$/.test(returnedTicket||'')){ticketClass=returnedTicket;invitationDropped=true;}
     const incomingRef=new URLSearchParams(location.search).get('ref');
-    try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载报名页面';}
+    try{const response=await fetch('/api/h5?action=session');const body=await response.json();if(!response.ok||!body.ok)throw new Error();if(!invitationDropped)invitation=body.data.invitation||invitation;if(body.data.loggedIn){session=body.data;storage.set('zionJwt','h5-session');storage.set('userInfo',{id:session.user.id,nickName:session.user.name,username:session.user.name,avatarUrl:session.user.avatarUrl})}}catch(_){if(incomingRef||invitation)invitationError='登录状态暂未确认，请重新加载报名页面';}
     const loginError=new URLSearchParams(location.search).get('loginError');
     if(loginError&&invitation&&!session)invitationError=loginError;
     if(session)try{await getReferralContext();}catch(_){/* Retry explicitly when sharing; public browsing remains available. */}
@@ -810,10 +830,10 @@
     const aliases={home:HOME,courses:'pages/plaza/plaza',mine:'pages/profile/profile'};
     const courseId=new URLSearchParams(location.search).get('course');
     const initial=location.hash.slice(1)||(/^[1-9][0-9]*$/.test(courseId||'')?'/pages/course-detail/course-detail?id='+courseId:'');
-    const target=invitationNotice?HOME:aliases[initial]||(parseRoute(initial).route===INVITE_LOGIN&&session?invitation?.returnTo?.split('#')[1]||HOME:initial)||HOME;
+    const target=invitationDropped?HOME:aliases[initial]||(parseRoute(initial).route===INVITE_LOGIN&&session?invitation?.returnTo?.split('#')[1]||HOME:initial)||HOME;
     navigate(parseRoute(target).route==='pages/profile/profile'?HOME:target,'replace');
     const error=new URLSearchParams(location.search).get('loginError');if(error)wx.showToast({title:error});
-    showInvitationNotice();
+    if(ticketClass)openEntryCode();else showInvitationNotice();
   }
   window.MiniHost={start,parseRoute,value,requireModule,get current(){return current},wx};
   start();

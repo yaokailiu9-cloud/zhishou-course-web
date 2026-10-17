@@ -139,6 +139,25 @@ test('已截止或失效的报名码不锁住页面：回到带「我的」的�
     [...modal.querySelectorAll('button')].find(b=>b.textContent==='查看我的报名').onclick();await tick();assert.equal(h.host.current.route,'pages/my-enrollments/my-enrollments');
   }
 });
+test('报名截止后扫课程报名码：已缴费家长直接打开本人入场码，未登录则微信登录后打开',async()=>{
+  const items=[{id:41,public_class_id:9,status:'REGISTERED',attendance_status:'PENDING',public_class:{id:9,title:'其他课程'}},{id:44,public_class_id:16,status:'REGISTERED',attendance_status:'PENDING',public_class:{id:16,title:'答案库'}}];
+  const make=({loggedIn,search,enrollments=items})=>host({navigator:{userAgent:'MicroMessenger'},location:{search,hash:'#/pages/public-class-detail/public-class-detail?id=16'},fetch:async(url,options={})=>{
+    if(String(url).includes('capture-referral'))return {ok:false,status:400,json:async()=>({ok:false,code:'INVITATION_UNAVAILABLE',message:'本场报名已截止，请查看其他课程',ticketClass:'16'})};
+    const body=String(options.body||'');const data=body.includes('MY_ENROLLMENTS')?{items:enrollments,nextCursor:null}:body.includes('GET_ENROLLMENT')?{enrollment:items[1]}:{classes:[],items:[]};
+    return {ok:true,status:200,headers:[],json:async()=>({ok:true,data:String(url).includes('action=session')?(loggedIn?{loggedIn:true,user:{id:'18',name:'家长'},invitation:{returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=16'}}:{loggedIn:false,invitation:{returnTo:'/web/#/pages/public-class-detail/public-class-detail?id=16'}}):{}}),text:async()=>JSON.stringify({data:{fz_invoke_action_flow:{result:{ok:true,data}}}})};
+  }});
+  let h=await make({loggedIn:true,search:'?ref=closed-course'});await tick();
+  assert.equal(h.host.current.route,'pages/class-ticket/class-ticket');assert.equal(h.host.current.options.id,'44','打开本场课程的本人报名，而不是其他课程');
+  assert.ok(!h.document.querySelector('#modal').open,'不再提示报名码不可用');
+  h=await make({loggedIn:false,search:'?ref=closed-course'});await tick();
+  assert.equal(h.host.current.route,'pages/index/index','不再锁在登录报名页');const modal=h.document.querySelector('#modal');assert.match(modal.textContent,/查看入场码[\s\S]*报名时的微信登录/);
+  [...modal.querySelectorAll('button')].find(b=>b.textContent==='微信登录').onclick();
+  const login=new URL(h.context.location.href,'http://localhost');assert.equal(login.pathname,'/api/h5');assert.equal(login.searchParams.get('ticketClass'),'16');assert.equal(login.searchParams.get('return'),'/web/#/pages/index/index');
+  h=await make({loggedIn:true,search:'?ticketClass=16'});await tick();
+  assert.equal(h.host.current.route,'pages/class-ticket/class-ticket','微信登录回来直接打开入场码');assert.equal(h.host.current.options.id,'44');
+  h=await make({loggedIn:true,search:'?ticketClass=16',enrollments:[items[0]]});await tick();
+  assert.equal(h.host.current.route,'pages/index/index');assert.match(h.document.querySelector('#modal').textContent,/未找到本场报名[\s\S]*报名时的微信/);
+});
 test('已登录家长遇到可重试的报名入口错误，仍可进入底部「我的」',async()=>{
   const h=await host({location:{search:'?ref=signed',hash:'#/pages/public-class-detail/public-class-detail?id=7'},fetch:async url=>{
     if(String(url).includes('capture-referral'))throw Error('网络连接中断');
