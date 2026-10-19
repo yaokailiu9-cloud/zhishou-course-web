@@ -110,3 +110,15 @@ test('公开课程向游客、普通家长和代理返回视频，分享参数�
  h.db.course[0].enabled=true;h.db.course[0].public_video=null;
  assert.equal(h.run(null,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false,'历史空值默认为非公开');
 });
+
+
+test('已打包加密的课时恢复完整MP4；未授权用户仍拿不到地址或密钥',()=>{
+ const h=harness();h.db.course[0].public_video=true;
+ h.db.course_lesson[0].hls={id:1,status:'READY',version:1,key_hex:'secret:iv'};
+ const open=h.run(null,'COURSE_VIEW_ACCESS',{courseId:14});
+ assert.equal(open.lessons[0].videoUrl,'https://cdn.test/comm.mp4');assert.equal(open.lessons[0].hls,null);
+ h.db.course[0].public_video=false;
+ const locked=h.run(null,'COURSE_VIEW_ACCESS',{courseId:14});
+ assert.equal(locked.canWatch,false);assert.equal(locked.lessons[0].videoUrl,'');assert.equal(locked.lessons[0].hls,null);
+ assert.doesNotMatch(JSON.stringify(locked),/cdn\.test|secret/);
+});

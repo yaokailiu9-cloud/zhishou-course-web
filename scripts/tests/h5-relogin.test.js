@@ -48,7 +48,7 @@ function mockBackend(t, options = {}) {
 function request(server, path, {method = 'GET', cookie = ''} = {}) {
   return new Promise((resolve, reject) => {
     const req = http.request({host:'127.0.0.1', port:server.address().port, path, method,
-      headers:{cookie, 'content-type':'application/json'}}, res => {
+      headers:{cookie, 'content-type':'application/json', 'user-agent':'MicroMessenger/8.0'}}, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => resolve({status:res.statusCode, headers:res.headers, body}));

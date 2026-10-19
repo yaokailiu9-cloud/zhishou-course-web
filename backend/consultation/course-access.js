@@ -19,7 +19,7 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
   }
   if (op === 'COURSE_VIEW_ACCESS') {
     var course = viewCourse(p.courseId);
-    var lessons = gql('query CourseViewLessons($where:course_lesson_bool_exp!){rows:course_lesson(where:$where,order_by:{sort_order:asc},limit:100){id video_url video{id url} hls{id status version key_hex target_duration audio_key_hex audio_segment_count}}}', {where:eq('course_id', course.id)}).rows || [];
+    var lessons = gql('query CourseViewLessons($where:course_lesson_bool_exp!){rows:course_lesson(where:$where,order_by:{sort_order:asc},limit:100){id video_url video{id url}}}', {where:eq('course_id', course.id)}).rows || [];
     // Only the server-stored flag opens video; a share URL never grants access.
     var isPublic = course.enabled === true && course.public_video === true;
     var canWatch = isPublic || viewStaff, reason = '';
@@ -29,34 +29,11 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
       canWatch = grants.some(viewActive);
       reason = canWatch ? '' : grants.length ? 'ENDED' : 'NOT_GRANTED';
     }
-    // Encrypted HLS replaces the MP4 address once a lesson is packaged (scripts/hls-package.js); segment URLs are
-    // signed per request and expire, so playlists are rebuilt each time. Keys go only to viewers who may watch.
-    // The audio-only track has its own key; the web page plays it outside WeChat (cover image + sound).
-    function viewPlaylist(l, h, segs, keyHex, target, audio) {
-      var parts = String(keyHex || '').split(':');
-      if (!segs.length || parts.length !== 2 || segs.some(function(x) { return !x.segment_file || !x.segment_file.url; })) return null;
-      var lines = ['#EXTM3U', '#EXT-X-VERSION:3', '#EXT-X-TARGETDURATION:' + target, '#EXT-X-MEDIA-SEQUENCE:0', '#EXT-X-PLAYLIST-TYPE:VOD',
-        '#EXT-X-KEY:METHOD=AES-128,URI="zskey://' + l.id + '/' + h.version + (audio ? '/audio' : '') + '",IV=0x' + parts[1]];
-      segs.forEach(function(x) { lines.push('#EXTINF:' + Number(x.duration).toFixed(6) + ',', x.segment_file.url); });
-      lines.push('#EXT-X-ENDLIST');
-      return {key:parts[0], playlist:lines.join('\n') + '\n'};
-    }
-    function viewHls(l) {
-      var h = l.hls;
-      if (!h || h.status !== 'READY') return null;
-      var segs = gql('query CourseViewHls($where:course_lesson_hls_segment_bool_exp!){rows:course_lesson_hls_segment(where:$where,order_by:{seq:asc},limit:10000){seq track duration segment_file{url}}}', {where:eq('hls_id', h.id)}).rows || [];
-      var videoSegs = segs.filter(function(x) { return x.track !== 'audio'; }), audioSegs = segs.filter(function(x) { return x.track === 'audio'; });
-      var video = viewPlaylist(l, h, videoSegs, h.key_hex, h.target_duration, false);
-      if (!video) return null;
-      var audioTarget = Math.ceil(Math.max.apply(null, audioSegs.map(function(x) { return Number(x.duration); }).concat([1])));
-      var audio = audioSegs.length && audioSegs.length === Number(h.audio_segment_count) ? viewPlaylist(l, h, audioSegs, h.audio_key_hex, audioTarget, true) : null;
-      return {version:h.version, key:video.key, playlist:video.playlist, audio:audio};
-    }
+    // Use the complete original video. Encrypted segment/key relays are paused while playback reliability
+    // is restored. Keep authorization here; private courses still require a staff identity or active grant.
     result(s, {canWatch:canWatch, isPublic:isPublic, reason:reason, lessons:lessons.map(function(l) {
       var url = (l.video && l.video.url) || l.video_url || '';
-      var packaged = !!(l.hls && l.hls.status === 'READY'), hls = canWatch && packaged ? viewHls(l) : null;
-      // A packaged lesson whose playlist cannot be built still plays the MP4 rather than going dark.
-      return {id:String(l.id), hasVideo:!!url || packaged, videoUrl:canWatch && !hls ? url : '', hls:hls};
+      return {id:String(l.id), hasVideo:!!url, videoUrl:canWatch ? url : '', hls:null};
     })});
   }
   if (op === 'COURSE_VIEW_ADMIN') {

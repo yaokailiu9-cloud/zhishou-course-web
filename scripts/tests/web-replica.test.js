@@ -19,6 +19,7 @@ async function host(options={}){
   Object.assign(context.location,options.location);
   Object.assign(context.navigator,options.navigator);
   if(options.fetch)context.fetch=options.fetch;
+  if(options.MediaSource)context.MediaSource=options.MediaSource;
   const replacements=[];
   context.history.replaceState=(_state,_title,url)=>replacements.push(url);
   context.window=context;vm.createContext(context);
@@ -1040,4 +1041,14 @@ test('从名单底部扫码后显示核对卡片并滚入视野，确认后回�
  assert.equal(page.data.scanResult.title,'签到成功');assert.equal(page.data.stats.attended,1);
  assert.ok(scrolls.some(o=>o.scrollTop===0));assert.match(h.document.querySelector('#toast').textContent,/签到成功/);
  assert.deepEqual(calls,['CHECKIN_LOOKUP','CHECKIN_CONFIRM','CHECKIN_ROSTER']);assert.deepEqual(h.errors,[]);
+});
+
+
+test('支持MediaSource的微信浏览器也直接播放完整MP4，不加载分片库或创建blob流',async()=>{
+ class UnusedMediaSource {constructor(){throw new Error('must use the original MP4')} static isTypeSupported(){return true}}
+ const h=await host({navigator:{userAgent:WECHAT_UA},MediaSource:UnusedMediaSource});await openLesson(h,mp4Lesson);
+ const video=h.document.querySelector('#courseVideo');assert.equal(video.getAttribute('src'),mp4Lesson.videoUrl);
+ assert.equal(h.document.querySelector('script[src*="mp4box"]'),null);
+ assert.equal(h.document.querySelector('script[src*="hls.js"]'),null);
+ assert.equal(video._mediaStream,undefined);assert.deepEqual(h.errors,[]);
 });

@@ -478,6 +478,7 @@ async function handleApi(req, res) {
       }
     }
     if (action === "login") {
+      if (!/MicroMessenger/i.test(req.headers["user-agent"] || "")) return json(res, 403, {ok:false, message:"请在微信内打开后登录"});
       const current=readSession(req), invitation=readInvitation(req,current);
       const requested=invitationReturn(url.searchParams.get('return')||invitation?.returnTo);
       const incoming=url.searchParams.get('ref');
@@ -555,6 +556,7 @@ async function handleApi(req, res) {
 }
 
 async function handleOauthCallback(req, res) {
+  if (!/MicroMessenger/i.test(req.headers["user-agent"] || "")) return json(res, 403, {ok:false, message:"请在微信内打开后登录"});
   try {
     const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
     const state = verify(url.searchParams.get("state"));

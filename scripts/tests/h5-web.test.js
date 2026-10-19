@@ -5,10 +5,10 @@ process.env.SESSION_SECRET = 'test-secret-that-is-long-enough-for-h5-session';
 const {sign, verify, decodeRef, refToken, safeReturn, friendly, wechatAppId, wechatAppSecret, authenticateWechatAccount, signWechatShareUrl, shareUrlForRequest} = require('../../server/h5');
 const {createServer, staticFile} = require('../../index');
 
-function request(server, pathname) {
+function request(server, pathname, userAgent = "MicroMessenger/8.0") {
   return new Promise((resolve, reject) => {
     const address = server.address();
-    const req = require('node:http').request({host:'127.0.0.1',port:address.port,path:pathname}, res => {
+    const req = require('node:http').request({host:'127.0.0.1',port:address.port,path:pathname,headers:{"User-Agent":userAgent}}, res => {
       const chunks=[];
       res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks).toString('utf8')}));
@@ -222,4 +222,19 @@ test('Zeabur 服务入口可提供健康检查和课程网页', async t => {
   assert.equal(legacy.status,404);
   assert.equal(legacy.body,'Not Found');
   assert.equal(staticFile('/web/%2e%2e/package.json'),null);
+});
+
+
+test('外部浏览器不能发起或完成微信登录，拒绝时不调用上游也不创建会话', async t => {
+  const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>server.close());
+  const originalFetch=global.fetch;let calls=0;
+  global.fetch=async()=>{calls++;throw new Error('must not request upstream');};t.after(()=>global.fetch=originalFetch);
+  const state=sign({kind:'oauth',returnTo:'/web/',exp:Math.floor(Date.now()/1000)+60});
+  for(const ua of ['', 'Mozilla/5.0 Version/18.0 Safari/604.1', 'Mozilla/5.0 Chrome/141.0', 'Quark/7.4']){
+    for(const url of ['/api/h5?action=login','/api/wechat-oauth-callback?'+new URLSearchParams({state,code:'unused-code'})]){
+      const response=await request(server,url,ua);assert.equal(response.status,403);
+      assert.match(JSON.parse(response.body).message,/微信内打开后登录/);assert.equal(response.headers['set-cookie'],undefined);
+    }
+  }
+  assert.equal(calls,0);
 });
