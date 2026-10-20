@@ -3,15 +3,27 @@ const auth=require('../../utils/auth');
 const chatContext=require('../../utils/chatContext');
 const payment=require('../../utils/coursePayment');
 Page({
- data:{plansOnly:false,loading:false,busy:false,error:'',isLoggedIn:false,eligible:false,hasMyPlan:false,myPlanSubmitted:false,enrollments:[],appointments:[],nextAppointmentCursor:null,moreLoading:false,showForm:false,form:{name:'',phone:'',date:'',time:'',concerns:''},pkg:null,payBusy:false,packageContact:{name:'',phone:''}},
- onLoad(options){this.focusPlans=!!(options&&options.plans);this.setData({plansOnly:this.focusPlans});if(this.focusPlans)wx.setNavigationBarTitle({title:"我的方案"});if(require("../../utils/loginReturn").restore(this,"customer",""))this.bookingKey=service.requestKey();},
+ data:{paymentLinkMode:false,paymentLinkError:'',linkValid:false,plansOnly:false,loading:false,busy:false,error:'',isLoggedIn:false,eligible:false,hasMyPlan:false,myPlanSubmitted:false,enrollments:[],appointments:[],nextAppointmentCursor:null,moreLoading:false,showForm:false,form:{name:'',phone:'',date:'',time:'',concerns:''},pkg:null,payBusy:false,packageContact:{name:'',phone:''}},
+ onLoad(options){this.paymentLinkToken=String(options&&options.paymentLinkToken||'').slice(0,241);const paymentLinkMode=!!(options&&Object.prototype.hasOwnProperty.call(options,'paymentLinkToken'));this.focusPlans=!paymentLinkMode&&!!(options&&options.plans);this.setData({plansOnly:this.focusPlans,paymentLinkMode});if(paymentLinkMode)wx.setNavigationBarTitle({title:'咨询缴费'});if(this.focusPlans)wx.setNavigationBarTitle({title:"我的方案"});if(require("../../utils/loginReturn").restore(this,"customer",""))this.bookingKey=service.requestKey();},
  onShow(){chatContext.enterCustomerView();this.refresh();},
+ onUnload(){this.listGeneration=(this.listGeneration||0)+1;},
  refresh(){const generation=this.listGeneration=(this.listGeneration||0)+1;this.setData({moreLoading:false});
   const user=auth.getLoggedInUser(),accountId=String(user&&user.id||'');if(this.packageContactAccountId!==accountId){this.packageContactAccountId=accountId;this.setData({packageContact:{name:'',phone:''}});}this.setData({isLoggedIn:!!user,error:''});if(!user){this.setData({enrollments:[],appointments:[],eligible:false,hasMyPlan:false,myPlanSubmitted:false,pkg:null});return;}
   this.setData({loading:true});
   service.call('GET_QUESTIONNAIRE').then(data=>{if(generation===this.listGeneration)this.setData({hasMyPlan:!!data.enrollment,myPlanSubmitted:!!(data.enrollment&&data.enrollment.child_submitted_at)});}).catch(()=>{if(generation===this.listGeneration)this.setData({hasMyPlan:false,myPlanSubmitted:false});});
-  if(!this.data.plansOnly)service.call('GET_PACKAGE').then(data=>{if(generation===this.listGeneration)this.setData({pkg:data,packageContact:{name:this.data.packageContact.name||(data.defaults||{}).name||'',phone:this.data.packageContact.phone||(data.defaults||{}).phone||''}});}).catch(()=>{if(generation===this.listGeneration)this.setData({pkg:null});});
+  if(!this.data.plansOnly)this.loadPackage(generation);
   service.call('MY_OVERVIEW',{paginate:true}).then(data=>generation===this.listGeneration && this.setData({eligible:data.eligible,enrollments:(data.enrollments||[]).map(service.decorate),appointments:(data.appointments||[]).map(service.decorate),nextAppointmentCursor:data.nextAppointmentCursor||null})).catch(e=>{if(generation===this.listGeneration)service.error(this,e);}).finally(()=>{if(generation===this.listGeneration){this.setData({loading:false});if(this.focusPlans&&wx.pageScrollTo){this.focusPlans=false;wx.pageScrollTo({selector:'#my-plans',duration:0});}}});
+ },
+ async loadPackage(generation){
+  const linked=this.data.paymentLinkMode;
+  this.setData({pkg:null,linkValid:false,paymentLinkError:''});
+  const results=await Promise.allSettled([service.call('GET_PACKAGE'),linked?service.call('GET_LINK_PACKAGE',{paymentLinkToken:this.paymentLinkToken}):Promise.resolve(null)]);
+  if(generation!==this.listGeneration)return;
+  const base=results[0].status==='fulfilled'?results[0].value:null,link=results[1].status==='fulfilled'?results[1].value:null;
+  if(results[0].status==='rejected'){service.error(this,results[0].reason);return;}
+  const pkg=link?{...base,offer:link.offer,eligible:true,viaPurchaseLink:true}:base;
+  if(pkg&&!pkg.defaults)pkg.defaults={name:'',phone:''};
+  this.setData({pkg,linkValid:!!link,paymentLinkError:linked&&results[1].status==='rejected'?String(results[1].reason.message||'缴费链接暂时无法使用，请联系老师'):'' ,packageContact:{name:this.data.packageContact.name||(pkg&&pkg.defaults||{}).name||'',phone:this.data.packageContact.phone||(pkg&&pkg.defaults||{}).phone||''}});
  },
  async moreAppointments(){if(this.data.loading||this.data.moreLoading||!this.data.nextAppointmentCursor)return;const generation=this.listGeneration||0;this.setData({moreLoading:true});try{const r=await service.call('MY_OVERVIEW',{paginate:true,appointmentCursor:this.data.nextAppointmentCursor});if(generation!==(this.listGeneration||0))return;this.setData({appointments:this.data.appointments.concat((r.appointments||[]).map(service.decorate)),nextAppointmentCursor:r.nextAppointmentCursor||null});}catch(e){if(generation===(this.listGeneration||0))service.error(this,e);}finally{if(generation===(this.listGeneration||0))this.setData({moreLoading:false});}},
  login(){auth.requireLogin('登录后查看自己的报名、预约和咨询记录。');},
@@ -21,7 +33,7 @@ Page({
  openAppointment(e){wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id='+e.currentTarget.dataset.id});},
  openMyPlan(){wx.navigateTo({url:'/pages/questionnaire/questionnaire'});},
  // Follow-up sessions: buy the 5-session package after the first archived consultation, then book each one.
- async buyPackage(){if(!auth.requireLogin()||this.data.payBusy)return;const pkg=this.data.pkg;if(!pkg||!pkg.offer||!pkg.eligible)return;const d={...(pkg.defaults||{}),...this.data.packageContact};d.name=String(d.name||'').trim();d.phone=String(d.phone||'').trim();if(!d.name||!/^1[3-9]\d{9}$/.test(d.phone)){service.error(this,new Error('请先填写家长姓名和有效的11位联系电话'));return;}this.setData({payBusy:true,error:''});try{const r=await payment.enroll({classId:pkg.offer.id,name:d.name,phone:d.phone},'￥'+Number(pkg.offer.price).toFixed(2),{noun:pkg.offer.title,confirmTitle:'购买'+pkg.offer.title});if(r&&r.enrollment)this.refresh();}catch(e){service.error(this,e);}finally{this.setData({payBusy:false});}},
+ async buyPackage(){if(!auth.requireLogin()||this.data.payBusy)return;const pkg=this.data.pkg;if(!pkg||!pkg.offer||!pkg.eligible||(this.data.paymentLinkMode&&!this.data.linkValid))return;const d={...(pkg.defaults||{}),...this.data.packageContact};d.name=String(d.name||'').trim();d.phone=String(d.phone||'').trim();if(!d.name||!/^1[3-9]\d{9}$/.test(d.phone)){service.error(this,new Error('请先填写家长姓名和有效的11位联系电话'));return;}this.setData({payBusy:true,error:''});try{const r=await payment.enroll({classId:pkg.offer.id,name:d.name,phone:d.phone,paymentLinkToken:this.paymentLinkToken||undefined},'￥'+Number(pkg.offer.price).toFixed(2),{noun:pkg.offer.title,confirmTitle:'购买'+pkg.offer.title});if(r&&r.enrollment)this.refresh();}catch(e){service.error(this,e);}finally{this.setData({payBusy:false});}},
  apply(){if(!auth.requireLogin())return;const pkg=this.data.pkg;if(this.data.showForm||!pkg||!pkg.package||!pkg.package.remaining||pkg.package.hasPending)return;const d={...(pkg.defaults||{}),...this.data.packageContact};this.setData({showForm:true,error:'',form:{name:d.name||'',phone:d.phone||'',date:'',time:'',concerns:''}});},
  packageContactInput(e){const key=e.currentTarget.dataset.key;if(['name','phone'].includes(key))this.setData({['packageContact.'+key]:e.detail.value});},
  input(e){const key=e.currentTarget.dataset.key;if(['name','phone','date','time','concerns'].includes(key))this.setData({['form.'+key]:e.detail.value});},

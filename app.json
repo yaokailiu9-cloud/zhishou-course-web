@@ -31,7 +31,8 @@
     "pages/questionnaire/questionnaire",
     "pages/invite-login/invite-login",
     "pages/course-poster/course-poster",
-    "pages/support/support"
+    "pages/support/support",
+    "pages/consultation-payment-link/consultation-payment-link"
   ],
   "window": {
     "navigationBarTitleText": "知守",

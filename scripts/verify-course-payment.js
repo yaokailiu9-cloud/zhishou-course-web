@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
 const root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
 const cli=process.env.ZION_CLI||'/Users/nidie/.codex/plugins/cache/zion/zion-nocode/2.7.8/bin/zion-mcp';
-let code=read('backend/consultation/common.js')+'\n'+read('backend/consultation/classes.js').replace('// FAMILY_HANDLERS: build script inserts family.js here.',read('backend/consultation/family.js')).replace('// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.',read('utils/md5.js').replace('module.exports = { md5Base64 };','')+'\n'+read('backend/consultation/course-payment.js'));
+let code=read('backend/consultation/common.js')+'\n'+read('backend/consultation/classes.js').replace('// FAMILY_HANDLERS: build script inserts family.js here.',read('backend/consultation/family.js')).replace('// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.',read('utils/md5.js').replace('module.exports = { md5Base64 };','')+'\n'+read('backend/consultation/course-payment.js').replace('// PURCHASE_LINK_HANDLERS: build inserts link-signature.js and purchase-links.js here.',read('backend/consultation/link-signature.js')+'\n'+read('backend/consultation/purchase-links.js')));
 if(process.argv.includes('--live')){
   const snapshot=JSON.parse(cp.execFileSync(cli,['schema','snapshot','--args','{"full":true}'],{cwd:process.env.ZION_PROJECT_CWD||root,encoding:'utf8',maxBuffer:10000000,env:{...process.env,MCP_LOG_FILE:'off'}}));
   code=snapshot.server.actionFlows.find(f=>f.uniqueId==='9f60a0be-4628-4268-a769-661264846cf4').allNodes.find(n=>n.uniqueId==='sui9sl3ko').code;

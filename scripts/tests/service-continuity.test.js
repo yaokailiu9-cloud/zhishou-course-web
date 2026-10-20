@@ -27,3 +27,9 @@ test('提交档案失败或提交期间继续修改都保留表单，取消修�
  assert.equal(page.data.childForm.remarks,'继续补充');assert.equal(page.data.childUpdatedAt,'version-2');assert.equal(page.data.editingArchive,true);assert.equal(page.dirtyChild,true);
  await page.cancelArchiveEdit();assert.equal(page.data.childForm.remarks,'第一版');assert.equal(page.data.editingArchive,false);assert.equal(page.dirtyChild,false);
 });
+
+test('咨询缴费链接在登录继续流程中完整保留，非法链接参数不能注入返回地址',()=>{
+ const h=loginHarness(),token='1000000000000021.18.1792465200000.1793070000000.'+'a'.repeat(64);
+ h.api.remember({route:'pages/customer/customer',options:{paymentLinkToken:token}});assert.equal(h.api.paymentLinkReturn(),'/web/#/pages/customer/customer?paymentLinkToken='+token);h.api.resume();assert.equal(h.navigations[0].url,'/pages/customer/customer?paymentLinkToken='+token);
+ h.api.remember({route:'pages/customer/customer',options:{paymentLinkToken:token+'&redirect=https://evil.invalid'}});assert.equal(h.api.paymentLinkReturn(),'');assert.equal(h.api.resume(),false);
+});

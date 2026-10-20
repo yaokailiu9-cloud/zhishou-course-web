@@ -84,7 +84,7 @@
 
     <view class="settings-section">
       <text class="settings-caption">我的服务</text>
-      <view wx:if="{{canPurchaseConsultation}}" class="settings-row" bindtap="goConsultationPurchase"><view class="settings-copy"><text class="settings-title">咨询缴费与预约</text><text class="settings-desc">查看费用、完成缴费并预约咨询</text></view><text class="settings-arrow">›</text></view>
+      <view wx:if="{{canIssueConsultationLink}}" class="settings-row" bindtap="goConsultationPaymentLink"><view class="settings-copy"><text class="settings-title">咨询缴费链接</text><text class="settings-desc">生成链接，发送给需要缴费的家长</text></view><text class="settings-arrow">›</text></view>
       <view wx:if="{{canCheckin}}" class="settings-row" bindtap="goCheckin"><view class="settings-copy"><text class="settings-title">扫码进场</text><text class="settings-desc">课程签到 · 已到与未到人数 · 签到人员安排</text></view><text class="settings-arrow">›</text></view>
       <view class="settings-row" bindtap="goPublicClasses">
         <view class="settings-copy"><text class="settings-title">报名公开课</text><text class="settings-desc">查看课程场次，申请报名</text></view>

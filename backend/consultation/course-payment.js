@@ -28,24 +28,25 @@ function payRequest(o,kind){
   }
   v.sign=paySign(v);return v;
 }
+// PURCHASE_LINK_HANDLERS: build inserts link-signature.js and purchase-links.js here.
 if(op==='PREPARE_COURSE_PAYMENT'){
   login(s);payKey();payBuyer(s.actor.accountId);
-  var c=one('public_class',p.classId,CLASS_FIELDS),scope=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
+  var c=one('public_class',p.classId,CLASS_FIELDS),linkGrant=p.paymentLinkToken?purchaseLinkGrant(p.paymentLinkToken,c):null,scope=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
   var enrollment=list('public_class_enrollment',scope,ENROLL_FIELDS,1)[0];
   // The 5-session package can be bought repeatedly; each paid order adds sessions.
   if(enrollment&&enrollment.status==='REGISTERED'&&c.product_kind!=='CONSULT_PACKAGE')result(s,{enrollment:enrollment});
   else {
     var pending=list('course_registration_order',and(scope,eq('status','PENDING','text')),ORDER_FIELDS,1)[0];
-    if(pending)result(s,{order:payPublic(pending),resume:true});
+    if(pending){if(linkGrant){var previousSource={};try{previousSource=JSON.parse(pending.source||'{}');}catch(_){}if(!previousSource.linkPurchase){previousSource.linkPurchase=linkGrant;update('course_registration_order',and(eq('id',pending.id),eq('status','PENDING','text')),{source:JSON.stringify(previousSource)});}}result(s,{order:payPublic(pending),resume:true});}
     else {
       var view=classView(c,false);if(!view.canEnroll||!c.organizer_id)fail(view.closedReason||'课程未开放报名');
-      if(c.product_kind==='CONSULT_PACKAGE'&&!manualPackagePurchaseSource(s.actor.accountId)&&!list('offline_appointment',and(eq('customer_id',s.actor.accountId),{_or:[eq('status','COMPLETED','text'),and(eq('status','CONFIRMED','text'),compare('_lt','confirmed_at',new Date().toISOString(),'timestamptz'))]}),'id child_info',50).some(function(a){return !!a.child_info&&typeof a.child_info==='object'&&!Array.isArray(a.child_info);}))fail('首次咨询建立档案后才能购买5次咨询');
+      if(c.product_kind==='CONSULT_PACKAGE'&&!linkGrant&&!paidLinkConsultationSource(s.actor.accountId)&&!list('offline_appointment',and(eq('customer_id',s.actor.accountId),{_or:[eq('status','COMPLETED','text'),and(eq('status','CONFIRMED','text'),compare('_lt','confirmed_at',new Date().toISOString(),'timestamptz'))]}),'id child_info',50).some(function(a){return !!a.child_info&&typeof a.child_info==='object'&&!Array.isArray(a.child_info);}))fail('首次咨询建立档案后才能购买5次咨询');
       var candidate=p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?payReferrer(p.referrerId):null;
       if(c.product_kind==='QUESTIONNAIRE'&&!candidate)fail('请使用管理或代理发出的问卷二维码进入');
       var cents=payCents(c.registration_fee),deadline=new Date(c.registration_closes_at||c.starts_at).getTime();
       if(deadline-Date.now()<6*60000)fail('距离报名截止不足六分钟，请联系工作人员');
       var expires=new Date(Math.min(Date.now()+30*60000,deadline)).toISOString();
-      var values={order_no:'ZS'+Date.now()+entryCode().slice(0,16),amount:cents/100,status:'PENDING',customer_id:s.actor.accountId,public_class_id:c.id,registrant_name:text(p.name,'姓名',60,true),phone:phone(p.phone),course_title_snapshot:c.title,payment_channel:'WECHAT_JSAPI',request_key:'WX_COURSE:'+s.actor.accountId+':'+c.id,expires_at:expires,source:JSON.stringify({referrerId:candidate?candidate.account_id:null})};
+      var values={order_no:'ZS'+Date.now()+entryCode().slice(0,16),amount:cents/100,status:'PENDING',customer_id:s.actor.accountId,public_class_id:c.id,registrant_name:text(p.name,'姓名',60,true),phone:phone(p.phone),course_title_snapshot:c.title,payment_channel:'WECHAT_JSAPI',request_key:'WX_COURSE:'+s.actor.accountId+':'+c.id,expires_at:expires,source:JSON.stringify({referrerId:candidate?candidate.account_id:null,linkPurchase:linkGrant||undefined})};
       lockClass(c,{});
       var orderId=insert('course_registration_order',values,'course_registration_order_request_key_key');if(!orderId)fail('已有待支付订单，请重试');
       var order=one('course_registration_order',orderId,ORDER_FIELDS);result(s,{order:payPublic(order),request:payRequest(order,'unifiedorder')});

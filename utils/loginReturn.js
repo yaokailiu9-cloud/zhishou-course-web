@@ -1,5 +1,5 @@
 // One login continuation per app session. Personal form values are never persisted to storage.
-const ALLOWED = new Set(['customer','public-class','public-class-detail','class-enroll','my-enrollments','class-ticket','course-manage','course-edit','course-roster','service-workbench','consultation-detail','advisor','profile-edit','questionnaire-share','questionnaire-work-orders','questionnaire-review','questionnaire','chat']);
+const ALLOWED = new Set(['customer','public-class','public-class-detail','class-enroll','my-enrollments','class-ticket','course-manage','course-edit','course-roster','service-workbench','consultation-detail','advisor','profile-edit','consultation-payment-link','questionnaire-share','questionnaire-work-orders','questionnaire-review','questionnaire','chat']);
 const MAX_AGE = 30 * 60 * 1000;
 let pending = null;
 let enrollmentDraft = null;
@@ -13,7 +13,9 @@ function remember(page, options = {}) {
   if (!ALLOWED.has(name) || route !== `pages/${name}/${name}`) return;
   const id = page.options && page.options.id;
   if (id != null && !/^[1-9][0-9]*$/.test(String(id))) return;
-  const url = '/' + route + (id ? '?id=' + encodeURIComponent(id) : '');
+  let url = '/' + route + (id ? '?id=' + encodeURIComponent(id) : '');
+  const link=page.options&&page.options.paymentLinkToken;
+  if(name==='customer'&&link!=null){if(!/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[a-f0-9]{64}$/.test(String(link))||String(link).length>240)return;url+=(id?'&':'?')+'paymentLinkToken='+encodeURIComponent(link);}
   pending = { url, name, id: String(id || ''), createdAt: Date.now() };
   if(options.preserveForm && options.accountId && page.data){
     const keys={chat:['input','failedMessage','sendError'],customer:['form','showForm'], 'class-enroll':['form'], 'course-edit':['form','coverUrl','groupQrUrl'],
@@ -57,4 +59,5 @@ function restore(page,name,id) {
   return true;
 }
 function clear() { pending = null; enrollmentDraft = null; restoredDraft = null; }
-module.exports = { remember, resume, takeEnrollmentForm, restore, clear };
+function paymentLinkReturn(){return pending&&pending.name==='customer'&&pending.url.includes('?paymentLinkToken=')&&Date.now()-pending.createdAt<=MAX_AGE?'/web/#'+pending.url:'';}
+module.exports = { remember, resume, takeEnrollmentForm, restore, clear, paymentLinkReturn };

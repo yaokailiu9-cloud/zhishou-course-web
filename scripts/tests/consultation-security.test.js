@@ -4,7 +4,7 @@ code.appointments=code.appointments.replace('// AGENT_APPOINTMENTS: build script
 code.authorize+='\n'+fs.readFileSync(path.join(base,'referral.js'),'utf8');
 for(const n of ['classes','appointments','followup'])code[n]=code[n].replace('// DIALOGUE_UNREAD: build inserts dialogue-unread.js here.',fs.readFileSync(path.join(base,'dialogue-unread.js'),'utf8'));
 function fixture(){const past=new Date(Date.now()-3600000).toISOString();return {account:[{id:101,username:'老师甲',wechat_nickname:'老师甲'},{id:102,username:'老师乙',wechat_nickname:'老师乙'},{id:201,username:'家长甲',wechat_nickname:'家长甲'},{id:202,username:'家长乙',wechat_nickname:'家长乙'},{id:203,username:'家长丙',wechat_nickname:'家长丙'},{id:121,username:'程思琦',wechat_nickname:'程思琦'}],service_provider:[{id:15,account_id:121,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true},{id:1,account_id:101,service_status:'ACTIVE',can_reply:true,can_accept_order:true},{id:2,account_id:102,service_status:'ACTIVE',can_reply:true,can_accept_order:true}],public_class:[{id:11,title:'甲公开课',product_kind:'COURSE',status:'PUBLISHED',organizer_id:1,starts_at:past,group_guide:'联系老师'},{id:12,title:'乙公开课',product_kind:'COURSE',status:'PUBLISHED',organizer_id:2,starts_at:past,group_guide:'联系老师'},{id:13,title:'草稿',product_kind:'COURSE',status:'DRAFT',organizer_id:1}],public_class_enrollment:[{id:21,customer_id:201,public_class_id:11,status:'REGISTERED',attendance_status:'ATTENDED',verified_by_id:1,verified_at:past},{id:22,customer_id:202,public_class_id:12,status:'REGISTERED',attendance_status:'PENDING'}],course_registration_order:[],course_referral:[],offline_appointment:[{id:31,customer_id:201,provider_id:1,enrollment_id:21,status:'CONFIRMED',confirmed_at:past,created_at:past,child_info:{name:'孩子甲'}},{id:32,customer_id:202,provider_id:2,enrollment_id:22,status:'PENDING'}],offline_consultation_record:[{id:41,appointment_id:31,author_id:1,status:'CONFIRMED',summary:'老师确认的记录',advice:[{key:'step-1',content:'每天倾听'}]}],consultation_dialogue_read:[],consultation_feedback:[],consultation_feedback_reply:[],consultation_summary_job:[],consultation_session:[],consultation_message:[],fz_conversation:[],fz_message:[],fz_message_content:[]};}
-function engine(db){db.public_class_enrollment.forEach(r=>{r.feedback_revision??=0;r.feedback_status??='NOT_SUBMITTED';});let next=1000;const calls=[],tasks=[];function related(table,row){const r={...row};if(table==='public_class_enrollment')r.public_class=db.public_class.find(c=>c.id===row.public_class_id);if(table==='course_referral'){r.referrer=db.account.find(a=>a.id===row.referrer_id);r.referred_account=db.account.find(a=>a.id===row.referred_account_id);if(r.referred_account)r.referred_account={...r.referred_account,public_class_enrollments:db.public_class_enrollment.filter(e=>e.customer_id===row.referred_account_id).map(e=>related('public_class_enrollment',e))};}if(table==='offline_appointment')r.provider=db.service_provider.find(p=>p.id===row.provider_id);if(table==='consultation_feedback')r.replies=db.consultation_feedback_reply.filter(p=>p.feedback_id===row.id);return r;}
+function engine(db){db.public_class_enrollment.forEach(r=>{r.feedback_revision??=0;r.feedback_status??='NOT_SUBMITTED';});let next=1000;const calls=[],tasks=[];function related(table,row){const r={...row};if(table==='public_class_enrollment'||table==='course_registration_order')r.public_class=db.public_class.find(c=>c.id===row.public_class_id);if(table==='course_referral'){r.referrer=db.account.find(a=>a.id===row.referrer_id);r.referred_account=db.account.find(a=>a.id===row.referred_account_id);if(r.referred_account)r.referred_account={...r.referred_account,public_class_enrollments:db.public_class_enrollment.filter(e=>e.customer_id===row.referred_account_id).map(e=>related('public_class_enrollment',e))};}if(table==='offline_appointment')r.provider=db.service_provider.find(p=>p.id===row.provider_id);if(table==='consultation_feedback')r.replies=db.consultation_feedback_reply.filter(p=>p.feedback_id===row.id);return r;}
 function match(row,w){
  if(w._not)return !match(row,w._not);
  if(w._and)return w._and.every(v=>match(row,v));if(w._or)return w._or.some(v=>match(row,v));
@@ -359,31 +359,16 @@ test('无公开课关联的预约不能伪造付费次数、其他家长套餐�
  const db=packageDb();Object.assign(db.offline_appointment[0],{status:'COMPLETED',enrollment_id:null});db.course_registration_order[0].status='PENDING';const e=engine(db);assert.throws(()=>e.run(201,'CREATE_APPOINTMENT',{name:'家长',phone:'13800000000',requestedTime:new Date(Date.now()+86400000).toISOString(),concerns:'沟通'}),/购买5次/);
 });
 
-function manualPurchaseDb(){
- const db=fixture(),customer=1000000000000031,referrer=1000000000000024;
- db.account.find(a=>a.id===201).id=customer;db.offline_appointment=[];db.course_registration_order=[];
- Object.assign(db.public_class_enrollment[0],{id:36,customer_id:customer,registrant_name:'合成家长',phone:'13800000000'});
- db.service_provider.push({id:24,account_id:referrer,service_kind:'AGENT',service_status:'ACTIVE'});
- db.course_referral.push({id:49,referrer_id:referrer,referred_account_id:customer});
- db.public_class.push({id:90,title:'5次咨询',product_kind:'CONSULT_PACKAGE',status:'PUBLISHED',registration_fee:3999});
- return db;
-}
-test('人工购买例外仅适用明确批准账号，保持未首咨、未支付，不接受客户端伪造授权',()=>{
- const db=manualPurchaseDb(),e=engine(db),before=structuredClone(db),r=e.run(1000000000000031,'GET_PACKAGE').data;
- assert.equal(r.manualApproval,true);assert.equal(r.eligible,true);assert.equal(r.offer.price,3999);assert.equal(r.package,null);assert.deepEqual(db,before);
- assert.equal(e.run(202,'GET_PACKAGE',{customerId:1000000000000031,manualApproval:true}).data.eligible,false);
- assert.throws(()=>e.run(1000000000000031,'CREATE_APPOINTMENT',{requestedTime:new Date(Date.now()+86400000).toISOString(),concerns:'沟通'}),/购买5次/);
- for(const change of [d=>{d.course_referral[0].referrer_id=203;},d=>{d.service_provider.at(-1).service_status='INACTIVE';},d=>{d.public_class_enrollment[0].attendance_status='PENDING';},d=>{d.public_class_enrollment[0].verified_at=null;},d=>{d.public_class_enrollment[0].customer_id=202;}]){
-  const other=manualPurchaseDb();change(other);assert.equal(engine(other).run(1000000000000031,'GET_PACKAGE').data.eligible,false);
- }
-});
-test('人工批准家长实付后预约为待确认，确认后填写真实档案，不补造免费首咨',()=>{
- const db=manualPurchaseDb(),customer=1000000000000031;
- db.course_registration_order.push({id:95,customer_id:customer,public_class_id:90,status:'PAID'});
- db.public_class_enrollment.push({id:91,customer_id:customer,public_class_id:90,status:'REGISTERED'});
- const e=engine(db),when=new Date(Date.now()+86400000).toISOString();
- const r=e.run(customer,'CREATE_APPOINTMENT',{requestedTime:when,concerns:'本次困扰'}).data,a=db.offline_appointment[0];
- assert.equal(a.status,'PENDING');assert.equal(a.enrollment_id,36);assert.equal(a.child_info,null);assert.equal(a.provider_id,15);assert.equal(a.request_key,'package:91:1');assert.equal(db.offline_appointment.length,1);
+function paidLinkDb(){const db=packageDb();db.offline_appointment=[];db.public_class_enrollment=db.public_class_enrollment.filter(e=>e.public_class_id===90);db.course_registration_order[0].source=JSON.stringify({linkPurchase:{kind:'CONSULTATION_PURCHASE_LINK_V1',issuerAccountId:'1000000000000021',issuerProviderId:15,productId:90,expiresAt:'2020-01-01T00:00:00Z'}});return db;}
+test('从管理缴费链接实付的家长可预约，无需补造首咨或公开课，链接到期不丢失已购次数',()=>{
+ const db=paidLinkDb(),e=engine(db),when=new Date(Date.now()+86400000).toISOString();
+ const pkg=e.run(201,'GET_PACKAGE').data;assert.equal(pkg.eligible,true);assert.equal(pkg.viaPurchaseLink,true);assert.equal(pkg.package.remaining,5);
+ const r=e.run(201,'CREATE_APPOINTMENT',{name:'家长甲',phone:'13800000000',requestedTime:when,concerns:'本次困扰'}).data,a=db.offline_appointment[0];
+ assert.equal(a.status,'PENDING');assert.equal(a.enrollment_id,null);assert.equal(a.child_info,null);assert.equal(a.provider_id,15);assert.equal(db.offline_appointment.length,1);
  e.run(121,'CONFIRM_APPOINTMENT',{appointmentId:r.id,confirmedAt:when});assert.equal(a.status,'CONFIRMED');
- e.run(customer,'SAVE_CHILD_INFO',{appointmentId:r.id,childInfo:{name:'真实填写',age:8,guardian:'合成家长',relationship:'母亲',phone:'13800000000',concerns:'本次困扰'}});assert.equal(a.child_info.name,'真实填写');assert.equal(e.run(customer,'GET_PACKAGE').data.package.remaining,4);
+ e.run(201,'SAVE_CHILD_INFO',{appointmentId:r.id,childInfo:{name:'家长填写的孩子',age:8,guardian:'家长甲',relationship:'母亲',phone:'13800000000',concerns:'本次困扰'}});assert.equal(a.child_info.name,'家长填写的孩子');
+});
+test('未付款、其他家长、伪造来源及单账号旧特例均不能获得链接购买权益',()=>{
+ for(const change of [d=>{d.course_registration_order[0].status='PENDING';},d=>{d.course_registration_order[0].customer_id=202;},d=>{d.course_registration_order[0].source=JSON.stringify({linkPurchase:{kind:'CONSULTATION_PURCHASE_LINK_V1',issuerAccountId:'203',productId:90}});},d=>{d.course_registration_order[0].source='null';}]){const db=paidLinkDb();change(db);const e=engine(db);assert.equal(e.run(201,'GET_PACKAGE',{viaPurchaseLink:true,paid:true}).data.eligible,false);}
+ const db=fixture();db.offline_appointment=[];db.account.find(a=>a.id===201).id=1000000000000031;assert.equal(engine(db).run(1000000000000031,'GET_PACKAGE').data.eligible,false);
 });

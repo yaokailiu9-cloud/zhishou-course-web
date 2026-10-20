@@ -17,6 +17,6 @@ const cancel="if(op==='CANCEL_ENROLLMENT') {\n  var e=ownedEnrollment(p.enrollme
 assert.ok(code.includes(cancel),'Live cancel handler changed; review before applying');
 code=code.replace(cancel,cancel+"\n  if(e.status!=='CANCELED'&&list('course_registration_order',and(eq('customer_id',s.actor.accountId),eq('public_class_id',e.public_class_id),eq('status','PAID','text')),'id',1).length)fail('已缴费报名请联系工作人员办理退款，不能直接取消');");
 const end="context.setReturn('state',s);";assert.equal(code.split(end).length,2);
-code=code.replace(end,'// COURSE_PAYMENT_START\n'+read('utils/md5.js').replace('module.exports = { md5Base64 };','')+'\n'+read('backend/consultation/course-payment.js')+'\n// COURSE_PAYMENT_END\n'+end);
+code=code.replace(end,'// COURSE_PAYMENT_START\n'+read('utils/md5.js').replace('module.exports = { md5Base64 };','')+'\n'+read('backend/consultation/course-payment.js').replace('// PURCHASE_LINK_HANDLERS: build inserts link-signature.js and purchase-links.js here.',read('backend/consultation/link-signature.js')+'\n'+read('backend/consultation/purchase-links.js'))+'\n// COURSE_PAYMENT_END\n'+end);
 const result=run('schema','tool-call','--toolCalls',JSON.stringify([{name:'UPDATE_ACTION_FLOW_NODE',args:{actionFlowId:flow.uniqueId,nodeId:node.uniqueId,config:{type:'CUSTOM_CODE',code}}}]));assert.ok(!result.errors,JSON.stringify(result.errors));
 console.log(JSON.stringify({staged:true,project:state.projectExId,node:node.uniqueId,validation:run('schema','validate')},null,2));

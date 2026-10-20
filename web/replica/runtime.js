@@ -439,7 +439,8 @@
     if(!/MicroMessenger/i.test(navigator.userAgent)){wx.showModal({title:'微信登录',content:'请将当前网页链接在微信中打开，再点击微信登录。',confirmText:'复制链接',success:r=>{if(r.confirm)wx.setClipboardData({data:location.href})}});return}
     const ref=new URLSearchParams(location.search).get('ref')||'';
     const entry=typeof entryClass==='string'&&/^[1-9][0-9]*$/.test(entryClass)?'&ticketClass='+entryClass:'';
-    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(invitation?.returnTo||'/web/#/'+HOME)+entry;
+    const paymentReturn=requireModule('utils/loginReturn').paymentLinkReturn();
+    location.href='/api/h5?action=login&ref='+encodeURIComponent(ref)+'&return='+encodeURIComponent(invitation?.returnTo||paymentReturn||'/web/#/'+HOME)+entry;
   }
   let referralContext = null;
   async function getReferralContext(classId,target){

@@ -652,8 +652,8 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
   // 我的页只在onShow校验身份；另有启动和每次切换页签时的聊天入口校验各一次。
   assert.equal(requests.filter(r=>r.query.includes('GetServiceProviderByAccount')).length,10,'只在onShow校验身份，onLoad不重复请求');
   assert.equal(requests.filter(r=>r.variables?.args?.operation==='CHECKIN_ACCESS').length,6,'每次展示独立查询签到授权');
-  assert.equal(requests.filter(r=>r.variables?.args?.operation==='GET_PACKAGE').length,6,'每次展示校验人工购买资格');
-  assert.ok(requests.filter(r=>r.variables?.args).every(r=>['CHECKIN_ACCESS','GET_PACKAGE'].includes(r.variables.args.operation)));
+  assert.equal(requests.filter(r=>r.variables?.args?.operation==='INTERNAL_PURCHASE_ACCESS').length,6,'每次展示校验内部链接发放资格');
+  assert.ok(requests.filter(r=>r.variables?.args).every(r=>['CHECKIN_ACCESS','INTERNAL_PURCHASE_ACCESS'].includes(r.variables.args.operation)));
  });
 
  test('不同后台身份登录后的入口严格隔离，包括旧user_type不一致的账号',async()=>{
@@ -678,7 +678,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    if(record.identity==='USER'){
     assert.doesNotMatch(text,/简易方案梳理|推荐客户|扫码进场|工作台/,'普通账号'+record.id);
     assert.equal(h.host.current.data.canInvite,false);assert.equal(h.host.current.data.isServiceProvider,false);
-    assert.deepEqual(requests.filter(r=>r.variables?.args).map(r=>r.variables.args.operation).sort(),['CHECKIN_ACCESS','GET_PACKAGE']);
+    assert.deepEqual(requests.filter(r=>r.variables?.args).map(r=>r.variables.args.operation).sort(),['CHECKIN_ACCESS','INTERNAL_PURCHASE_ACCESS']);
     assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null);
    }else {
     assert.match(text,/简易方案梳理/);assert.match(text,/推荐客户/);
@@ -1053,17 +1053,34 @@ test('支持MediaSource的微信浏览器也直接播放完整MP4，不加载分
  assert.equal(video._mediaStream,undefined);assert.deepEqual(h.errors,[]);
 });
 
-test('人工开通购买资格的家长从我的入口进入3999元缴费页，不显示已完成首咨',async()=>{
- const h=await host({fetch:async(url,options={})=>{
-  if(String(url).includes('action=graphql')){
-   const input=JSON.parse(options.body),op=input.variables?.args?.operation;
-   const result=op==='GET_PACKAGE'?{manualApproval:true,eligible:true,offer:{id:18,title:'5次咨询',price:3999,sessions:5,unitPrice:1000},package:null,defaults:{name:'合成家长',phone:'13800000000'}}:{appointments:[],enrollments:[],items:[],allowed:false};
-   return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:201,wechat_nickname:'合成家长'},fz_invoke_action_flow:{result:{ok:true,data:result}}}})};
-  }
-  return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:true,user:{id:201,name:'合成家长'}}:{}})};
- }});
- h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();
- assert.match(h.document.querySelector('#page').textContent,/咨询缴费与预约/);
- h.host.current.goConsultationPurchase();await tick();
- const text=h.document.querySelector('#page').textContent;assert.match(text,/3999/);assert.match(text,/已为你开通购买资格/);assert.match(text,/购买5次咨询/);assert.doesNotMatch(text,/首次咨询已建立孩子档案/);assert.equal(h.errors.length,0);
+const PAYMENT_LINK_TOKEN='1000000000000021.18.1792465200000.1793070000000.'+'a'.repeat(64);
+function internalPaymentFetch(user,allowed=false){return async(url,options={})=>{
+ if(String(url).includes('action=graphql')){
+  const input=JSON.parse(options.body),op=input.variables?.args?.operation;
+  const result=op==='INTERNAL_PURCHASE_ACCESS'?{allowed}:op==='GET_LINK_PACKAGE'?{offer:{id:18,title:'5次咨询',price:3999,sessions:5,unitPrice:1000}}:op==='GET_PACKAGE'?{eligible:false,offer:{id:18,title:'5次咨询',price:3999,sessions:5,unitPrice:1000},package:null,defaults:null}:op==='CREATE_PURCHASE_LINK'?{url:'https://www.apply.tianqiwushu.cn/web/#/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN,expiresAt:'2026-10-27T03:00:00Z',offer:{title:'5次咨询',price:3999}}:{appointments:[],enrollments:[],items:[],allowed:false};
+  return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:user?.id,wechat_nickname:user?.name},fz_invoke_action_flow:{result:{ok:true,data:result}}}})};
+ }
+ return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:!!user,user}:{}})};
+};}
+test('两个获授权账号具有内部缴费链接入口，普通家长不展示，可生成并复制链接',async()=>{
+ for(const allowed of [true,false]){
+  const h=await host({fetch:internalPaymentFetch({id:allowed?1000000000000021:201,name:'合成用户'},allowed)});
+  h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();const text=h.document.querySelector('#page').textContent;
+  if(!allowed){assert.doesNotMatch(text,/咨询缴费链接|咨询缴费与预约/);continue;}
+  assert.match(text,/咨询缴费链接/);h.host.current.goConsultationPaymentLink();await tick();assert.equal(h.host.current.data.allowed,true);
+  await h.host.current.generate();await tick();assert.match(h.document.querySelector('#page').textContent,/复制缴费链接/);assert.match(h.host.current.data.shareUrl,/paymentLinkToken=/);
+  let copied='';h.context.navigator.clipboard={writeText:async value=>{copied=value;}};h.host.current.copy();await tick();assert.equal(copied,h.host.current.data.shareUrl);assert.equal(h.errors.length,0);
+ }
+});
+test('家长直接打开管理链接看见3999元购买页，不显示公开课及首次免费咨询规则',async()=>{
+ const h=await host({fetch:internalPaymentFetch({id:201,name:'合成家长'})});
+ h.host.wx.navigateTo({url:'/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN});await tick();
+ const text=h.document.querySelector('#page').textContent;assert.match(text,/3999/);assert.match(text,/购买5次咨询/);assert.match(text,/购买前补充联系方式/);assert.ok(h.document.querySelector('input[placeholder="请输入11位手机号"]'));assert.doesNotMatch(text,/首次咨询已建立|人工|免费咨询|参加公开课|我的公开课报名/);assert.equal(h.host.current.data.linkValid,true);assert.equal(h.errors.length,0);
+});
+test('未登录家长经过微信OAuth仍回到原缴费链接，付款资格仍由后台验证',async()=>{
+ const h=await host({fetch:internalPaymentFetch(null),navigator:{userAgent:'MicroMessenger/8.0'}});
+ h.host.wx.navigateTo({url:'/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN});await tick();h.host.current.login();await tick();
+ const buttons=[...h.document.querySelectorAll('#modal button')];buttons.find(b=>b.textContent==='去登录').click();await tick();
+ assert.equal(h.host.current.route,'pages/profile/profile');h.host.current.loginByWechat();
+ const login=new URL(h.context.location.href,'http://localhost');assert.equal(login.searchParams.get('action'),'login');assert.equal(login.searchParams.get('return'),'/web/#/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN);
 });

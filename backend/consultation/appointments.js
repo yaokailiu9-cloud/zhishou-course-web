@@ -9,7 +9,7 @@ if (op === "CONFIRM_APPOINTMENT") {
     if (!verifiedPublicClass(e) || String(e.customer_id)!==String(a.customer_id)) fail("请先核实该客户实际参加公开课");
   }else{
     // Only a real paid follow-up entitlement plus a completed first-consult archive replaces attendance proof.
-    var product=packageProduct(),pkg=ownedPackage(a.customer_id,product),archived=archivedConsultation(a.customer_id);
+    var product=packageProduct(),pkg=ownedPackage(a.customer_id,product),archived=packageConsultationSource(a.customer_id);
     var booking=one('offline_appointment',a.id,'id request_key'),slot=String(booking.request_key||'').match(/^package:([1-9][0-9]*):([1-9][0-9]*)$/);
     if(!pkg||!archived||!slot||String(pkg.id)!==slot[1]||Number(slot[2])>packageTotal(a.customer_id,product))fail("请先核实首次咨询档案和已支付的后续咨询次数");
   }

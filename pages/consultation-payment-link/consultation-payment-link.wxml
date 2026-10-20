@@ -1,0 +1,18 @@
+<view class="service-page">
+ <text class="page-title">咨询缴费链接</text>
+ <text wx:if="{{allowed}}" class="muted">生成链接后发给家长，由家长本人在微信中完成缴费。</text>
+ <view wx:if="{{loading}}" class="notice">正在核实发放权限…</view>
+ <view wx:if="{{error}}" class="error"><text>{{error}}</text><button bindtap="refresh">重试</button></view>
+ <view wx:if="{{!loading && !allowed && !error}}" class="notice"><text>请使用获授权的管理账号进入。</text><button wx:if="{{!loggedIn}}" class="secondary" bindtap="login">微信登录</button><button wx:else class="secondary" bindtap="goProfile">返回我的</button></view>
+ <view wx:if="{{allowed}}" class="card">
+  <text class="section-title">发给需要缴费的家长</text>
+  <text class="muted">链接7天有效，可供多位家长使用。每位家长的订单和咨询次数分别保存。</text>
+  <button class="{{shareUrl ? 'secondary' : 'primary'}}" loading="{{busy}}" disabled="{{busy}}" bindtap="generate">{{shareUrl ? '生成新链接' : '生成缴费链接'}}</button>
+  <block wx:if="{{shareUrl}}">
+   <text class="body">{{offer.title}} · ￥{{offer.price}}</text>
+   <text class="muted">有效期至 {{expiresText}}</text>
+   <button class="primary" bindtap="copy">复制缴费链接</button>
+   <text class="muted">复制后粘贴到微信发给家长。生成新链接不会提前关闭已发出的链接。</text>
+  </block>
+ </view>
+</view>

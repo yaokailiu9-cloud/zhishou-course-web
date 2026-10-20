@@ -17,8 +17,8 @@ function ownedPackage(accountId,product){
   return product?list('public_class_enrollment',and(eq('customer_id',accountId),eq('public_class_id',product.id),eq('status','REGISTERED','text')),'id created_at',1)[0]||null:null;
 }
 function packageConsultationSource(accountId){
-  var archived=archivedConsultation(accountId),approval=manualPackagePurchaseSource(accountId);
-  if(archived&&approval)archived.manualApproval=true;
+  var archived=archivedConsultation(accountId),approval=paidLinkConsultationSource(accountId);
+  if(archived&&approval)archived.viaPurchaseLink=true;
   return archived||approval;
 }
 // Each PAID order of the package adds 5 sessions to the same entitlement.
@@ -29,7 +29,7 @@ if (op === 'GET_PACKAGE') {
   login(s);var product=packageProduct(),archived=packageConsultationSource(s.actor.accountId),pkg=ownedPackage(s.actor.accountId,product);
   var active=pkg?packageBookings(pkg).filter(function(a){return a.status!=='CANCELED';}):[],total=pkg?packageTotal(s.actor.accountId,product):0;
   result(s,{offer:product?{id:product.id,title:product.title,price:Number(product.registration_fee||0),sessions:PACKAGE_SESSIONS,unitPrice:PACKAGE_UNIT_PRICE}:null,eligible:!!archived,
-    manualApproval:!!(archived&&archived.manualApproval),
+    viaPurchaseLink:!!(archived&&archived.viaPurchaseLink),
     package:pkg?{id:pkg.id,total:total,used:active.length,remaining:Math.max(0,total-active.length),hasPending:active.some(function(a){return a.status==='PENDING';})}:null,
     defaults:archived?{name:archived.contact_name||archived.child_info.guardian||'',phone:archived.phone||archived.child_info.phone||''}:null});
 }

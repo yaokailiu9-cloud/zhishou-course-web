@@ -11,7 +11,7 @@ Page({
     navHeight: 104,
     isLoggedIn: false,
     canCheckin: false,
-    canPurchaseConsultation: false,
+    canIssueConsultationLink: false,
     isSuperAdmin: false,
     canInvite: false,
     userInfo: {},
@@ -79,7 +79,7 @@ Page({
       this.setData({
         isLoggedIn: false,
         canCheckin: false,
-        canPurchaseConsultation: false,
+        canIssueConsultationLink: false,
         isSuperAdmin: false,
         canInvite: false,
         userInfo: {},
@@ -104,18 +104,18 @@ Page({
 
   async loadPurchaseAccess(userInfo) {
     const identity=viewSession.capture(),generation=this.purchaseGeneration=(this.purchaseGeneration||0)+1;
-    this.setData({canPurchaseConsultation:false});
+    this.setData({canIssueConsultationLink:false});
     if(!userInfo||String(userInfo.id)!==identity.accountId)return;
     try {
-      const data=await checkinService.call('GET_PACKAGE');
-      if(generation===this.purchaseGeneration&&viewSession.current(identity))this.setData({canPurchaseConsultation:!!(data&&data.manualApproval===true&&data.eligible===true&&data.offer)});
+      const data=await checkinService.call('INTERNAL_PURCHASE_ACCESS');
+      if(generation===this.purchaseGeneration&&viewSession.current(identity))this.setData({canIssueConsultationLink:!!(data&&data.allowed===true)});
     } catch (_) { /* Keep the purchase entry closed until the backend confirms eligibility. */ }
   },
 
-  goConsultationPurchase() {
-    if(!this.data.canPurchaseConsultation)return;
+  goConsultationPaymentLink() {
+    if(!this.data.canIssueConsultationLink)return;
     chatContext.enterCustomerView();
-    wx.navigateTo({url:'/pages/customer/customer'});
+    wx.navigateTo({url:'/pages/consultation-payment-link/consultation-payment-link'});
   },
 
   goMyPlan() {
@@ -323,7 +323,7 @@ Page({
       isLoggedIn: false,
       canInvite: false,
       canCheckin: false,
-      canPurchaseConsultation: false,
+      canIssueConsultationLink: false,
       isSuperAdmin: false,
       userInfo: {},
       avatarText: "客",

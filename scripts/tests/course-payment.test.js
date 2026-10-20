@@ -3,7 +3,7 @@ const {engine,fixture}=require('./consultation-security.test');
 const relay=require('../../server/h5/course-payment');
 const read=f=>fs.readFileSync(require('node:path').join(__dirname,'../..',f),'utf8');
 const digest=read('utils/md5.js').replace('module.exports = { md5Base64 };','');
-const source=read('backend/consultation/common.js')+'\n'+read('backend/consultation/classes.js').replace('// FAMILY_HANDLERS: build script inserts family.js here.',read('backend/consultation/family.js')).replace('// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.',digest+'\n'+read('backend/consultation/course-payment.js'));
+const source=read('backend/consultation/common.js')+'\n'+read('backend/consultation/classes.js').replace('// FAMILY_HANDLERS: build script inserts family.js here.',read('backend/consultation/family.js')).replace('// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.',digest+'\n'+read('backend/consultation/course-payment.js').replace('// PURCHASE_LINK_HANDLERS: build inserts link-signature.js and purchase-links.js here.',read('backend/consultation/link-signature.js')+'\n'+read('backend/consultation/purchase-links.js')));
 const KEY='0123456789abcdef0123456789abcdef';
 function signature(o){return crypto.createHash('md5').update(Object.keys(o).filter(k=>k!=='sign'&&o[k]!==''&&o[k]!=null).sort().map(k=>k+'='+o[k]).join('&')+'&key='+KEY).digest('hex').toUpperCase();}
 function setup(){const db=fixture();db.course_registration_order=[];db.account.find(x=>x.id===201).username='wxh5_test';db.account.find(x=>x.id===201).wechat_openid='openid-test';db.public_class[0]={...db.public_class[0],registration_fee:100,capacity:2,reserved_count:0,revision:0,starts_at:new Date(Date.now()+3600000).toISOString()};db.public_class_enrollment=[];const e=engine(db);
@@ -11,7 +11,7 @@ function setup(){const db=fixture();db.course_registration_order=[];db.account.f
  return {db,run};}
 function start(r){return r.run(201,'PREPARE_COURSE_PAYMENT',{classId:11,name:'支付测试',phone:'13800000000',amount:0.01});}
 function proof(order,extra={}){const o={appid:'wx6dafecca8d5fd24e',mch_id:'1666219884',return_code:'SUCCESS',result_code:'SUCCESS',trade_type:'JSAPI',trade_state:'SUCCESS',openid:'openid-test',out_trade_no:order.orderNo,total_fee:'10000',fee_type:'CNY',transaction_id:'420000000000000001',nonce_str:'测试 nonce',...extra};o.sign=signature(o);return o;}
-test('server MD5 matches independent crypto for UTF-8 and padding boundaries',()=>{const scope={};vm.runInNewContext(digest+'\n'+read('backend/consultation/course-payment.js'),Object.assign(scope,{op:'NONE'}));for(let i=0;i<130;i++){const s='文'.repeat(i);assert.equal(scope.payMd5(s),crypto.createHash('md5').update(s).digest('hex').toUpperCase());}});
+test('server MD5 matches independent crypto for UTF-8 and padding boundaries',()=>{const scope={};vm.runInNewContext(digest+'\n'+read('backend/consultation/course-payment.js').replace('// PURCHASE_LINK_HANDLERS: build inserts link-signature.js and purchase-links.js here.',read('backend/consultation/link-signature.js')+'\n'+read('backend/consultation/purchase-links.js')),Object.assign(scope,{op:'NONE'}));for(let i=0;i<130;i++){const s='文'.repeat(i);assert.equal(scope.payMd5(s),crypto.createHash('md5').update(s).digest('hex').toUpperCase());}});
 test('amount comes from course, pending creates no enrollment and retries reuse order',()=>{const r=setup(),p=start(r);assert.equal(p.order.amount,100);assert.equal(p.request.total_fee,'10000');assert.equal(p.request.sign,signature(p.request));assert.equal(r.db.public_class_enrollment.length,0);assert.equal(r.db.public_class[0].reserved_count,0);assert.equal(start(r).order.id,p.order.id);assert.equal(r.db.course_registration_order.length,1);assert.throws(()=>r.run(202,'QUERY_COURSE_PAYMENT',{orderId:p.order.id}),/其他用户/);assert.throws(()=>r.run(null,'PREPARE_COURSE_PAYMENT',{classId:11}),/登录/);});
 test('问卷从后台0.01元商品生成一分订单且必须来自有效代理二维码',()=>{const r=setup();r.db.service_provider.push({id:3,account_id:203,service_kind:'AGENT',service_status:'ACTIVE',can_reply:false,can_accept_order:false});Object.assign(r.db.public_class[0],{title:'简易方案梳理',product_kind:'QUESTIONNAIRE',registration_fee:0.01});assert.throws(()=>r.run(201,'PREPARE_COURSE_PAYMENT',{classId:11,name:'家长',phone:'13800000000'}),/管理或代理/);const p=r.run(201,'PREPARE_COURSE_PAYMENT',{classId:11,name:'家长',phone:'13800000000',referrerId:203});assert.equal(p.order.amount,0.01);assert.equal(p.request.total_fee,'1');assert.equal(p.request.body,'知守-简易方案梳理');});
 test('signed payment atomically registers exactly once; duplicates never increment seats',()=>{const r=setup(),p=start(r),gateway=proof(p.order);r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway});r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway});assert.equal(r.db.course_registration_order[0].status,'PAID');assert.equal(r.db.course_registration_order[0].amount_paid,100);assert.equal(r.db.public_class_enrollment.length,1);assert.equal(r.db.public_class[0].reserved_count,1);assert.ok(r.run(201,'QUERY_COURSE_PAYMENT',{orderId:p.order.id}).enrollment);assert.throws(()=>r.run(201,'CANCEL_ENROLLMENT',{enrollmentId:r.db.public_class_enrollment[0].id}),/退款/);});
@@ -32,15 +32,36 @@ test('5次咨询可以重复购买：每笔到账订单都直接生效，不进�
  for(let round=1;round<=2;round++){const p=buy();assert.ok(p.order,'第'+round+'次应生成新订单');r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'399900',transaction_id:'42000000000000099'+round})});const o=r.db.course_registration_order.find(x=>x.id===p.order.id);assert.equal(o.status,'PAID');assert.equal(r.db.public_class_enrollment.filter(e=>e.public_class_id===90).length,1);assert.ok(r.run(201,'QUERY_COURSE_PAYMENT',{orderId:p.order.id}).enrollment);}
  assert.equal(r.db.course_registration_order.filter(o=>o.public_class_id===90&&o.status==='PAID').length,2);});
 
-test('人工批准且已核实到课的指定家长可以生成3999元待支付订单，仍需有效微信支付回执',()=>{
- const r=setup(),customer=1000000000000031,referrer=1000000000000024;
- r.db.account.find(a=>a.id===201).id=customer;r.db.offline_appointment=[];
- r.db.service_provider.push({id:24,account_id:referrer,service_kind:'AGENT',service_status:'ACTIVE'});
- r.db.course_referral.push({id:49,referrer_id:referrer,referred_account_id:customer});
- r.db.public_class_enrollment.push({id:36,customer_id:customer,public_class_id:11,status:'REGISTERED',attendance_status:'ATTENDED',verified_at:new Date().toISOString(),verified_by_id:15});
- r.db.public_class.push({id:90,title:'5次咨询',product_kind:'CONSULT_PACKAGE',status:'PUBLISHED',organizer_id:15,registration_fee:3999,capacity:0,reserved_count:0,revision:0,starts_at:'2099-12-31T12:00:00Z',registration_closes_at:'2099-12-30T12:00:00Z'});
- const p=r.run(customer,'PREPARE_COURSE_PAYMENT',{classId:90,name:'合成家长',phone:'13800000000',amount:0.01});
- assert.equal(p.order.amount,3999);assert.equal(p.request.total_fee,'399900');assert.equal(r.db.course_registration_order[0].status,'PENDING');assert.equal(r.db.offline_appointment.length,0);assert.equal(r.db.public_class_enrollment.length,1);
- assert.throws(()=>r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'1'})}));assert.equal(r.db.course_registration_order[0].status,'PENDING');
- r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'399900'})});assert.equal(r.db.course_registration_order[0].status,'PAID');assert.equal(r.db.public_class_enrollment.length,2);assert.equal(r.db.offline_appointment.length,0);
+function linkSetup(){const r=setup();r.db.offline_appointment=[];r.db.public_class_enrollment=[];
+ r.db.service_provider.push({id:14,account_id:1000000000000019,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true},{id:15,account_id:1000000000000021,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true});
+ r.db.public_class.push({id:90,title:'5次咨询',product_kind:'CONSULT_PACKAGE',status:'PUBLISHED',organizer_id:15,registration_fee:3999,capacity:0,reserved_count:0,revision:0,starts_at:'2099-12-31T12:00:00Z',registration_closes_at:'2099-12-30T12:00:00Z'});return r;}
+const buyLink=(r,token,extra={})=>r.run(201,'PREPARE_COURSE_PAYMENT',{classId:90,name:'合成家长',phone:'13800000000',paymentLinkToken:token,...extra});
+test('SHA256与HMAC-SHA256通过独立Node crypto的空值、UTF8、密钥压缩和填充边界校验',()=>{
+ const scope={};vm.runInNewContext(read('backend/consultation/link-signature.js'),scope);
+ for(let n=0;n<180;n++){const text='文A'.repeat(n),key='钥k'.repeat(n);assert.equal(Buffer.from(scope.linkSha256(scope.linkUtf8(text))).toString('hex'),crypto.createHash('sha256').update(text).digest('hex'));assert.equal(scope.linkHmac(key,text),crypto.createHmac('sha256',key).update(text).digest('hex'));}
+});
+test('只有程思琦、刘曜恺两个启用管理账号可生成链接；客户端身份字段不授权',()=>{
+ for(const issuer of [1000000000000019,1000000000000021]){const r=linkSetup();assert.equal(r.run(issuer,'INTERNAL_PURCHASE_ACCESS').allowed,true);const link=r.run(issuer,'CREATE_PURCHASE_LINK',{issuerAccountId:203,amount:1});assert.equal(link.offer.price,3999);assert.match(link.url,/paymentLinkToken=/);assert.equal(new Date(link.expiresAt)-Number(link.token.split('.')[2]),7*86400000);}
+ for(const actor of [null,201,101,203]){const r=linkSetup();assert.throws(()=>r.run(actor,'CREATE_PURCHASE_LINK',{issuerAccountId:1000000000000019,canAccept:true}));}
+ for(const field of ['can_accept_order','can_reply','service_status','service_kind']){const r=linkSetup();r.db.service_provider.find(p=>p.account_id===1000000000000019)[field]=field==='service_status'?'INACTIVE':field==='service_kind'?'AGENT':false;assert.equal(r.run(1000000000000019,'INTERNAL_PURCHASE_ACCESS').allowed,false);assert.throws(()=>r.run(1000000000000019,'CREATE_PURCHASE_LINK'));}
+});
+test('签名链接允许无首咨家长生成后端3999元待支付订单，签名回执前无权益',()=>{
+ const r=linkSetup(),link=r.run(1000000000000021,'CREATE_PURCHASE_LINK');const p=buyLink(r,link.token,{amount:0.01});
+ assert.equal(p.order.amount,3999);assert.equal(p.request.total_fee,'399900');assert.equal(r.db.course_registration_order[0].status,'PENDING');assert.equal(r.db.public_class_enrollment.length,0);assert.equal(r.db.offline_appointment.length,0);
+ const grant=JSON.parse(r.db.course_registration_order[0].source).linkPurchase;assert.equal(grant.issuerAccountId,'1000000000000021');assert.equal(grant.productId,90);assert.equal(grant.token,undefined);
+ assert.throws(()=>r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'1'})}));
+ r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'399900'})});r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'399900'})});assert.equal(r.db.public_class_enrollment.length,1);assert.equal(r.db.course_registration_order[0].status,'PAID');assert.equal(r.db.offline_appointment.length,0);
+});
+test('篡改、过期、错商品、停用签发人和前端伪造资格均不能下单',()=>{
+ const r=linkSetup(),link=r.run(1000000000000019,'CREATE_PURCHASE_LINK');
+ for(const token of [link.token.replace(/^1000000000000019/,'1000000000000021'),link.token.slice(0,-1)+(link.token.endsWith('a')?'b':'a'),'not-a-link'])assert.throws(()=>buyLink(r,token),/链接/);
+ assert.throws(()=>buyLink(r,undefined,{manualApproval:true,viaPurchaseLink:true,issuerAccountId:1000000000000019}),/建立档案/);
+ assert.throws(()=>buyLink(r,link.token,{classId:11}),/套餐不匹配/);
+ const parts=link.token.split('.');parts[2]=String(Date.now()-8*86400000);parts[3]=String(Number(parts[2])+7*86400000);const derived=crypto.createHmac('sha256',KEY).update('zhishou/internal-consultation-purchase-link/key/v1').digest('hex');parts[4]=crypto.createHmac('sha256',derived).update(parts.slice(0,4).join('.')).digest('hex');assert.throws(()=>buyLink(r,parts.join('.')),/已过期/);
+ r.db.service_provider.find(p=>p.account_id===1000000000000019).service_status='INACTIVE';assert.throws(()=>buyLink(r,link.token),/停止使用/);assert.equal(r.db.course_registration_order.length,0);
+});
+test('同一链接可以供不同家长缴费，各自订单和资料隔离；重试不新建订单',()=>{
+ const r=linkSetup(),link=r.run(1000000000000021,'CREATE_PURCHASE_LINK');const p=buyLink(r,link.token);assert.equal(buyLink(r,link.token).order.id,p.order.id);
+ r.db.account.find(a=>a.id===202).username='wxh5_other';r.db.account.find(a=>a.id===202).wechat_openid='openid-other';
+ const other=r.run(202,'PREPARE_COURSE_PAYMENT',{classId:90,name:'其他家长',phone:'13800000001',paymentLinkToken:link.token});assert.notEqual(other.order.id,p.order.id);assert.throws(()=>r.run(202,'QUERY_COURSE_PAYMENT',{orderId:p.order.id}),/其他用户/);assert.equal(r.db.course_registration_order.length,2);
 });

@@ -82,21 +82,20 @@ var ENROLL_FIELDS = "id created_at registrant_name phone status attendance_statu
 function verifiedPublicClass(e) {
   return !!(e && e.status === 'REGISTERED' && e.attendance_status === 'ATTENDED' && e.verified_at && e.verified_by_id && e.public_class && (!e.public_class.product_kind || e.public_class.product_kind === 'COURSE'));
 }
-// MANUAL_PACKAGE_APPROVAL_START
-// Explicit owner approval, 2026-10-20: allow this existing attendee to buy before
-// a first consultation. This is purchase eligibility only, never a completed visit
-// or paid entitlement. Revoke by removing the corresponding approval below.
-function manualPackagePurchaseSource(accountId) {
-  var approvals = [{customerId:'1000000000000031',referrerId:'1000000000000024',enrollmentId:36,approvedOn:'2026-10-20'}];
-  var approval=approvals.filter(function(a){return a.customerId===String(accountId);})[0];
-  if(!approval)return null;
-  var referral=list('course_referral',and(eq('referred_account_id',accountId),eq('referrer_id',approval.referrerId)),'id',1)[0];
-  var agent=list('service_provider',and(eq('account_id',approval.referrerId),eq('service_kind','AGENT','text'),eq('service_status','ACTIVE','text')),'id',1)[0];
-  var e=list('public_class_enrollment',and(eq('id',approval.enrollmentId),eq('customer_id',accountId)),ENROLL_FIELDS,1)[0];
-  if(!referral||!agent||!verifiedPublicClass(e))return null;
-  return {enrollment_id:e.id,child_info:{},contact_name:e.registrant_name||'',phone:e.phone||'',manualApproval:true};
+// PAID_PURCHASE_LINK_START
+// Paid link orders are written only by the signed payment handler, never by clients.
+// A paid purchase keeps its rights after the original invitation expires.
+function paidLinkConsultationSource(accountId) {
+  var rows=list('course_registration_order',and(eq('customer_id',accountId),eq('status','PAID','text'),{public_class:eq('product_kind','CONSULT_PACKAGE','text')}),'id public_class_id registrant_name phone source',500);
+  for(var i=0;i<rows.length;i++){
+    var o=rows[i],source={};try{source=JSON.parse(o.source||'{}');}catch(_){}
+    var grant=source&&source.linkPurchase;
+    if(grant&&grant.kind==='CONSULTATION_PURCHASE_LINK_V1'&&String(grant.productId)===String(o.public_class_id)&&['1000000000000019','1000000000000021'].indexOf(String(grant.issuerAccountId))>=0)
+      return {enrollment_id:null,child_info:{},contact_name:o.registrant_name||'',phone:o.phone||'',viaPurchaseLink:true};
+  }
+  return null;
 }
-// MANUAL_PACKAGE_APPROVAL_END
+// PAID_PURCHASE_LINK_END
 var APPOINTMENT_FIELDS = "id created_at updated_at requested_time confirmed_at status contact_name phone concerns child_info staff_note completed_at provider_id customer_id enrollment_id provider { id display_name }";
 var RECORD_FIELDS = "id appointment_id author_id summary advice status confirmed_at updated_at";
 var FEEDBACK_FIELDS = "id created_at appointment_id author_id advice_key content status replies { id content created_at author { display_name } }";
