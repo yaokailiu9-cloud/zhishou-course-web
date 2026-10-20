@@ -32,16 +32,24 @@ function payRequest(o,kind){
 if(op==='PREPARE_COURSE_PAYMENT'){
   login(s);payKey();payBuyer(s.actor.accountId);
   var c=one('public_class',p.classId,CLASS_FIELDS),linkGrant=p.paymentLinkToken?purchaseLinkGrant(p.paymentLinkToken,c):null,scope=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
+  purchaseLinkBinding(s.actor.accountId,linkGrant);
   var enrollment=list('public_class_enrollment',scope,ENROLL_FIELDS,1)[0];
   // The 5-session package can be bought repeatedly; each paid order adds sessions.
   if(enrollment&&enrollment.status==='REGISTERED'&&c.product_kind!=='CONSULT_PACKAGE')result(s,{enrollment:enrollment});
   else {
     var pending=list('course_registration_order',and(scope,eq('status','PENDING','text')),ORDER_FIELDS,1)[0];
-    if(pending){if(linkGrant){var previousSource={};try{previousSource=JSON.parse(pending.source||'{}');}catch(_){}if(!previousSource.linkPurchase){previousSource.linkPurchase=linkGrant;update('course_registration_order',and(eq('id',pending.id),eq('status','PENDING','text')),{source:JSON.stringify(previousSource)});}}result(s,{order:payPublic(pending),resume:true});}
+    if(pending){
+      if(linkGrant){var previousSource={};try{previousSource=JSON.parse(pending.source||'{}')||{};}catch(_){}
+        var previousGrant=previousSource.linkPurchase;
+        if(previousGrant&&previousGrant.agentAccountId&&String(previousGrant.agentAccountId)!==String(linkGrant.agentAccountId))fail('已有另一上级代理的待支付订单，请先完成原订单或联系管理人员处理');
+        if(!previousGrant||(!previousGrant.customerAccountId&&linkGrant.customerAccountId)){previousSource.linkPurchase=linkGrant;if(linkGrant.agentAccountId)previousSource.referrerId=linkGrant.agentAccountId;update('course_registration_order',and(eq('id',pending.id),eq('status','PENDING','text')),{source:JSON.stringify(previousSource)});}
+      }
+      result(s,{order:payPublic(pending),resume:true});
+    }
     else {
       var view=classView(c,false);if(!view.canEnroll||!c.organizer_id)fail(view.closedReason||'课程未开放报名');
       if(c.product_kind==='CONSULT_PACKAGE'&&!linkGrant&&!paidLinkConsultationSource(s.actor.accountId)&&!list('offline_appointment',and(eq('customer_id',s.actor.accountId),{_or:[eq('status','COMPLETED','text'),and(eq('status','CONFIRMED','text'),compare('_lt','confirmed_at',new Date().toISOString(),'timestamptz'))]}),'id child_info',50).some(function(a){return !!a.child_info&&typeof a.child_info==='object'&&!Array.isArray(a.child_info);}))fail('首次咨询建立档案后才能购买5次咨询');
-      var candidate=p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?payReferrer(p.referrerId):null;
+      var candidate=linkGrant&&linkGrant.agentAccountId?purchaseLinkAgent(linkGrant.agentAccountId):(p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?payReferrer(p.referrerId):null);
       if(c.product_kind==='QUESTIONNAIRE'&&!candidate)fail('请使用管理或代理发出的问卷二维码进入');
       var cents=payCents(c.registration_fee),deadline=new Date(c.registration_closes_at||c.starts_at).getTime();
       if(deadline-Date.now()<6*60000)fail('距离报名截止不足六分钟，请联系工作人员');
@@ -92,14 +100,26 @@ if(op==='CONFIRM_COURSE_PAYMENT'){
     // Never lose an actual payment if the final seat was taken during checkout.
     var repeat=c.product_kind==='CONSULT_PACKAGE'&&!!existing&&existing.status==='REGISTERED';
     var review=(!!(existing&&existing.status==='REGISTERED')&&!repeat)||!classView(c,false).canEnroll;
+    var source={};try{source=JSON.parse(order.source||'{}')||{};}catch(_){}
+    var selectedGrant=source.linkPurchase,selectedAgent=selectedGrant&&selectedGrant.kind==='CONSULTATION_PURCHASE_LINK_V2'&&selectedGrant.agentAccountId?selectedGrant.agentAccountId:null;
+    var referralReview=false;
+    if(!review&&selectedAgent){
+      var targetAgent=purchaseLinkAgent(selectedAgent),bound=list('course_referral',eq('referred_account_id',order.customer_id),'id referrer_id',1)[0];
+      if(String(selectedGrant.customerAccountId)!==String(order.customer_id)||!targetAgent||String(selectedAgent)===String(order.customer_id)||(bound&&String(bound.referrer_id)!==String(selectedAgent)))referralReview=true;
+      else {
+        if(!bound)insert('course_referral',{referrer_id:targetAgent.account_id,referred_account_id:order.customer_id,locked_at:new Date().toISOString(),source:'CONSULTATION_PAYMENT_LINK'},'course_referral_referred_account_id_key');
+        var verifiedBinding=list('course_referral',eq('referred_account_id',order.customer_id),'id referrer_id',1)[0];
+        referralReview=!verifiedBinding||String(verifiedBinding.referrer_id)!==String(selectedAgent);
+      }
+      if(referralReview)review=true;
+    }
     lockClass(c,review?{}:{reserved_count:Number(c.reserved_count||0)+1});
-    update('course_registration_order',and(eq('id',order.id),eq('status','PENDING','text')),{status:review?'PAID_REVIEW':'PAID',amount_paid:Number(order.amount),transaction_id:v.transaction_id,paid_at:new Date().toISOString(),request_key:null,failure_message:review?'已收到款项，课程状态已变化，请联系工作人员安排课程或退款。':null});
+    update('course_registration_order',and(eq('id',order.id),eq('status','PENDING','text')),{status:review?'PAID_REVIEW':'PAID',amount_paid:Number(order.amount),transaction_id:v.transaction_id,paid_at:new Date().toISOString(),request_key:null,failure_message:referralReview?'已收到款项，上级代理归属发生变化，请联系发链接的管理人员核对，请勿重复缴费。':review?'已收到款项，课程状态已变化，请联系工作人员安排课程或退款。':null});
     if(!review&&!repeat){
       var values={customer_id:order.customer_id,public_class_id:c.id,payment_order_id:order.id,registrant_name:order.registrant_name,phone:order.phone,status:'REGISTERED',attendance_status:'PENDING',group_status:'PENDING',entry_code:entryCode(),canceled_at:null,verified_at:null,verified_by_id:null,checkin_method:null};
       if(existing)update('public_class_enrollment',and(eq('id',existing.id),eq('status','CANCELED','text')),values);
       else if(!insert('public_class_enrollment',values,'public_class_enrollment_customer_class_key'))fail('报名状态已变化，请重试');
-      var source={};try{source=JSON.parse(order.source||'{}');}catch(_){}
-      var candidate=firstEnrollment&&source.referrerId?payReferrer(source.referrerId):null;
+      var candidate=!selectedAgent&&firstEnrollment&&source.referrerId?payReferrer(source.referrerId):null;
       if(candidate)insert('course_referral',{referrer_id:candidate.account_id,referred_account_id:order.customer_id,locked_at:new Date().toISOString(),source:'FIRST_PAID_ENROLLMENT'},'course_referral_referred_account_id_key');
     }
     result(s,{confirmed:true});

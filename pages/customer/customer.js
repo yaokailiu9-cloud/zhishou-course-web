@@ -21,7 +21,7 @@ Page({
   if(generation!==this.listGeneration)return;
   const base=results[0].status==='fulfilled'?results[0].value:null,link=results[1].status==='fulfilled'?results[1].value:null;
   if(results[0].status==='rejected'){service.error(this,results[0].reason);return;}
-  const pkg=link?{...base,offer:link.offer,eligible:true,viaPurchaseLink:true}:base;
+  const pkg=link?{...base,offer:link.offer,agent:link.agent,eligible:true,viaPurchaseLink:true}:base;
   if(pkg&&!pkg.defaults)pkg.defaults={name:'',phone:''};
   this.setData({pkg,linkValid:!!link,paymentLinkError:linked&&results[1].status==='rejected'?String(results[1].reason.message||'缴费链接暂时无法使用，请联系老师'):'' ,packageContact:{name:this.data.packageContact.name||(pkg&&pkg.defaults||{}).name||'',phone:this.data.packageContact.phone||(pkg&&pkg.defaults||{}).phone||''}});
  },

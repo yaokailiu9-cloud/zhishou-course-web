@@ -79,8 +79,8 @@
     "pages/search/search.wxml": "5eebcd2be97254875f2d832f5aaa5d1bd41364af54af18770258127bc684dd9b",
     "pages/search/search.wxss": "39d3cc134848a909c5b4ae9859f89ef0cb3527ab8c8ea1e01701e3760709e73b",
     "pages/search/search.json": "2d44715ce35f0992f1be23bf9ceab5e995cab5e9c6b364b5d73d0dcb01083e6d",
-    "pages/customer/customer.js": "a23d8cfd02803bd6c63ee9f94fabd98a1f0ab6573337e3f3f9d4f00917cd87bf",
-    "pages/customer/customer.wxml": "8388fef4c4fd2ba933b54dd6a03e1ddaa224fc9e9c37d5ae3e23d65bf8f8d6ec",
+    "pages/customer/customer.js": "3168a6107a7d547408d9e78688f0a30e68a04185549d6d9cfce3de7dc2e6882d",
+    "pages/customer/customer.wxml": "fb43cc6354ff2d598eeda8e04b8aea9ab621ef9377c7061206e133ae8d31285c",
     "pages/customer/customer.wxss": "bfad0b429e2bbe52086b3f314e4eae41b1cbae04064adc49082302b8be62cdbb",
     "pages/customer/customer.json": "c8f1754102f770f6a2509d9a101ea48842b4793d3044b39d3f9e3a4bd424f6a7",
     "pages/public-class/public-class.js": "77c308626f9caedc3d57045de83152fd67c5c819ec6ca0cc8cd9dc8f62003ec2",
@@ -163,8 +163,8 @@
     "pages/support/support.wxml": "23ded8d91d60b213208f2e35f3e6f411ae108de567a28b0da0fa8269509f35cd",
     "pages/support/support.wxss": "bfad0b429e2bbe52086b3f314e4eae41b1cbae04064adc49082302b8be62cdbb",
     "pages/support/support.json": "ee94651d75841620c1eff2a743a7da5fd7045bdb86dbf59934655d1ffb2719b2",
-    "pages/consultation-payment-link/consultation-payment-link.js": "574ed6aca4a3cd5197c96161530aca6601fccbd23bd1932c6c96788d1bd683cf",
-    "pages/consultation-payment-link/consultation-payment-link.wxml": "5a834cbb9a0bb88c10fbb62f4abbbc1bda95c73e117ba3342f4ee5dea2247aa5",
+    "pages/consultation-payment-link/consultation-payment-link.js": "cf96f40c0dca7d1ea3d7a59c87eef0281d55db753725d884a51663fba6b15090",
+    "pages/consultation-payment-link/consultation-payment-link.wxml": "a58160f7261113e9faa6e48b3b53e6bf205285e56c6e9e7c1dd14f890e4d3626",
     "pages/consultation-payment-link/consultation-payment-link.wxss": "bfad0b429e2bbe52086b3f314e4eae41b1cbae04064adc49082302b8be62cdbb",
     "pages/consultation-payment-link/consultation-payment-link.json": "6b68df6e53f0433ec359958fe5ffb8fbe3f44d8cc78725a2af8736eef87848be"
   }

@@ -90,7 +90,7 @@ function paidLinkConsultationSource(accountId) {
   for(var i=0;i<rows.length;i++){
     var o=rows[i],source={};try{source=JSON.parse(o.source||'{}');}catch(_){}
     var grant=source&&source.linkPurchase;
-    if(grant&&grant.kind==='CONSULTATION_PURCHASE_LINK_V1'&&String(grant.productId)===String(o.public_class_id)&&['1000000000000019','1000000000000021'].indexOf(String(grant.issuerAccountId))>=0)
+    if(grant&&(grant.kind!=='CONSULTATION_PURCHASE_LINK_V2'||String(grant.customerAccountId)===String(accountId))&&['CONSULTATION_PURCHASE_LINK_V1','CONSULTATION_PURCHASE_LINK_V2'].indexOf(grant.kind)>=0&&String(grant.productId)===String(o.public_class_id)&&['1000000000000019','1000000000000021'].indexOf(String(grant.issuerAccountId))>=0)
       return {enrollment_id:null,child_info:{},contact_name:o.registrant_name||'',phone:o.phone||'',viaPurchaseLink:true};
   }
   return null;

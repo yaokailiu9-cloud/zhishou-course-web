@@ -15,7 +15,7 @@ function remember(page, options = {}) {
   if (id != null && !/^[1-9][0-9]*$/.test(String(id))) return;
   let url = '/' + route + (id ? '?id=' + encodeURIComponent(id) : '');
   const link=page.options&&page.options.paymentLinkToken;
-  if(name==='customer'&&link!=null){if(!/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[a-f0-9]{64}$/.test(String(link))||String(link).length>240)return;url+=(id?'&':'?')+'paymentLinkToken='+encodeURIComponent(link);}
+  if(name==='customer'&&link!=null){if(!/^(?:[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|v2\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\.[a-f0-9]{64}$/.test(String(link))||String(link).length>240)return;url+=(id?'&':'?')+'paymentLinkToken='+encodeURIComponent(link);}
   pending = { url, name, id: String(id || ''), createdAt: Date.now() };
   if(options.preserveForm && options.accountId && page.data){
     const keys={chat:['input','failedMessage','sendError'],customer:['form','showForm'], 'class-enroll':['form'], 'course-edit':['form','coverUrl','groupQrUrl'],

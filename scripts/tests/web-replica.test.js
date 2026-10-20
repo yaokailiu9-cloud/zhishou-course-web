@@ -1053,11 +1053,11 @@ test('支持MediaSource的微信浏览器也直接播放完整MP4，不加载分
  assert.equal(video._mediaStream,undefined);assert.deepEqual(h.errors,[]);
 });
 
-const PAYMENT_LINK_TOKEN='1000000000000021.18.1792465200000.1793070000000.'+'a'.repeat(64);
+const PAYMENT_LINK_TOKEN='v2.1000000000000021.18.203.201.1792465200000.1793070000000.'+'a'.repeat(64);
 function internalPaymentFetch(user,allowed=false){return async(url,options={})=>{
  if(String(url).includes('action=graphql')){
   const input=JSON.parse(options.body),op=input.variables?.args?.operation;
-  const result=op==='INTERNAL_PURCHASE_ACCESS'?{allowed}:op==='GET_LINK_PACKAGE'?{offer:{id:18,title:'5次咨询',price:3999,sessions:5,unitPrice:1000}}:op==='GET_PACKAGE'?{eligible:false,offer:{id:18,title:'5次咨询',price:3999,sessions:5,unitPrice:1000},package:null,defaults:null}:op==='CREATE_PURCHASE_LINK'?{url:'https://www.apply.tianqiwushu.cn/web/#/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN,expiresAt:'2026-10-27T03:00:00Z',offer:{title:'5次咨询',price:3999}}:{appointments:[],enrollments:[],items:[],allowed:false};
+  const result=op==='INTERNAL_PURCHASE_ACCESS'?{allowed}:op==='PURCHASE_LINK_AGENTS'?{items:[{accountId:'203',name:'代理甲'}]}:op==='PURCHASE_LINK_CUSTOMERS'?{items:[{accountId:'201',name:'合成家长',agentAccountId:'203'}]}:op==='GET_LINK_PACKAGE'?{offer:{id:18,title:'5次咨询',price:3999,sessions:5,unitPrice:1000}}:op==='GET_PACKAGE'?{eligible:false,offer:{id:18,title:'5次咨询',price:3999,sessions:5,unitPrice:1000},package:null,defaults:null}:op==='CREATE_PURCHASE_LINK'?{url:'https://www.apply.tianqiwushu.cn/web/#/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN,expiresAt:'2026-10-27T03:00:00Z',offer:{title:'5次咨询',price:3999}}:{appointments:[],enrollments:[],items:[],allowed:false};
   return {ok:true,status:200,headers:[],text:async()=>JSON.stringify({data:{service_provider:[],account_by_pk:{id:user?.id,wechat_nickname:user?.name},fz_invoke_action_flow:{result:{ok:true,data:result}}}})};
  }
  return {ok:true,status:200,json:async()=>({ok:true,data:String(url).includes('action=session')?{loggedIn:!!user,user}:{}})};
@@ -1068,7 +1068,7 @@ test('两个获授权账号具有内部缴费链接入口，普通家长不展�
   h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();const text=h.document.querySelector('#page').textContent;
   if(!allowed){assert.doesNotMatch(text,/咨询缴费链接|咨询缴费与预约/);continue;}
   assert.match(text,/咨询缴费链接/);h.host.current.goConsultationPaymentLink();await tick();assert.equal(h.host.current.data.allowed,true);
-  await h.host.current.generate();await tick();assert.match(h.document.querySelector('#page').textContent,/复制缴费链接/);assert.match(h.host.current.data.shareUrl,/paymentLinkToken=/);
+  h.host.current.inputSearch({detail:{value:'合成家长'}});await h.host.current.searchCustomers();h.host.current.selectCustomer({detail:{value:'0'}});assert.equal(h.host.current.data.agentAccountId,'203');await h.host.current.generate();await tick();assert.match(h.document.querySelector('#page').textContent,/复制缴费链接/);assert.match(h.host.current.data.shareUrl,/paymentLinkToken=/);
   let copied='';h.context.navigator.clipboard={writeText:async value=>{copied=value;}};h.host.current.copy();await tick();assert.equal(copied,h.host.current.data.shareUrl);assert.equal(h.errors.length,0);
  }
 });
