@@ -76,3 +76,14 @@ test('只有后端成功确认无工作身份时才显示用户，加载和错�
  test('晚到的签到权限响应不能恢复已退出账号的入口',async()=>{
  const h=setup(),late=defer();h.modules.consultationService.call=()=>late.promise;const job=h.page.loadManagerAccess(h.storage.userInfo);h.pending[0].resolve(null);h.page.logout();late.resolve({allowed:true,isSuperAdmin:true});await job;assert.equal(h.page.data.canCheckin,false);assert.equal(h.page.data.isSuperAdmin,false);
  });
+
+test('人工购买入口仅按后台授权显示，失败、退出、换号及页面卸载不能恢复旧入口',async()=>{
+ for(const mode of ['allow','ordinary','failure','logout','account','unload','refresh']){
+  const h=setup(),late=defer();h.modules.consultationService.call=()=>late.promise;
+  const job=h.page.loadPurchaseAccess(h.storage.userInfo);
+  if(mode==='logout')h.page.logout();else if(mode==='account')h.storage.userInfo={id:'other'};else if(mode==='unload')h.page.onUnload();
+  else if(mode==='refresh'){h.modules.consultationService.call=async()=>({});await h.page.loadPurchaseAccess(h.storage.userInfo);}
+  if(mode==='failure')late.reject(Error('offline'));else late.resolve({manualApproval:mode!=='ordinary',eligible:true,offer:{id:18,price:3999}});
+  await job;assert.equal(h.page.data.canPurchaseConsultation,mode==='allow',mode);
+ }
+});

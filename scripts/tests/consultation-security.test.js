@@ -358,3 +358,32 @@ test('无公开课关联的预约不能伪造付费次数、其他家长套餐�
  }
  const db=packageDb();Object.assign(db.offline_appointment[0],{status:'COMPLETED',enrollment_id:null});db.course_registration_order[0].status='PENDING';const e=engine(db);assert.throws(()=>e.run(201,'CREATE_APPOINTMENT',{name:'家长',phone:'13800000000',requestedTime:new Date(Date.now()+86400000).toISOString(),concerns:'沟通'}),/购买5次/);
 });
+
+function manualPurchaseDb(){
+ const db=fixture(),customer=1000000000000031,referrer=1000000000000024;
+ db.account.find(a=>a.id===201).id=customer;db.offline_appointment=[];db.course_registration_order=[];
+ Object.assign(db.public_class_enrollment[0],{id:36,customer_id:customer,registrant_name:'合成家长',phone:'13800000000'});
+ db.service_provider.push({id:24,account_id:referrer,service_kind:'AGENT',service_status:'ACTIVE'});
+ db.course_referral.push({id:49,referrer_id:referrer,referred_account_id:customer});
+ db.public_class.push({id:90,title:'5次咨询',product_kind:'CONSULT_PACKAGE',status:'PUBLISHED',registration_fee:3999});
+ return db;
+}
+test('人工购买例外仅适用明确批准账号，保持未首咨、未支付，不接受客户端伪造授权',()=>{
+ const db=manualPurchaseDb(),e=engine(db),before=structuredClone(db),r=e.run(1000000000000031,'GET_PACKAGE').data;
+ assert.equal(r.manualApproval,true);assert.equal(r.eligible,true);assert.equal(r.offer.price,3999);assert.equal(r.package,null);assert.deepEqual(db,before);
+ assert.equal(e.run(202,'GET_PACKAGE',{customerId:1000000000000031,manualApproval:true}).data.eligible,false);
+ assert.throws(()=>e.run(1000000000000031,'CREATE_APPOINTMENT',{requestedTime:new Date(Date.now()+86400000).toISOString(),concerns:'沟通'}),/购买5次/);
+ for(const change of [d=>{d.course_referral[0].referrer_id=203;},d=>{d.service_provider.at(-1).service_status='INACTIVE';},d=>{d.public_class_enrollment[0].attendance_status='PENDING';},d=>{d.public_class_enrollment[0].verified_at=null;},d=>{d.public_class_enrollment[0].customer_id=202;}]){
+  const other=manualPurchaseDb();change(other);assert.equal(engine(other).run(1000000000000031,'GET_PACKAGE').data.eligible,false);
+ }
+});
+test('人工批准家长实付后预约为待确认，确认后填写真实档案，不补造免费首咨',()=>{
+ const db=manualPurchaseDb(),customer=1000000000000031;
+ db.course_registration_order.push({id:95,customer_id:customer,public_class_id:90,status:'PAID'});
+ db.public_class_enrollment.push({id:91,customer_id:customer,public_class_id:90,status:'REGISTERED'});
+ const e=engine(db),when=new Date(Date.now()+86400000).toISOString();
+ const r=e.run(customer,'CREATE_APPOINTMENT',{requestedTime:when,concerns:'本次困扰'}).data,a=db.offline_appointment[0];
+ assert.equal(a.status,'PENDING');assert.equal(a.enrollment_id,36);assert.equal(a.child_info,null);assert.equal(a.provider_id,15);assert.equal(a.request_key,'package:91:1');assert.equal(db.offline_appointment.length,1);
+ e.run(121,'CONFIRM_APPOINTMENT',{appointmentId:r.id,confirmedAt:when});assert.equal(a.status,'CONFIRMED');
+ e.run(customer,'SAVE_CHILD_INFO',{appointmentId:r.id,childInfo:{name:'真实填写',age:8,guardian:'合成家长',relationship:'母亲',phone:'13800000000',concerns:'本次困扰'}});assert.equal(a.child_info.name,'真实填写');assert.equal(e.run(customer,'GET_PACKAGE').data.package.remaining,4);
+});

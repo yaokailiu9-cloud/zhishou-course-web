@@ -11,6 +11,7 @@ Page({
     navHeight: 104,
     isLoggedIn: false,
     canCheckin: false,
+    canPurchaseConsultation: false,
     isSuperAdmin: false,
     canInvite: false,
     userInfo: {},
@@ -73,10 +74,12 @@ Page({
     const storedUser = wx.getStorageSync("userInfo");
     const zionJwt = wx.getStorageSync("zionJwt");
     if (!storedUser || !storedUser.id || !zionJwt) {
+      this.purchaseGeneration = (this.purchaseGeneration || 0) + 1;
       this.accessGeneration = (this.accessGeneration || 0) + 1;
       this.setData({
         isLoggedIn: false,
         canCheckin: false,
+        canPurchaseConsultation: false,
         isSuperAdmin: false,
         canInvite: false,
         userInfo: {},
@@ -96,6 +99,23 @@ Page({
     });
     this.refreshBackendUser(storedUser.id);
     this.loadManagerAccess(storedUser);
+    this.loadPurchaseAccess(storedUser);
+  },
+
+  async loadPurchaseAccess(userInfo) {
+    const identity=viewSession.capture(),generation=this.purchaseGeneration=(this.purchaseGeneration||0)+1;
+    this.setData({canPurchaseConsultation:false});
+    if(!userInfo||String(userInfo.id)!==identity.accountId)return;
+    try {
+      const data=await checkinService.call('GET_PACKAGE');
+      if(generation===this.purchaseGeneration&&viewSession.current(identity))this.setData({canPurchaseConsultation:!!(data&&data.manualApproval===true&&data.eligible===true&&data.offer)});
+    } catch (_) { /* Keep the purchase entry closed until the backend confirms eligibility. */ }
+  },
+
+  goConsultationPurchase() {
+    if(!this.data.canPurchaseConsultation)return;
+    chatContext.enterCustomerView();
+    wx.navigateTo({url:'/pages/customer/customer'});
   },
 
   goMyPlan() {
@@ -108,7 +128,7 @@ Page({
   goCheckin(){wx.navigateTo({url:'/pages/checkin/checkin'});},
   goCourseAccess(){wx.navigateTo({url:'/pages/course-access/course-access'});},
 
-  onUnload() { this.accessGeneration = (this.accessGeneration || 0) + 1; },
+  onUnload() { this.accessGeneration = (this.accessGeneration || 0) + 1; this.purchaseGeneration = (this.purchaseGeneration || 0) + 1; },
 
   refreshBackendUser(accountId) {
     const identity=viewSession.capture();
@@ -290,6 +310,7 @@ Page({
   },
 
   logout() {
+    this.purchaseGeneration = (this.purchaseGeneration || 0) + 1;
     require("../../utils/loginReturn").clear();
     this.clearWechatLoginCache();
     wx.removeStorageSync("profileDraft");
@@ -302,6 +323,7 @@ Page({
       isLoggedIn: false,
       canInvite: false,
       canCheckin: false,
+      canPurchaseConsultation: false,
       isSuperAdmin: false,
       userInfo: {},
       avatarText: "客",

@@ -31,3 +31,16 @@ test('5次咨询可以重复购买：每笔到账订单都直接生效，不进�
  const buy=()=>r.run(201,'PREPARE_COURSE_PAYMENT',{classId:90,name:'家长甲',phone:'13800000000'});
  for(let round=1;round<=2;round++){const p=buy();assert.ok(p.order,'第'+round+'次应生成新订单');r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'399900',transaction_id:'42000000000000099'+round})});const o=r.db.course_registration_order.find(x=>x.id===p.order.id);assert.equal(o.status,'PAID');assert.equal(r.db.public_class_enrollment.filter(e=>e.public_class_id===90).length,1);assert.ok(r.run(201,'QUERY_COURSE_PAYMENT',{orderId:p.order.id}).enrollment);}
  assert.equal(r.db.course_registration_order.filter(o=>o.public_class_id===90&&o.status==='PAID').length,2);});
+
+test('人工批准且已核实到课的指定家长可以生成3999元待支付订单，仍需有效微信支付回执',()=>{
+ const r=setup(),customer=1000000000000031,referrer=1000000000000024;
+ r.db.account.find(a=>a.id===201).id=customer;r.db.offline_appointment=[];
+ r.db.service_provider.push({id:24,account_id:referrer,service_kind:'AGENT',service_status:'ACTIVE'});
+ r.db.course_referral.push({id:49,referrer_id:referrer,referred_account_id:customer});
+ r.db.public_class_enrollment.push({id:36,customer_id:customer,public_class_id:11,status:'REGISTERED',attendance_status:'ATTENDED',verified_at:new Date().toISOString(),verified_by_id:15});
+ r.db.public_class.push({id:90,title:'5次咨询',product_kind:'CONSULT_PACKAGE',status:'PUBLISHED',organizer_id:15,registration_fee:3999,capacity:0,reserved_count:0,revision:0,starts_at:'2099-12-31T12:00:00Z',registration_closes_at:'2099-12-30T12:00:00Z'});
+ const p=r.run(customer,'PREPARE_COURSE_PAYMENT',{classId:90,name:'合成家长',phone:'13800000000',amount:0.01});
+ assert.equal(p.order.amount,3999);assert.equal(p.request.total_fee,'399900');assert.equal(r.db.course_registration_order[0].status,'PENDING');assert.equal(r.db.offline_appointment.length,0);assert.equal(r.db.public_class_enrollment.length,1);
+ assert.throws(()=>r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'1'})}));assert.equal(r.db.course_registration_order[0].status,'PENDING');
+ r.run(null,'CONFIRM_COURSE_PAYMENT',{gateway:proof(p.order,{total_fee:'399900'})});assert.equal(r.db.course_registration_order[0].status,'PAID');assert.equal(r.db.public_class_enrollment.length,2);assert.equal(r.db.offline_appointment.length,0);
+});
