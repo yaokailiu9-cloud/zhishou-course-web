@@ -13,6 +13,8 @@ function consultFeedback(record,rows){return (rows||[]).filter(f=>SERVICE_KEYS.i
 function same(page,identity,epoch,version){return !page.unloaded&&viewSession.current(identity)&&page.serviceEpoch===epoch&&page.serviceCaseVersion===version;}
 const methods={
  ...dialogue.methods,
+ // Direct messages join the main conversation, so every merge rebuilds that timeline.
+ mergeDialogue(messages){dialogue.methods.mergeDialogue.call(this,messages);if(this.buildServiceTimeline)this.buildServiceTimeline();},
  resetConsult(){this.suspendDialogue();this.dialogueIdentity=null;this.dialoguePending=null;this.dialogueAfterId=null;this.dialogueSeenId=undefined;this.consultKeys={};this.consultRequest=null;this.setData({...data});},
  async loadConsult(silent=false){
   const id=this.serviceSelectedId;if(!id||this.consultRequest)return;
@@ -25,14 +27,14 @@ const methods={
    const a=service.decorate(r.appointment),record=r.record||null,advice=record&&Array.isArray(record.advice)?record.advice:[];
    const previous=silent?this.data.consultFeedback:[],rows=new Map(previous.map(f=>[String(f.id),f]));consultFeedback(record,r.feedbacks).forEach(f=>rows.set(String(f.id),f));
    this.setData({consult:{appointment:a,record,advice,isStaff:!!r.isStaff,canAccept:!!r.canAccept,canReply:!!r.canReply,canSendFeedback:!r.isStaff&&!!record&&record.status==='CONFIRMED'&&['CONFIRMED','COMPLETED'].indexOf(a.status)>=0&&advice.length>0,canSendNote:!r.isStaff&&['CONFIRMED','COMPLETED'].indexOf(a.status)>=0,needsArchive:!r.isStaff&&a.status==='CONFIRMED'&&!a.child_info,canEditArchive:!!(r.isStaff&&r.canReply&&a.child_info)},consultFeedback:[...rows.values()].sort((x,y)=>Number(y.id)-Number(x.id)),...(silent&&previous.length?{}:{consultFeedbackCursor:r.nextFeedbackCursor||null}),consultDenied:false,consultError:'',canTalk:r.canTalk===true,...(this.data.dialogueOpen?{}:{dialogueUnread:Number(r.dialogueUnread)||0}),consultAdviceIndex:Math.min(this.data.consultAdviceIndex,Math.max(advice.length-1,0))});
-   this.syncDialogue();
+   this.syncDialogue();if(this.buildServiceTimeline)this.buildServiceTimeline();if(this.openTimelineDialogue)this.openTimelineDialogue();
   }catch(e){
    if(!same(this,identity,epoch,version))return;
    // Reviewers outside the consultation (for example a director only) keep the feedback and plan tabs.
    const denied=/不能访问|没有|权限/.test(String(e&&e.message||''));
    if(silent&&!denied)return;
    this.setData({consultDenied:denied,consultError:denied?'':String(e&&e.message||'咨询记录读取失败，请重试'),...(denied?{consult:null,canTalk:false}:{})});
-   if(denied){this.syncDialogue();if(['talk','consult'].indexOf(this.data.serviceTab)>=0)this.setData({serviceTab:'feedback'});}
+   if(denied){this.syncDialogue();if(this.buildServiceTimeline)this.buildServiceTimeline();if(this.data.serviceTab==='consult')this.setData({serviceTab:'feedback'});}
   }finally{if(this.consultRequest===request){this.consultRequest=null;if(same(this,identity,epoch,version))this.setData({consultLoading:false});}}
  },
  async moreConsultFeedback(){
