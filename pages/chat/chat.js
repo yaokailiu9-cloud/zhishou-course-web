@@ -1,4 +1,5 @@
 const zion = require("../../utils/zion");
+const chatBadge = require("../../utils/chatBadge");
 const payment = require("../../utils/payment");
 const auth = require("../../utils/auth");
 const viewSession = require("../../utils/viewSession");
@@ -107,6 +108,7 @@ Page({
   },
 
   onShow() {
+    chatBadge.refresh();
     this.hidden = false;
     const identity = viewSession.capture();
     if (this.chatIdentity && !viewSession.current(this.chatIdentity)) {

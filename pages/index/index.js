@@ -1,4 +1,5 @@
 const zion = require("../../utils/zion");
+const chatBadge = require("../../utils/chatBadge");
 const chatContext = require("../../utils/chatContext");
 const auth = require("../../utils/auth");
 const { isAnswerLibraryCourse, isPersonalGrowthCourse } = require("../../utils/courseContent");
@@ -34,6 +35,7 @@ Page({
   },
 
   onShow() {
+    chatBadge.refresh();
     wx.showTabBar({ animation: false });
     const userInfo = auth.getLoggedInUser();
     this.setData({

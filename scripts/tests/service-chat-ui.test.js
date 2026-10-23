@@ -3,7 +3,7 @@ function harness(){let id='201';const calls=[],service={requestKey:()=> 'same-ke
 const wx={storage:{},showToast(){},showModal(){},navigateTo(){},getStorageSync(k){return this.storage[k]||'';},setStorageSync(k,v){this.storage[k]=v;},removeStorageSync(k){delete this.storage[k];}};
 // The consultation mixins are loaded for real so the chat page's combined methods are under test.
 const load=(file,stubs)=>{const m={exports:{}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../utils/'+file),'utf8'),{module:m,require:name=>stubs(name),wx,setInterval:()=>1,clearInterval(){},Date,Number,Map,Promise,String,Object,JSON});return m.exports;};
-const shared=name=>name==='./consultationService'?service:name==='./viewSession'?identity:name==='./childArchive'?{answeredSections:()=>[]}:name==='./auth'?{isLoggedIn:()=>true}:{};
+const shared=name=>name==='./consultationService'?service:name==='./viewSession'?identity:name==='./childArchive'?{answeredSections:()=>[]}:name==='./auth'?{isLoggedIn:()=>true}:name==='./chatBadge'?{apply(){},refresh(){}}:{};
 const dialogue=load('consultationDialogue.js',shared),consultation=load('serviceConsultation.js',name=>name==='./consultationDialogue'?dialogue:shared(name));
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../utils/serviceChat.js'),'utf8'),{module,require:name=>name==='./serviceConsultation'?consultation:shared(name),wx,setInterval:()=>1,clearInterval(){},Date,Number,Map,Promise});
 const p={...module.exports.methods,data:structuredClone(module.exports.data),setData(v){Object.assign(this.data,v);},serviceEpoch:1,serviceCaseVersion:1,serviceSelectedId:31,serviceChatIdentity:identity.capture()};p.data.serviceMode=true;p.data.serviceTab='feedback';return {p,service,calls,wx,changeId:x=>id=x};}
@@ -62,4 +62,13 @@ test('服务管理可暂不分配监护专员：默认选中“暂不分配”�
  h.calls.length=0;h.p.data.serviceDetail={appointment:{id:31,guardian_id:7,director_id:8,updated_at:'t2'}};await h.p.openServiceAssignment();assert.equal(h.p.data.serviceGuardianIndex,1);
  await h.p.saveServiceAssignment();assert.equal(h.calls.find(c=>c.op==='ASSIGN_SERVICE_CASE').payload.guardianId,7);
  h.calls.length=0;h.p.data.serviceDirectors=[];await h.p.saveServiceAssignment();assert.equal(h.calls.length,0);assert.match(h.p.data.serviceError,/授权总监/);
+});
+test('档案头像显示其他档案的新消息数，列表把有新消息的档案排前并标出发送家长，打开后清零',async()=>{
+ const h=harness();h.p.serviceSelectedId=null;
+ h.service.call=async op=>op==='SERVICE_CHAT_OVERVIEW'?{staff:true,unreadTotal:5,cases:[{id:31,childName:'甲',unread:2,latest:'甲家长消息',latestFrom:'甲妈妈（家长）'},{id:30,childName:'乙',unread:3,latest:'乙家长消息',latestFrom:'乙爸爸（家长）'},{id:32,childName:'丙',unread:0}]}:{owner:false,staff:true,appointment:{id:31,child_info:{}},feedback:[]};
+ await h.p.loadServiceChat();
+ assert.equal(h.p.data.serviceActive.id,31);assert.equal(h.p.data.serviceOtherUnread,3);
+ assert.deepEqual(h.p.data.serviceCases.map(c=>[c.id,c.unread]),[[30,3],[32,0],[31,0]]);assert.equal(h.p.data.serviceCases[0].latestFrom,'乙爸爸（家长）');
+ await h.p.selectServiceCase({currentTarget:{dataset:{id:30}}});
+ assert.equal(h.p.data.serviceOtherUnread,0);assert.ok(h.p.data.serviceCases.every(c=>c.unread===0));
 });

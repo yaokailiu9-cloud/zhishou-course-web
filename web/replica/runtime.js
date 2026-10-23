@@ -394,11 +394,14 @@
     for(const button of $('#tabbar').children)button.setAttribute('aria-current',button.dataset.route===page.route?'page':'false');
     render();window.scrollTo(0,page._scroll||0);
   }
+  const tabBadges=new Map();
+  function paintTabBadge(button){let badge=button.querySelector('.tab-badge');const text=tabBadges.get(button.dataset.route);if(!text){badge?.remove();return}if(!badge){badge=document.createElement('span');badge.className='tab-badge';button.append(badge)}badge.textContent=text;button.setAttribute('aria-label',button.dataset.text+'，'+text+' 条新消息')}
+  function setTabBadge(o,text){const item=source.config.tabBar.list[Number(o&&o.index)];if(!item){complete(o,{errMsg:'tab index invalid'},true);return}if(text)tabBadges.set(item.pagePath,String(text));else tabBadges.delete(item.pagePath);for(const button of $('#tabbar').children)if(button.dataset.route===item.pagePath){button.removeAttribute('aria-label');paintTabBadge(button)}complete(o,{})}
   function renderTabbar(){
     const bar=$('#tabbar');bar.replaceChildren();
     for(const item of source.config.tabBar.list){
       if(item.pagePath==='pages/chat/chat'&&!chatEntryAllowed)continue;
-      const button=document.createElement('button');button.dataset.route=item.pagePath;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');
+      const button=document.createElement('button');button.dataset.route=item.pagePath;button.dataset.text=item.text;button.textContent=item.text;button.onclick=()=>navigate('/'+item.pagePath,'tab');paintTabBadge(button);
       button.setAttribute('aria-current',current&&current.route===item.pagePath?'page':'false');bar.append(button);
     }
   }
@@ -419,7 +422,7 @@
       if(!allowed&&webFeatures.chatEntryForServiceCases===true)allowed=await hasServiceCases(accountId);
       if(!session||String(session.user.id)!==accountId)return;
     }
-    if(allowed!==chatEntryAllowed){chatEntryAllowed=allowed;renderTabbar()}
+    if(allowed!==chatEntryAllowed){chatEntryAllowed=allowed;renderTabbar();if(allowed)requireModule('utils/chatBadge').refresh(true)}
   }
   function parseRoute(url){const raw=String(url||'').replace(/^#?\/?/,'');const [path,query]=raw.split('?');return{route:source.pages[path]?path:HOME,options:Object.fromEntries(new URLSearchParams(query))}}
   function navigate(url,mode='push',fromHistory=false){
@@ -637,7 +640,7 @@
     getWindowInfo:()=>wx.getSystemInfoSync(),getMenuButtonBoundingClientRect:()=>({top:20,bottom:60,left:Math.min(innerWidth,430),right:Math.min(innerWidth,430),height:40,width:0}),
     getAccountInfoSync:()=>({miniProgram:{envVersion:'release',version:'web-replica-20260922'}}),
     navigateTo:o=>navigate(o.url),switchTab:o=>navigate(o.url,'tab'),redirectTo:o=>navigate(o.url,'replace'),reLaunch:o=>navigate(o.url,'tab'),navigateBack:back,
-    showTabBar:()=>{},setNavigationBarTitle:o=>{document.title=o.title+' · 知守';$('#page-title').textContent=o.title},
+    showTabBar:()=>{},setTabBarBadge:o=>setTabBadge(o,o&&o.text),chatTabVisible:()=>chatEntryAllowed,removeTabBarBadge:o=>setTabBadge(o,''),setNavigationBarTitle:o=>{document.title=o.title+' · 知守';$('#page-title').textContent=o.title},
     pageScrollTo:o=>{const target=o.selector&&document.querySelector(o.selector);if(target){const top=target.getBoundingClientRect().top+window.scrollY+(o.offsetTop||0);window.scrollTo({top:Math.max(0,top),behavior:o.duration?'smooth':'instant'});return;}window.scrollTo({top:o.scrollTop||0,behavior:o.duration?'smooth':'instant'});},
     showToast:o=>{clearTimeout(toastTimer);$('#toast').textContent=o.title;$('#toast').hidden=false;toastTimer=setTimeout(()=>$('#toast').hidden=true,o.duration||2600)},
     showLoading:o=>{$('#loading').textContent=o.title||'正在加载…';$('#loading').hidden=false},hideLoading:()=>$('#loading').hidden=true,

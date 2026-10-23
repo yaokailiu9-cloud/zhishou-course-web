@@ -1,4 +1,5 @@
 const viewSession = require("../../utils/viewSession");
+const chatBadge = require("../../utils/chatBadge");
 const checkinService = require("../../utils/consultationService");
 const chatContext = require("../../utils/chatContext");
 const zion = require("../../utils/zion");
@@ -44,6 +45,7 @@ Page({
   },
 
   onShow() {
+    chatBadge.refresh();
     wx.showTabBar({ animation: false });
     this.setCustomNav();
     this.setData({ testCustomerPreviewActive: testCustomerPreview.isActive() });

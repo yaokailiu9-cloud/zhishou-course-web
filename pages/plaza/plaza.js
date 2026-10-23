@@ -1,4 +1,5 @@
 const zion = require("../../utils/zion");
+const chatBadge = require("../../utils/chatBadge");
 const { isAnswerLibraryCourse, isPersonalGrowthCourse } = require("../../utils/courseContent");
 
 Page({
@@ -20,6 +21,7 @@ Page({
   },
 
   onShow() {
+    chatBadge.refresh();
     wx.showTabBar({ animation: false });
     const requestedCategory = wx.getStorageSync("courseLibraryCategory");
     if (requestedCategory === "child" || requestedCategory === "growth") {
