@@ -35,9 +35,9 @@
     "pages/consultation-payment-link/consultation-payment-link"
   ],
   "sha256": {
-    "pages/index/index.js": "e1bd1b3484a6cb67a232af1513ff938182936b8c1aa380dd588c582cd5eec89d",
-    "pages/index/index.wxml": "abfe0e4c60f1414c6f1190e8921c700f778d4309af97dab234a07b0c9f5ff225",
-    "pages/index/index.wxss": "d9602d81b42a9f4064eaa720c8442d15a1954c94ada887fbbc903d5baf9b4e71",
+    "pages/index/index.js": "40054d7e0599f4ea9b254eabb77b3f2b12da481d516affc75d8625a40543ccab",
+    "pages/index/index.wxml": "72e27a6a0c949c2a997646f5f946e5a1aa16bafae7e57cec5c65b98325e47030",
+    "pages/index/index.wxss": "92474fe736ce9e790aaa30fa34a7a153f03b6e44d640c455c50f7e9e56909974",
     "pages/index/index.json": "2c728cc275cad57201431c201d07ef269461e778694f2be33c75c1af5c5794f3",
     "pages/plaza/plaza.js": "99d9efae7ef82dfb3f1aed442e5b2a55d280d72656d6be48cf6c3bc82c20deae",
     "pages/plaza/plaza.wxml": "6299d9f9768f3d4b23736f67f20a228b06705735babb8b92136f97a121bbb9a8",

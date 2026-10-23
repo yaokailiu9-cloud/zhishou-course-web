@@ -72,6 +72,11 @@ Page({
     wx.switchTab({ url: "/pages/plaza/plaza" });
   },
 
+  goGrowthSeries() {
+    wx.setStorageSync("courseLibraryCategory", "growth");
+    wx.switchTab({ url: "/pages/plaza/plaza" });
+  },
+
   goSearch() {
     wx.navigateTo({ url: "/pages/search/search?mode=courses" });
   },
