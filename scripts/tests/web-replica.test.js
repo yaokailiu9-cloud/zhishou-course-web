@@ -608,30 +608,25 @@ test('客户页按首次咨询档案与购买状态显示5次咨询购买或预�
   }
 });
 
-test('已绑定的独立档案双方从方案详情继续反馈并发送，未绑定时隐藏反馈',async()=>{
+test('咨询详情页不再提供反馈与回复入口：双方看到“在聊天中进行”卡片并跳转聊天，取消的预约不显示',async()=>{
  for(const isStaff of [false,true]){
   const h=await host({chatEntryVisible:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:isStaff?101:201});
-  const calls=[],messages=[{id:10,content:'老师主动询问近况',senderRole:'teacher',isMine:isStaff,createdAt:'2026-10-09T10:00:00Z'}];
+  const calls=[];
   h.host.requireModule('utils/consultationService').call=async(op,p)=>{
-   calls.push([op,p]);if(op==='GET_APPOINTMENT')return {appointment:{id:31,status:'孩子档案',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}},canTalk:true,isStaff,canReply:isStaff,feedbacks:[],summaryJobs:[],dialogueUnread:isStaff?0:1,dialogueReadMark:9};
-   if(op==='GET_CONSULTATION_DIALOGUE')return {messages,nextCursor:null};
-   if(op==='SEND_CONSULTATION_MESSAGE')return {message:{id:11,content:p.content,senderRole:isStaff?'teacher':'customer',isMine:true,createdAt:'2026-10-09T10:01:00Z'}};
+   calls.push([op,p]);if(op==='GET_APPOINTMENT')return {appointment:{id:31,status:'COMPLETED',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}},record:{status:'CONFIRMED',summary:'记录',advice:[{key:'step-1',content:'按时睡觉'}]},canTalk:true,isStaff,canReply:isStaff,feedbacks:[{id:5,advice_key:'step-1',content:'旧的执行反馈',replies:[{id:6,content:'旧的老师回复',author:{display_name:'负责老师'}}]}],summaryJobs:[],dialogueUnread:isStaff?0:1,dialogueReadMark:9};
    return {};
   };
-  h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();
-  const page=h.document.querySelector('#page');assert.match(page.textContent,/方案反馈/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
-  // Plan feedback is the first card and opens on arrival; new messages from the other side are tagged.
-  assert.ok(page.querySelector('.dialogue-card').compareDocumentPosition(page.querySelector('.archive-card'))&4);await tick();assert.match(page.textContent,/老师主动询问近况/);assert.equal(page.querySelectorAll('.new-tag').length,isStaff?0:1);assert.equal(page.querySelector('.unread-badge'),null);
-  [...page.querySelectorAll('button')].find(b=>b.textContent==='收起').dispatchEvent(new h.Event('click'));await tick();
-  const open=[...page.querySelectorAll('button')].find(b=>b.textContent===(isStaff?'回复与沟通':'继续反馈'));assert.ok(open);open.dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师主动询问近况/);
-  const input=page.querySelector('.dialogue-input');assert.ok(input);input.value=isStaff?'老师可以直接发消息':'学生可以直接发消息';input.dispatchEvent(new h.Event('input'));await tick();
-  [...page.querySelectorAll('button')].find(b=>b.textContent==='发送消息').dispatchEvent(new h.Event('click'));await tick();
-  assert.ok(calls.some(([op])=>op==='SEND_CONSULTATION_MESSAGE'));assert.match(page.textContent,isStaff?/老师可以直接发消息/:/学生可以直接发消息/);assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');assert.equal(page.querySelectorAll('.dialogue-message').length,2);
-  h.host.current.setData({canTalk:false,appointment:{status:'CONFIRMED',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}}});await tick();assert.equal(page.querySelector('.dialogue-card'),null);
+  h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();await tick();
+  const page=h.document.querySelector('#page');const card=page.querySelector('.dialogue-card');assert.ok(card);assert.match(card.textContent,/沟通与反馈在聊天中进行/);
+  assert.match(page.textContent,/旧的执行反馈/);assert.match(page.textContent,/旧的老师回复/,'历史记录仍可查看');
+  assert.equal(page.querySelector('.dialogue-input'),null);assert.doesNotMatch(page.textContent,/反馈执行情况|本次咨询留言/);const buttons=[...page.querySelectorAll('button')].map(b=>b.textContent.trim());for(const label of ['发送消息','提交本次反馈','发送留言','回复家长','继续反馈','回复与沟通'])assert.ok(!buttons.includes(label),label);
+  assert.equal(page.querySelectorAll('.unread-badge').length,isStaff?0:1);assert.ok(!calls.some(([op])=>op==='GET_CONSULTATION_DIALOGUE'),'详情页不再读取或标记对话');
+  card.dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/chat/chat');
+  h.host.wx.navigateBack();await tick();h.host.current.setData({appointment:{status:'CANCELED',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}}});await tick();assert.equal(h.document.querySelector('#page .dialogue-card'),null);
  }
 });
 
-test('独立孩子档案从我的方案直接进入聊天查看与反馈，原详情页仍保留完整档案与方案反馈',async()=>{
+test('独立孩子档案从我的方案直接进入聊天查看与反馈，原详情页保留完整档案，反馈入口指向聊天',async()=>{
  const h=await host({chatEntryVisible:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:201,nickName:'合成客户'});
  const archive={id:31,status:'孩子档案',customer_id:201,provider_id:1,child_info:{name:'合成孩子',remarks:'老师给出的方案内容'},provider:{display_name:'负责老师'}};
  h.host.requireModule('utils/consultationService').call=async op=>{
@@ -648,7 +643,7 @@ test('独立孩子档案从我的方案直接进入聊天查看与反馈，原�
  const card=[...page.querySelectorAll('.card')].find(row=>row.textContent.includes('合成孩子'));card.dispatchEvent(new h.Event('click'));await tick();await tick();assert.equal(h.host.current.route,'pages/chat/chat');
  page=h.document.querySelector('#page');assert.match(page.textContent,/合成孩子/);assert.equal(page.querySelector('.service-content-tabs .active').textContent.trim(),'老师沟通','打开聊天即在老师沟通');assert.doesNotMatch(page.textContent,/沟通反馈/);assert.match(page.textContent,/咨询记录/);assert.doesNotMatch(page.textContent,/内部标记|重点|方案审核/,'家长看不到内部分级与审核');
  h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');
- page=h.document.querySelector('#page');assert.doesNotMatch(page.textContent,/老师给出的方案内容/);page.querySelector('.archive-toggle').dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/发送消息/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
+ page=h.document.querySelector('#page');assert.doesNotMatch(page.textContent,/老师给出的方案内容/);page.querySelector('.archive-toggle').dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/沟通与反馈在聊天中进行/);assert.doesNotMatch(page.textContent,/发送消息/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
 
  test('普通用户返回我的页独立校验签到授权，不查询推荐或会话，也不显示聊天页签',async()=>{
