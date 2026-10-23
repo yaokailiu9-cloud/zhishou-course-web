@@ -1118,3 +1118,14 @@ test('老师沟通打开即显示：家长反馈、老师公开回复与老师�
  h.document.querySelector('.service-reply-button').click();await tick();assert.match(h.document.querySelector('.service-composer-label').textContent,/回复所选家长反馈/);
  h.document.querySelector('.service-composer .service-secondary').click();await tick();assert.match(h.document.querySelector('.service-composer-label').textContent,/直接给家长发消息/);assert.deepEqual(h.errors,[]);
 });
+
+test('档案未分配总监时不显示提交总监复核，改为提示；总管可直接去服务管理分配，分配后恢复提交按钮',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
+ p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {items:[{id:7,display_name:'合成监护',service_kind:'STAFF'},{id:8,display_name:'合成总监',review_role:'DIRECTOR'}]};};
+ const draft={id:52,stage:'DRAFT',revision:1,kind:'REPLY',body:{content:'草稿'},history:[]};
+ p.setData({serviceMode:true,serviceTab:'feedback',serviceCanManage:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:null}},serviceFeedback:[{id:17,content:'合成反馈',createdAt:'2026-10-20T01:00:00Z',reply:draft}],serviceLoading:false});p.buildServiceTimeline();await tick();
+ let text=h.document.querySelector('.service-chat-content').textContent;assert.doesNotMatch(text,/提交总监复核/);assert.match(text,/还没有分配总监/);
+ h.document.querySelector('.review-hint button').click();await tick();assert.equal(calls[0].op,'LIST_SERVICE_STAFF');assert.equal(p.data.serviceAssignOpen,true);
+ p.setData({serviceAssignOpen:false,serviceCanManage:false});await tick();assert.equal(h.document.querySelector('.review-hint button'),null);assert.match(h.document.querySelector('.review-hint').textContent,/请联系总管/);
+ p.setData({serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:8}}});await tick();text=h.document.querySelector('.service-chat-content').textContent;assert.match(text,/提交总监复核/);assert.equal(h.document.querySelector('.review-hint'),null);assert.deepEqual(h.errors,[]);
+});
