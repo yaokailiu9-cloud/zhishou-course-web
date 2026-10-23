@@ -218,7 +218,7 @@
       else if(attrs['wx:else']){if(branch)continue;branch=true}
       else branch=false;
       if(node.tag==='block'){children(node.children,scope,parent,page);continue}
-      const tag=node.tag==='image'?'img':node.tag==='picker'?'label':node.tag;
+      const tag=node.tag==='image'?'img':node.tag==='picker'?'label':node.tag==='switch'?'button':node.tag;
       let el=document.createElement(tag);
       const listeners=[];
       const on=(type,handler)=>{listeners.push([type,handler]);el.addEventListener(type,handler)};
@@ -241,6 +241,12 @@
         el.value=values.value??'';
       }
       if(tag==='canvas'){el.id=values['canvas-id']||values.id;el.width=256;el.height=256}
+      // <switch>: an accessible toggle button; bindchange receives the new boolean like the mini-program.
+      if(node.tag==='switch'){
+        el.removeAttribute('checked');el.classList.add('web-switch');el.setAttribute('role','switch');
+        el.setAttribute('aria-checked',String(values.checked===true||values.checked==='true'));
+        on('click',event=>{if(values.disabled)return;const next=el.getAttribute('aria-checked')!=='true';el.setAttribute('aria-checked',String(next));dispatch(page,values.bindchange,el,event,{value:next})});
+      }
       // Course videos: drop the browser's own download entry and long-press save menu; speed, casting and fullscreen stay available.
       if(tag==='video'){el.setAttribute('controlslist','nodownload');el.setAttribute('playsinline','');el.setAttribute('webkit-playsinline','');el.setAttribute('x5-playsinline','');el.draggable=false;on('contextmenu',event=>event.preventDefault())}
       if(tag==='scroll-view'&&values['scroll-y']!==undefined)el.setAttribute('scroll-y','');

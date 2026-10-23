@@ -1126,3 +1126,22 @@ test('档案未分配总监时不显示提交总监复核，改为提示；总�
  p.setData({serviceAssignOpen:false,serviceCanManage:false});await tick();assert.equal(h.document.querySelector('.review-hint button'),null);assert.match(h.document.querySelector('.review-hint').textContent,/请联系总管/);
  p.setData({serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:8}}});await tick();text=h.document.querySelector('.service-chat-content').textContent;assert.match(text,/提交总监复核/);assert.equal(h.document.querySelector('.review-hint'),null);assert.deepEqual(h.errors,[]);
 });
+test('聊天档案：筛选标签与内容标签只高亮当前项，「标记重点」开关在网页可见并可切换',async()=>{
+  const h=await host({fetch:sessionFetch({id:'1000000000000019',name:'刘曜恺'},MANAGER_PROVIDER),location:{hash:'#/pages/chat/chat'}});await tick();
+  const page=h.host.current;assert.equal(page.route,'pages/chat/chat');
+  const detail={staff:true,owner:false,canDraft:true,appointment:{id:31,contact_name:'王女士',director_id:9}};
+  page.setData({serviceMode:true,serviceLoading:false,serviceStaff:true,serviceCanManage:true,serviceActive:{id:31,childName:'乐乐'},serviceDetail:detail,
+    consult:{appointment:{},advice:[]},serviceTab:'plan',serviceAssignOpen:true,serviceMeta:{priority:false},serviceGuardians:[{id:'',display_name:'暂不分配监护专员'}],serviceDirectors:[{id:9,display_name:'周老师'}],
+    serviceDrawer:true,serviceFilter:'PENDING',serviceCases:[]});await tick();
+  const active=sel=>[...h.document.querySelectorAll(sel+' button.active')].map(b=>b.textContent.trim());
+  assert.deepEqual(active('.service-list-tabs'),['待回复']);
+  assert.deepEqual(active('.service-content-tabs'),['服务管理']);
+  const sw=h.document.querySelector('.service-switch [role="switch"]');assert.ok(sw,'switch must render as a toggle');
+  assert.equal(sw.getAttribute('aria-checked'),'false');assert.equal(sw.getAttribute('aria-label'),'标记重点');
+  sw.click();await tick();
+  assert.equal(page.data.serviceMeta.priority,true);
+  assert.equal(h.document.querySelector('.service-switch [role="switch"]').getAttribute('aria-checked'),'true');
+  page.setData({serviceAssignOpen:false,serviceFilter:'GENERAL'});await tick();
+  assert.deepEqual(active('.service-content-tabs'),['方案审核']);
+  assert.deepEqual(active('.service-list-tabs'),['总管审核']);
+});
