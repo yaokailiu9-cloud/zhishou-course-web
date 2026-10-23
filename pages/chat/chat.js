@@ -437,6 +437,8 @@ Page({
   startMessagePolling() {
     this.stopMessagePolling();
     messagePollTimer = setInterval(() => {
+      // The archive and feedback view has its own polling; legacy session polling resumes under 历史.
+      if (this.data.serviceMode) return;
       this.loadBackendMessages({ silent: true });
       this.syncSessionAccessFromBackend();
       if (this.data.canOpenSessionDrawer || this.data.isManagerView || isManagerChatView()) {

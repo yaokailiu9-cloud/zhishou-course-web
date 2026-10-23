@@ -30,7 +30,8 @@ Page({
  goClasses(){wx.navigateTo({url:'/pages/public-class/public-class'});},
  goMine(){wx.navigateTo({url:'/pages/my-enrollments/my-enrollments'});},
  openClass(e){wx.navigateTo({url:'/pages/class-ticket/class-ticket?id='+e.currentTarget.dataset.id});},
- openAppointment(e){wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id='+e.currentTarget.dataset.id});},
+ // Plans open in chat; a confirmed booking without child details still goes to its form first.
+ openAppointment(e){const id=e.currentTarget.dataset.id,item=this.data.appointments.find(a=>String(a.id)===String(id));if(!item||item.status==='CANCELED'||item.status==='CONFIRMED'&&!item.child_info)wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id='+id});else require('../../utils/serviceChat').openCase(id);},
  openMyPlan(){wx.navigateTo({url:'/pages/questionnaire/questionnaire'});},
  // Follow-up sessions: buy the 5-session package after the first archived consultation, then book each one.
  async buyPackage(){if(!auth.requireLogin()||this.data.payBusy)return;const pkg=this.data.pkg;if(!pkg||!pkg.offer||!pkg.eligible||(this.data.paymentLinkMode&&!this.data.linkValid))return;const d={...(pkg.defaults||{}),...this.data.packageContact};d.name=String(d.name||'').trim();d.phone=String(d.phone||'').trim();if(!d.name||!/^1[3-9]\d{9}$/.test(d.phone)){service.error(this,new Error('请先填写家长姓名和有效的11位联系电话'));return;}this.setData({payBusy:true,error:''});try{const r=await payment.enroll({classId:pkg.offer.id,name:d.name,phone:d.phone,paymentLinkToken:this.paymentLinkToken||undefined},'￥'+Number(pkg.offer.price).toFixed(2),{noun:pkg.offer.title,confirmTitle:'购买'+pkg.offer.title});if(r&&r.enrollment)this.refresh();}catch(e){service.error(this,e);}finally{this.setData({payBusy:false});}},

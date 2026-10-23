@@ -17,6 +17,14 @@
   };
   root.addEventListener('compositionend',finishComposition);
   root.addEventListener('focusout',finishComposition);
+  // Polls and timers rebuild the page; a rebuild between press and release would swallow the tap.
+  // Hold renders while a pointer is down (at most HOLD_MS) and flush right after the click is handled.
+  const HOLD_MS=1500;let pressedAt=0,pressTimer=null;
+  const releasePress=()=>{if(!pressedAt)return;pressedAt=0;clearTimeout(pressTimer);if(renderDeferred&&!composition)schedule();};
+  root.addEventListener('pointerdown',()=>{pressedAt=performance.now();},true);
+  window.addEventListener('click',releasePress,true);
+  window.addEventListener('pointercancel',releasePress,true);
+  window.addEventListener('pointerup',()=>{if(pressedAt){clearTimeout(pressTimer);pressTimer=setTimeout(releasePress,400);}},true);
   const HOME = 'pages/index/index';
   const INVITE_LOGIN = 'pages/invite-login/invite-login';
   let invitation=null,invitationError='',invitationNeedsLogin=false,invitationNotice='',invitationDropped=false,ticketClass='';
@@ -331,6 +339,8 @@
   function render() {
     renderPending=false;if(!current)return;
     if(composition?.page===current&&composition.element.isConnected){renderDeferred=true;return;}
+    const held=pressedAt?performance.now()-pressedAt:HOLD_MS;
+    if(held<HOLD_MS){renderDeferred=true;clearTimeout(pressTimer);pressTimer=setTimeout(releasePress,HOLD_MS-held);return;}
     composition=null;renderDeferred=false;
     const focused=document.activeElement,focusKey=focused?.dataset.focusKey,start=focused?.selectionStart,end=focused?.selectionEnd;
     const scrollers=[...root.querySelectorAll('scroll-view')].map(el=>({id:el.id,top:el.scrollTop}));
@@ -363,12 +373,16 @@
     scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el)el.scrollTop=v.top});
   }
   function schedule(){if(!renderPending){renderPending=true;queueMicrotask(render)}}
+  // A same-reference object counts as changed (it may have been mutated in place); equal copies do not.
+  function sameValue(a,b){if(a===b)return a===null||typeof a!=='object';if(!a||!b||typeof a!=='object'||typeof b!=='object')return false;try{return JSON.stringify(a)===JSON.stringify(b)}catch(_){return false}}
   function setData(page, patch, callback){
+    let changed=!Object.keys(patch).length;
     for(const [path,v]of Object.entries(patch)){
       const keys=path.replace(/\[(\d+)\]/g,'.$1').split('.');let target=page.data;
-      keys.forEach((key,index)=>{if(index===keys.length-1)target[key]=v;else{if(target[key]==null)target[key]=/^\d+$/.test(keys[index+1])?[]:{};target=target[key]}});
+      keys.forEach((key,index)=>{if(index===keys.length-1){if(!(key in target)||!sameValue(target[key],v))changed=true;target[key]=v;}else{if(target[key]==null){target[key]=/^\d+$/.test(keys[index+1])?[]:{};changed=true;}target=target[key]}});
     }
-    if(page===current)schedule();if(callback)queueMicrotask(()=>callback.call(page));
+    // Unchanged data skips the rebuild, so one-second timers no longer reset taps and hover states.
+    if(page===current&&changed)schedule();if(callback)queueMicrotask(()=>callback.call(page));
   }
   async function lifecycle(page, name, args){if(typeof page[name]==='function'){try{await page[name](args)}catch(error){console.error(name,error);wx.showToast({title:'加载未完成，请稍后重试'})}}}
   function showPage(page){
@@ -388,6 +402,12 @@
       button.setAttribute('aria-current',current&&current.route===item.pagePath?'page':'false');bar.append(button);
     }
   }
+  const serviceCaseEntry=new Map();
+  async function hasServiceCases(accountId){
+    const cached=serviceCaseEntry.get(accountId);if(cached&&Date.now()-cached.at<300000)return cached.allowed;
+    let allowed=false;try{const r=await requireModule('utils/consultationService').call('SERVICE_CHAT_OVERVIEW');allowed=!!(r&&(r.staff||(r.cases||[]).length));serviceCaseEntry.set(accountId,{allowed,at:Date.now()});}catch(_){allowed=false}
+    return allowed;
+  }
   async function refreshChatEntry(){
     const accountId=session&&session.user?String(session.user.id):'';let allowed=chatEntryVisible;
     if(!allowed&&accountId){
@@ -395,6 +415,8 @@
       else if(webFeatures.chatEntryForManagers===true){
         try{const zion=requireModule('utils/zion');const provider=await zion.getServiceProviderByAccount(accountId);allowed=zion.isManagerProvider(provider)&&String(provider.accountId)===accountId;}catch(_){allowed=false}
       }
+      // Parents give consultation feedback in chat, so anyone with an archive the backend lets them open sees the tab.
+      if(!allowed&&webFeatures.chatEntryForServiceCases===true)allowed=await hasServiceCases(accountId);
       if(!session||String(session.user.id)!==accountId)return;
     }
     if(allowed!==chatEntryAllowed){chatEntryAllowed=allowed;renderTabbar()}

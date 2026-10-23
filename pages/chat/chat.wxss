@@ -817,3 +817,20 @@
 
 .service-feedback-message.teacher-message { background:#edf2ea; border-color:#dfe6d8; margin-right:44rpx; }
 .service-feedback-message:not(.teacher-message) { margin-left:44rpx; }
+/* Offline consultation inside chat: direct teacher conversation and consultation records. */
+.service-feedback-message.talk-message { margin-left:24rpx; margin-right:68rpx; }
+.service-feedback-message.talk-message.mine-message { margin-left:68rpx; margin-right:24rpx; }
+.service-new-tag { display:inline-block; margin-right:8rpx; padding:0 10rpx; border-radius:8rpx; background:#c8553d; color:#fffdf8; font-size:20rpx; line-height:32rpx; }
+.service-tab-badge { display:inline-block; min-width:30rpx; margin-left:6rpx; padding:0 8rpx; border-radius:16rpx; background:#c8553d; color:#fffdf8; font-size:19rpx; line-height:30rpx; text-align:center; }
+.service-panel-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
+.service-status-pill { flex-shrink:0; padding:4rpx 16rpx; border-radius:20rpx; background:#e9ede5; color:#3c564c; font-size:22rpx; }
+.service-muted { color:#77746c; font-size:24rpx; line-height:1.7; }
+.service-notice { padding:14rpx 18rpx; border-radius:12rpx; background:#f6efdf; color:#7a5c22; font-size:24rpx; line-height:1.6; }
+.service-advice { display:flex; gap:14rpx; align-items:flex-start; }
+.service-advice-index { flex-shrink:0; width:40rpx; height:40rpx; margin-top:8rpx; border-radius:50%; background:#e9ede5; color:#3c564c; font-size:22rpx; line-height:40rpx; text-align:center; }
+.service-link-button { margin:0; min-height:44px; padding:0 20rpx; border-radius:14rpx; background:#e9ede5; color:#3c564c; font-size:25rpx; line-height:44px; text-align:left; }
+.service-list-title { display:block; margin:28rpx 28rpx 0; font-size:28rpx; font-weight:600; color:#3c564c; }
+.service-inline-error { margin:20rpx 24rpx 0; padding:18rpx 24rpx; border-radius:14rpx; background:#f7e5d9; color:#994b38; font-size:25rpx; }
+.service-composer-error { color:#994b38; font-size:23rpx; line-height:1.5; }
+.service-feedback-card textarea { box-sizing:border-box; width:100%; height:150rpx; padding:18rpx; border-radius:12rpx; background:#f4f2ed; border:1rpx solid #e5e0d5; font-size:27rpx; line-height:1.6; }
+.service-feedback-card .service-primary, .service-panel .service-primary { min-height:44px; line-height:44px; }

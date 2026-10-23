@@ -1,7 +1,12 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-function harness(){let id='201';const calls=[],service={requestKey:()=> 'same-key',formatTime:v=>v,call:async(op,payload)=>{calls.push({op,payload});return {};}};const identity={capture:()=>({id}),current:s=>s.id===id},module={exports:{}};
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../utils/serviceChat.js'),'utf8'),{module,require:name=>name==='./consultationService'?service:name==='./viewSession'?identity:name==='./childArchive'?{answeredSections:()=>[]}:name==='./auth'?{isLoggedIn:()=>true}:{},wx:{showToast(){},showModal(){},navigateTo(){}},setInterval:()=>1,clearInterval(){},Date,Number,Map});
-const p={...module.exports.methods,data:structuredClone(module.exports.data),setData(v){Object.assign(this.data,v);},serviceEpoch:1,serviceCaseVersion:1,serviceSelectedId:31,serviceChatIdentity:identity.capture()};p.data.serviceMode=true;p.data.serviceTab='feedback';return {p,service,calls,changeId:x=>id=x};}
+function harness(){let id='201';const calls=[],service={requestKey:()=> 'same-key',formatTime:v=>v,decorate:v=>({...v,statusText:v.status}),call:async(op,payload)=>{calls.push({op,payload});return {};}};const identity={capture:()=>({id}),current:s=>s.id===id},module={exports:{}};
+const wx={storage:{},showToast(){},showModal(){},navigateTo(){},getStorageSync(k){return this.storage[k]||'';},setStorageSync(k,v){this.storage[k]=v;},removeStorageSync(k){delete this.storage[k];}};
+// The consultation mixins are loaded for real so the chat page's combined methods are under test.
+const load=(file,stubs)=>{const m={exports:{}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../utils/'+file),'utf8'),{module:m,require:name=>stubs(name),wx,setInterval:()=>1,clearInterval(){},Date,Number,Map,Promise,String,Object,JSON});return m.exports;};
+const shared=name=>name==='./consultationService'?service:name==='./viewSession'?identity:name==='./childArchive'?{answeredSections:()=>[]}:name==='./auth'?{isLoggedIn:()=>true}:{};
+const dialogue=load('consultationDialogue.js',shared),consultation=load('serviceConsultation.js',name=>name==='./consultationDialogue'?dialogue:shared(name));
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../utils/serviceChat.js'),'utf8'),{module,require:name=>name==='./serviceConsultation'?consultation:shared(name),wx,setInterval:()=>1,clearInterval(){},Date,Number,Map,Promise});
+const p={...module.exports.methods,data:structuredClone(module.exports.data),setData(v){Object.assign(this.data,v);},serviceEpoch:1,serviceCaseVersion:1,serviceSelectedId:31,serviceChatIdentity:identity.capture()};p.data.serviceMode=true;p.data.serviceTab='feedback';return {p,service,calls,wx,changeId:x=>id=x};}
 test('选中草稿时捕获版本，后台刷新不把旧输入变成可覆盖的新版本',async()=>{const {p,service,calls}=harness();p.data.serviceFeedback=[{id:1,reply:{id:2,revision:3,stage:'DRAFT',body:{content:'旧稿'}}}];p.selectServiceReply({currentTarget:{dataset:{id:1}}});p.data.serviceFeedback[0].reply.revision=4;p.data.serviceInput='本地编辑';service.call=async(op,payload)=>{calls.push({op,payload});throw Error('内容已更新');};await p.saveServiceDraft();assert.equal(calls[0].payload.revision,3);assert.equal(p.data.serviceInput,'本地编辑');assert.match(p.data.serviceError,/已更新/);});
 test('家长发送失败保留输入和同一请求号，重试不会改变幂等键',async()=>{const h=harness();h.p.data.serviceInput='未发出的反馈';h.service.call=async(op,p)=>{h.calls.push({op,p});throw Error('网络失败');};await h.p.sendServiceFeedback();await h.p.sendServiceFeedback();assert.equal(h.p.data.serviceInput,'未发出的反馈');assert.equal(h.calls[0].p.requestKey,h.calls[1].p.requestKey);});
 test('换号或离开后旧请求不能恢复客户内容或特权状态',async()=>{const h=harness();let resolve;h.service.call=()=>new Promise(r=>resolve=r);const loading=h.p.loadServiceChat();h.changeId('202');resolve({staff:true,canManage:true,cases:[{id:999,childName:'旧用户孩子'}]});await loading;assert.equal(h.p.data.serviceCases.length,0);assert.equal(h.p.data.serviceCanManage,false);});
@@ -23,4 +28,25 @@ test('反馈按发布时间从早到晚，较晚公开的老师回复位于家�
 test('加载更早反馈插在顶部，轮询保留已加载历史和最早游标',async()=>{
  const h=harness();h.p.data.serviceFeedback=[{id:22,content:'最新'}];h.p.data.serviceFeedbackCursor=22;h.service.call=async()=>({owner:true,appointment:{child_info:{}},feedback:[{id:11,content:'更早'}],nextCursor:11});await h.p.moreServiceFeedback();assert.deepEqual(Array.from(h.p.data.serviceFeedback,f=>f.id),[11,22]);
  h.service.call=async()=>({owner:true,appointment:{child_info:{}},feedback:[{id:33,content:'新到达'},{id:22,content:'最新'}],nextCursor:22});await h.p.refreshServiceCase(true);assert.deepEqual(Array.from(h.p.data.serviceFeedback,f=>f.id),[11,22,33]);
+});
+
+test('咨询记录与老师沟通由后台授权决定：无权读取时隐藏对应标签并回到家长反馈',async()=>{
+ const h=harness();h.p.data.serviceTab='consult';h.service.call=async op=>{if(op==='GET_APPOINTMENT')throw Error('不能访问其他客户的咨询资料');return {};};
+ await h.p.loadConsult();assert.equal(h.p.data.consult,null);assert.equal(h.p.data.canTalk,false);assert.equal(h.p.data.consultDenied,true);assert.equal(h.p.data.serviceTab,'feedback');
+ h.p.switchServiceTab({currentTarget:{dataset:{tab:'consult'}}});assert.equal(h.p.data.serviceTab,'feedback');h.p.switchServiceTab({currentTarget:{dataset:{tab:'talk'}}});assert.equal(h.p.data.serviceTab,'feedback');
+});
+test('咨询记录只列执行反馈和留言，排除方案对话与家长反馈审核消息，并按老师建议标注',async()=>{
+ const h=harness();h.service.call=async op=>op==='GET_APPOINTMENT'?{appointment:{id:31,status:'COMPLETED',child_info:{name:'孩子'}},record:{status:'CONFIRMED',advice:[{key:'step-1',content:'按时睡觉'}]},feedbacks:[{id:1,advice_key:'step-1',content:'执行'},{id:2,advice_key:'conversation',content:'留言'},{id:3,advice_key:'__service_feedback__',content:'审核反馈'},{id:4,advice_key:'__consultation_dialogue__',content:'对话'}],isStaff:false,canTalk:true}:{};
+ await h.p.loadConsult();assert.deepEqual(Array.from(h.p.data.consultFeedback,f=>f.id),[2,1]);assert.equal(h.p.data.consultFeedback[1].adviceText,'按时睡觉');assert.equal(h.p.data.consultFeedback[0].kindText,'家长留言');
+ assert.equal(h.p.data.consult.canSendFeedback,true);assert.equal(h.p.data.consult.canSendNote,true);assert.equal(h.p.data.consult.canReply,false);assert.equal(h.p.data.canTalk,true);
+});
+test('聊天中提交执行反馈失败保留内容，重试沿用同一请求号；档案只读不产生写入',async()=>{
+ const h=harness();h.p.data.consult={canSendFeedback:true,advice:[{key:'step-1',content:'按时睡觉'}]};h.p.data.consultFeedbackInput='坚持了五天';
+ h.service.call=async(op,payload)=>{h.calls.push({op,payload});throw Error('网络失败');};
+ await h.p.sendConsultFeedback();await h.p.sendConsultFeedback();assert.equal(h.p.data.consultFeedbackInput,'坚持了五天');assert.equal(h.calls[0].op,'SEND_FEEDBACK');assert.equal(h.calls[0].payload.requestKey,h.calls[1].payload.requestKey);assert.equal(h.calls[0].payload.adviceKey,'step-1');
+ h.calls.length=0;h.p.openServiceArchive();assert.equal(h.p.data.serviceTab,'archive');assert.equal(h.calls.length,0);
+});
+test('工作台或我的方案指定档案后，聊天直接打开该档案',async()=>{
+ const h=harness();h.wx.storage.serviceChatCaseId='32';h.service.call=async(op,payload)=>op==='SERVICE_CHAT_OVERVIEW'?{staff:true,cases:[{id:31,childName:'甲'},{id:32,childName:'乙'}]}:op==='GET_SERVICE_CASE'?{staff:true,appointment:{id:payload.appointmentId,child_info:{}},feedback:[]}:{};
+ await h.p.loadServiceChat();assert.equal(h.p.data.serviceActive.id,32);assert.equal(h.wx.storage.serviceChatCaseId,undefined);
 });

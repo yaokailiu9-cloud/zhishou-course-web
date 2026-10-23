@@ -2,6 +2,7 @@
  <view class="error" wx:if="{{error}}"><text>{{error}}</text><button bindtap="refresh">重新加载</button></view><text wx:if="{{loading}}" class="muted">正在加载咨询资料…</text>
  <block wx:if="{{appointment}}">
   <view class="service-hero member-hero"><text class="eyebrow">{{archiveOnly ? '孩子档案' : '线下咨询 · ' + appointment.statusText}}</text><text class="page-title">{{appointment.child_info.name || appointment.contact_name}}{{archiveOnly ? '的孩子档案' : '的沟通记录'}}</text><text class="muted">负责老师：{{appointment.provider.display_name || '待安排'}}</text></view>
+  <button wx:if="{{appointment.status !== 'CANCELED'}}" class="secondary" bindtap="openInChat">在聊天中查看档案与反馈 ›</button>
   <view wx:if="{{canTalk}}" class="card record-section dialogue-card">
    <view class="row"><text class="section-title">方案反馈<text wx:if="{{dialogueUnread}}" class="unread-badge">{{dialogueUnread}}条新消息</text></text><button wx:if="{{dialogueOpen}}" class="text-button" bindtap="closeDialogue">收起</button></view>
    <text class="muted">可在这里向{{isStaff ? '学生及家长' : '负责老师'}}提问、反馈执行情况，并查看回复。</text>

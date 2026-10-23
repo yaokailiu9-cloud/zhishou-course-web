@@ -6,7 +6,8 @@ Page({data:{loading:true,busy:false,error:'',allowed:false,canAccept:false,canRe
  // The total covers every archive, including ones beyond the loaded page.
  loadUnreadTotal(generation){return service.call('DIALOGUE_UNREAD_TOTAL').then(r=>{if(generation===this.listGeneration)this.setData({unreadTotal:Number(r&&r.staff)||0});}).catch(()=>{});},
  manageCourses(){wx.navigateTo({url:'/pages/course-manage/course-manage'});},
- openAppointment(e){wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id='+e.currentTarget.dataset.id});},
+ // Archives, records and feedback live in chat; bookings still awaiting a time open the confirmation page.
+ openAppointment(e){const id=e.currentTarget.dataset.id,item=this.data.appointments.find(a=>String(a.id)===String(id));if(item&&item.status==='PENDING'&&this.data.canAccept)wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id='+id});else require('../../utils/serviceChat').openCase(id);},
  callCustomer(e){const n=e.currentTarget.dataset.phone;if(n)wx.makePhoneCall({phoneNumber:n});},
  shareClass(e){wx.navigateTo({url:'/pages/public-class/public-class?id='+e.currentTarget.dataset.id});},
  goCustomer(){require('../../utils/chatContext').enterCustomerView();wx.navigateTo({url:'/pages/customer/customer'});}

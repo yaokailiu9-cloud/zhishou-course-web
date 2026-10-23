@@ -631,19 +631,23 @@ test('已绑定的独立档案双方从方案详情继续反馈并发送，未�
  }
 });
 
-test('独立孩子档案通过现有我的方案进入并在原详情反馈，不添加聊天入口',async()=>{
+test('独立孩子档案从我的方案直接进入聊天查看与反馈，原详情页仍保留完整档案与方案反馈',async()=>{
  const h=await host({chatEntryVisible:false});h.host.wx.setStorageSync('zionJwt','h5-session');h.host.wx.setStorageSync('userInfo',{id:201,nickName:'合成客户'});
  const archive={id:31,status:'孩子档案',customer_id:201,provider_id:1,child_info:{name:'合成孩子',remarks:'老师给出的方案内容'},provider:{display_name:'负责老师'}};
  h.host.requireModule('utils/consultationService').call=async op=>{
   if(op==='GET_QUESTIONNAIRE')return {enrollment:null};
   if(op==='MY_OVERVIEW')return {appointments:[archive],enrollments:[]};
   if(op==='GET_APPOINTMENT')return {appointment:archive,canTalk:true,isStaff:false,feedbacks:[],summaryJobs:[]};
+  if(op==='SERVICE_CHAT_OVERVIEW')return {staff:false,cases:[{id:31,childName:'合成孩子',parentName:'合成客户',metadata:{level:'A',priority:true,danger:'内部标记'}}]};
+  if(op==='GET_SERVICE_CASE')return {owner:true,staff:false,appointment:{...archive,service_metadata:{level:'A',priority:true,danger:'内部标记'}},feedback:[]};
   return {};
  };
  h.host.wx.switchTab({url:'/pages/profile/profile'});await tick();
  let page=h.document.querySelector('#page');const plan=[...page.querySelectorAll('.settings-row')].find(row=>row.textContent.includes('我的方案'));assert.ok(plan);plan.dispatchEvent(new h.Event('click'));await tick();
- assert.equal(h.host.current.route,'pages/customer/customer');page=h.document.querySelector('#page');assert.match(page.textContent,/我的方案/);assert.doesNotMatch(page.textContent,/购买|预约下一次咨询|我的公开课报名|客户中心/);assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/查看方案与继续反馈/);
- const card=[...page.querySelectorAll('.card')].find(row=>row.textContent.includes('合成孩子'));card.dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');
+ assert.equal(h.host.current.route,'pages/customer/customer');page=h.document.querySelector('#page');assert.match(page.textContent,/我的方案/);assert.doesNotMatch(page.textContent,/购买|预约下一次咨询|我的公开课报名|客户中心/);assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/在聊天中查看方案与反馈/);
+ const card=[...page.querySelectorAll('.card')].find(row=>row.textContent.includes('合成孩子'));card.dispatchEvent(new h.Event('click'));await tick();await tick();assert.equal(h.host.current.route,'pages/chat/chat');
+ page=h.document.querySelector('#page');assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/老师沟通/);assert.match(page.textContent,/咨询记录/);assert.doesNotMatch(page.textContent,/内部标记|重点|方案审核/,'家长看不到内部分级与审核');
+ h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');
  page=h.document.querySelector('#page');assert.doesNotMatch(page.textContent,/老师给出的方案内容/);page.querySelector('.archive-toggle').dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/发送消息/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
 
@@ -658,14 +662,16 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    const text=h.document.querySelector('#page').textContent;
    assert.match(text,/报名公开课/);assert.match(text,/我的方案/);
    assert.doesNotMatch(text,/进入客户端|简易方案梳理|推荐客户|扫码进场|工作台|累计消费/);
-   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null);
+   assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null,'没有孩子档案的普通用户不显示聊天页签');
    h.host.current.onShow();await tick();
   }
   // 我的页只在onShow校验身份；另有启动和每次切换页签时的聊天入口校验各一次。
   assert.equal(requests.filter(r=>r.query.includes('GetServiceProviderByAccount')).length,10,'只在onShow校验身份，onLoad不重复请求');
   assert.equal(requests.filter(r=>r.variables?.args?.operation==='CHECKIN_ACCESS').length,6,'每次展示独立查询签到授权');
   assert.equal(requests.filter(r=>r.variables?.args?.operation==='INTERNAL_PURCHASE_ACCESS').length,6,'每次展示校验内部链接发放资格');
-  assert.ok(requests.filter(r=>r.variables?.args).every(r=>['CHECKIN_ACCESS','INTERNAL_PURCHASE_ACCESS'].includes(r.variables.args.operation)));
+  // 聊天页签按是否有本人孩子档案显示：成功结果按账号缓存5分钟；此替身返回错误，不缓存，启动及每次切换页签各重试一次。
+  assert.equal(requests.filter(r=>r.variables?.args?.operation==='SERVICE_CHAT_OVERVIEW').length,4);
+  assert.ok(requests.filter(r=>r.variables?.args).every(r=>['CHECKIN_ACCESS','INTERNAL_PURCHASE_ACCESS','SERVICE_CHAT_OVERVIEW'].includes(r.variables.args.operation)));
  });
 
  test('不同后台身份登录后的入口严格隔离，包括旧user_type不一致的账号',async()=>{
@@ -690,7 +696,7 @@ test('独立孩子档案通过现有我的方案进入并在原详情反馈，�
    if(record.identity==='USER'){
     assert.doesNotMatch(text,/简易方案梳理|推荐客户|扫码进场|工作台/,'普通账号'+record.id);
     assert.equal(h.host.current.data.canInvite,false);assert.equal(h.host.current.data.isServiceProvider,false);
-    assert.deepEqual(requests.filter(r=>r.variables?.args).map(r=>r.variables.args.operation).sort(),['CHECKIN_ACCESS','INTERNAL_PURCHASE_ACCESS']);
+    assert.deepEqual(requests.filter(r=>r.variables?.args).map(r=>r.variables.args.operation).sort(),['CHECKIN_ACCESS','INTERNAL_PURCHASE_ACCESS','SERVICE_CHAT_OVERVIEW']);
     assert.equal(h.document.querySelector('[data-route="pages/chat/chat"]'),null);
    }else {
     assert.match(text,/简易方案梳理/);assert.match(text,/推荐客户/);
