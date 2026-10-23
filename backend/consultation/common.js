@@ -103,7 +103,8 @@ function appointment(s, value, mode) {
   login(s); var a = one("offline_appointment", value, APPOINTMENT_FIELDS);
   var own = String(a.customer_id) === String(s.actor.accountId);
   // Bookings default to the supervisor, but every manager who can take bookings may accept them.
-  var assigned = !!s.actor.providerId && (String(a.provider_id) === String(s.actor.providerId) || (s.actor.serviceKind === "STAFF" && !!s.actor.canAccept));
+  // ASSIGNED_ARCHIVE_ACCESS: only 总管 open consultations as staff; others reach archives through 总管 assignment in 服务管理.
+  var assigned = !!s.actor.providerId && s.actor.serviceKind === "STAFF" && !!s.actor.canAccept;
   if (mode === "owner" ? !own : mode === "staff" ? !assigned : !(own || assigned)) fail("不能访问其他客户的咨询资料");
   return a;
 }

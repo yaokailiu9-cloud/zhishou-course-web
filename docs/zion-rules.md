@@ -673,3 +673,10 @@ flowchart LR
 - 发布：zion-mcp 2.7.13 的类型检查把两个未改动的“读取登录账号”节点模板 `findCurrentUserId` 报为未知并阻止同步；2.7.15 校验无错误，草稿回读确认只含本次修改后用 2.7.15 `project sync-backend` 同步。正式 schema `zjLKJME5OnL`，`DEPLOY_SUPPORT_SERVICE_COMPLETE` 于 12:56:32。仓库 `backend/consultation/service-review.js` 已同步，处理器与线上一致。
 - 用户要求老师回复、家长消息打开聊天即可看到，不必再点“老师沟通”。已取消该标签：首个标签改名“沟通反馈”（同日按用户要求再改名为“老师沟通”，打开聊天即停在此标签），按时间合并显示家长反馈、已审核公开的老师回复和直接消息（`__consultation_dialogue__`），打开即加载、标记已读并每8秒刷新；“查看更早消息”同时加载两类历史。家长发送仍走 `SEND_SERVICE_FEEDBACK`，审核流程不变；工作人员底部默认“直接给家长发消息”（`SEND_CONSULTATION_MESSAGE`，家长立即可见），点反馈卡片“回复这条反馈”切换为审核回复草稿，可“改为直接发消息”退回。
 - 同日：档案未分配总监（`appointment.director_id` 为空）时，草稿下不再显示会失败的“提交总监复核”，改为提示“本档案还没有分配总监”；总管显示“去服务管理分配总监 ›”直接打开服务管理（面板从顶部显示），其他人员提示联系总管。分配后恢复提交按钮。仅前端展示变化，后端仍按原规则校验。总管也可直接在“老师沟通”给家长发消息，不经审核。
+
+#### 2026-10-23 孩子档案只对总管分配链路可见（用户确认后发布）
+
+- 规则：总管（启用 STAFF 且可接单，含超管）可看全部有效档案；其他工作人员只能看到总管在“服务管理”中分配给自己的档案——被分配为监护专员（`guardian_id`），或以总监身份被分配为该档案总监（`director_id` 且 `review_role = DIRECTOR`）。家长只看本人档案；代理不读取档案。预约上的“负责老师”（`provider_id`）不再单独授予查看权。
+- 咨询记录、直接消息、老师记录、录音总结与档案备注修改（`GET_APPOINTMENT`、`GET_CONSULTATION_DIALOGUE`、`SEND_CONSULTATION_MESSAGE`、`SAVE_CHILD_ARCHIVE` 等，经 `appointment()`）仅总管与家长本人可用；被分配的监护专员、总监在聊天中查看档案、家长反馈并做方案审核。工作台“线下咨询与反馈”对非总管只列分配给本人的档案；直接消息未读数只为总管统计。
+- 后端：`scripts/stage-assigned-archive-access.js` 断言替换主服务动作流 5 个节点（`h4i3zzuex`、`dv4kpohsg`、`g3oknp94t`、`sui9sl3ko`、`z07supad5`）中的对应判断，草稿回读确认其他动作流、数据模型与角色权限不变；正式 schema `Rd5g0AN9YyR`，`DEPLOY_SUPPORT_SERVICE_COMPLETE` 于 17:34:44。总结草稿流 `db7162d9` 仍按负责人校验，但新的总结任务只能经已收紧的主流程创建，未改动。仓库 `common.js`、`appointments.js`、`classes.js`、`service-review.js` 已同步。
+- 验证：`runtime run-code --no-updateDb` 只读对比新旧代码，分配关系仅在内存中注入：总管看到全部 4 个档案、家长仅本人，前后一致；模拟“总管改为总监后仍是负责老师”的账号修改前可看 2 个档案及咨询记录，修改后为 0；同一账号被分配为某档案总监后可在聊天打开该档案。发布前所有正式负责老师均为总管，实际可见范围没有变化。

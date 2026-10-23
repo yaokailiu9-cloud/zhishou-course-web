@@ -198,7 +198,7 @@ if(op==='VERIFY_ENROLLMENT') {
 // DIALOGUE_UNREAD: build inserts dialogue-unread.js here.
 if(op==='DIALOGUE_UNREAD_TOTAL') {
   login(s);var mine=list('offline_appointment',eq('customer_id',s.actor.accountId),'id customer_id status',200),managed=[];
-  if(s.actor.providerId&&s.actor.canReply)managed=list('offline_appointment',s.actor.serviceKind==='STAFF'&&s.actor.canAccept?{}:eq('provider_id',s.actor.providerId),'id customer_id status',501);
+  if(s.actor.providerId&&s.actor.canReply)managed=s.actor.serviceKind==='STAFF'&&s.actor.canAccept?list('offline_appointment',{},'id customer_id status',501):[];
   var counts=dialogueUnread(mine.concat(managed)),total=function(rows){return rows.reduce(function(n,a){return n+(counts[a.id]?counts[a.id].unread:0);},0);};
   result(s,{staff:total(managed.filter(function(a){return String(a.customer_id)!==String(s.actor.accountId);})),customer:total(mine)});
 }
@@ -211,7 +211,7 @@ if(op==='MY_OVERVIEW') {
 if(op==='STAFF_OVERVIEW') {
   staff(s,s.actor.canAccept?'canAccept':'canReply');
   // Managers who can take bookings see every booking so they can accept others' bookings.
-  var history=pageRows('offline_appointment',s.actor.serviceKind==='STAFF'&&s.actor.canAccept?{}:eq('provider_id',s.actor.providerId),APPOINTMENT_FIELDS,p.appointmentCursor,200,p.paginate===true);
+  var history=pageRows('offline_appointment',s.actor.serviceKind==='STAFF'&&s.actor.canAccept?{}:{_or:[eq('guardian_id',s.actor.providerId)].concat(s.actor.reviewRole==='DIRECTOR'?[eq('director_id',s.actor.providerId)]:[])},APPOINTMENT_FIELDS,p.appointmentCursor,200,p.paginate===true);
   result(s,{classes:list('public_class',staffClassScope(),CLASS_FIELDS,100),enrollments:s.actor.canAccept?list('public_class_enrollment',{public_class:staffClassScope()},ENROLL_FIELDS,200):[],appointments:s.actor.canReply?withDialogueUnread(history.items):history.items,nextAppointmentCursor:history.nextCursor,canAccept:s.actor.canAccept,canReply:s.actor.canReply});
 }
 // FAMILY_HANDLERS: build script inserts family.js here.

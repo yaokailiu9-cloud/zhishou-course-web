@@ -66,7 +66,7 @@ if (op === "SAVE_CHILD_REMARKS") {
 // DIALOGUE_UNREAD: build inserts dialogue-unread.js here.
 if (op === "GET_APPOINTMENT") {
   var a=appointment(s,p.appointmentId);
-  var assigned=!!s.actor.providerId && (String(a.provider_id)===String(s.actor.providerId) || (s.actor.serviceKind==="STAFF" && !!s.actor.canAccept));
+  var assigned=!!s.actor.providerId && s.actor.serviceKind==="STAFF" && !!s.actor.canAccept;
   var record=list("offline_consultation_record",and(eq("appointment_id",a.id),assigned ? {} : eq("status","CONFIRMED","text")),RECORD_FIELDS,1)[0] || null;
   var jobs=pageRows("consultation_summary_job",and(eq("appointment_id",a.id),assigned ? {} : eq("requester_id",s.actor.accountId)),JOB_FIELDS,p.summaryCursor,30,p.paginate===true);
   var feedback=pageRows("consultation_feedback",and(eq("appointment_id",a.id),{_or:[{_not:eq("advice_key","__consultation_dialogue__","text")},isNull("advice_key","text")]}),FEEDBACK_FIELDS,p.feedbackCursor,200,p.paginate===true);
