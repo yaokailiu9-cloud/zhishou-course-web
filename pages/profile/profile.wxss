@@ -18,6 +18,10 @@
 }
 
 .nav-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
   position: absolute;
   left: 0;
   right: 0;
@@ -31,6 +35,14 @@
   line-height: 64rpx;
   text-align: center;
   pointer-events: none;
+}
+
+.nav-brand-logo {
+  display: block;
+  flex-shrink: 0;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 10rpx;
 }
 
 .member-hero {

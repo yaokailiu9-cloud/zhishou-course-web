@@ -18,6 +18,10 @@
 }
 
 .nav-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(12 * var(--rpx));
   position: absolute;
   left: 0;
   right: 0;
@@ -31,6 +35,14 @@
   line-height: calc(64 * var(--rpx));
   text-align: center;
   pointer-events: none;
+}
+
+.nav-brand-logo {
+  display: block;
+  flex-shrink: 0;
+  width: calc(80 * var(--rpx));
+  height: calc(80 * var(--rpx));
+  border-radius: calc(10 * var(--rpx));
 }
 
 .member-hero {

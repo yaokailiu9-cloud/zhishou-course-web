@@ -172,7 +172,7 @@
 .nav-title { font-family:var(--em-font-family); font-size:calc(27 * var(--rpx)); }
 .nav-greeting { font-weight:400; font-size: calc(24 * var(--rpx)); margin-top:calc(10 * var(--rpx)); }
 
-.nav-brand { display:flex; align-items:center; justify-content:center; color:#002727; font-family:var(--em-font-serif); font-size:calc(32 * var(--rpx)); }
+.nav-brand { display:flex; align-items:center; justify-content:center; width:calc(96 * var(--rpx)); height:calc(96 * var(--rpx)); background:#fffcf3; border:0; border-radius:calc(12 * var(--rpx)); }
 .home-course-list { display:flex; flex-direction:column; gap:calc(28 * var(--rpx)); }
 .home-course-card { overflow:hidden; border:calc(1 * var(--rpx)) solid #e6e1da; border-radius:calc(22 * var(--rpx)); background:#fff; }
 .home-course-cover { position:relative; display:block; width:100%; height:auto; aspect-ratio:2752 / 1536; }
