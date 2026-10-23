@@ -11,6 +11,9 @@ button,input,textarea,select{font:inherit}button{border:0;cursor:pointer;color:i
 #page.no-tabs{padding-bottom:env(safe-area-inset-bottom)}#page .safe-bottom{padding-bottom:24px}
 #page .web-picker{position:relative;display:block}#page .web-picker-control{position:absolute;inset:0;opacity:.001;width:100%;height:100%;cursor:pointer;color:transparent;background:transparent}#page .web-picker-control:focus-visible{opacity:.001}#page .web-picker:focus-within{outline:2px solid #80714e;outline-offset:-2px;border-radius:12px}
 #page[data-route="pages/profile/profile"] .login-card,#page[data-route="pages/profile/profile"] .login-avatar-badge{display:none}#page .login-benefits{line-height:1.7}
+#page .profile-page.welcome-page{min-height:0;padding-bottom:0}
+#page .welcome-page .login-screen{min-height:calc(100dvh - 66px - env(safe-area-inset-bottom));justify-content:center;padding-top:32px;padding-bottom:32px}
+#page .welcome-page .login-brand{margin-top:0}
 /* Browser-only chat footer: preserve the mini-program sources and service rules. */
 #page[data-route="pages/chat/chat"] .chat-footer{padding-top:12px;background:#fbf9f8}
 #page[data-route="pages/chat/chat"] .chat-composer{gap:10px;min-height:64px;padding:9px 10px;background:#fff;border:1px solid #e6e1da;border-radius:20px;box-shadow:0 4px 16px #00272705}
