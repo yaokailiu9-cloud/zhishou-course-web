@@ -620,6 +620,8 @@ test('咨询详情页不再提供反馈与回复入口：双方看到“在聊�
   const page=h.document.querySelector('#page');const card=page.querySelector('.dialogue-card');assert.ok(card);assert.match(card.textContent,/沟通与反馈在聊天中进行/);
   assert.match(page.textContent,/旧的执行反馈/);assert.match(page.textContent,/旧的老师回复/,'历史记录仍可查看');
   assert.equal(page.querySelector('.dialogue-input'),null);assert.doesNotMatch(page.textContent,/反馈执行情况|本次咨询留言/);const buttons=[...page.querySelectorAll('button')].map(b=>b.textContent.trim());for(const label of ['发送消息','提交本次反馈','发送留言','回复家长','继续反馈','回复与沟通'])assert.ok(!buttons.includes(label),label);
+  // 沟通总结（文字总结、经同意录制面谈）只给工作人员。
+  assert.equal(page.textContent.includes('沟通总结'),isStaff);assert.equal(buttons.includes('经同意录制面谈'),isStaff);assert.equal(buttons.includes('总结本次文字沟通'),isStaff);
   assert.equal(page.querySelectorAll('.unread-badge').length,isStaff?0:1);assert.ok(!calls.some(([op])=>op==='GET_CONSULTATION_DIALOGUE'),'详情页不再读取或标记对话');
   card.dispatchEvent(new h.Event('click'));await tick();assert.equal(h.host.current.route,'pages/chat/chat');
   h.host.wx.navigateBack();await tick();h.host.current.setData({appointment:{status:'CANCELED',child_info:{name:'合成学生'},provider:{display_name:'负责老师'}}});await tick();assert.equal(h.document.querySelector('#page .dialogue-card'),null);

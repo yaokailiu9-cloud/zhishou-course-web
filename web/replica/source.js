@@ -552,7 +552,7 @@ function(scope){with(scope){try{return (canEditArchive && editingArchive && fiel
 function(scope){with(scope){try{return (childForm.remarks)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (canEditArchive && editingArchive)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (appointment.child_info ? '已填写，点击展开查看家庭档案。' : '尚未填写，点击展开填写或查看。')}catch(_){return undefined}}},
-function(scope){with(scope){try{return (appointment.status === 'CONFIRMED' || appointment.status === 'COMPLETED')}catch(_){return undefined}}},
+function(scope){with(scope){try{return (isStaff && (appointment.status === 'CONFIRMED' || appointment.status === 'COMPLETED'))}catch(_){return undefined}}},
 function(scope){with(scope){try{return (summaryBusy || recording)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (summaryBusy)}catch(_){return undefined}}},
 function(scope){with(scope){try{return (!recording)}catch(_){return undefined}}},
