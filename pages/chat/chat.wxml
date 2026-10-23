@@ -1,7 +1,7 @@
 <view wx:if="{{serviceMode}}" class="service-chat-page">
  <view class="service-chat-nav" style="padding-top: {{statusBarHeight}}px;">
   <button wx:if="{{serviceStaff || serviceDetail.staff || serviceAllCases.length > 1}}" class="service-profile" aria-label="展开孩子档案列表" bindtap="toggleServiceDrawer"><text>{{serviceActive.childName ? serviceActive.childName[0] : '知'}}</text><text class="service-profile-chevron">⌄</text></button><view wx:else class="service-profile service-profile-static"><text>{{serviceActive.childName ? serviceActive.childName[0] : '知'}}</text></view>
-  <view class="service-chat-title"><text>{{serviceActive.childName || '学员反馈'}}</text><text>{{serviceDetail.owner ? '家长反馈' : serviceRoleLabel + ' · 孩子档案与方案反馈'}}</text></view>
+  <view class="service-chat-title"><text>{{serviceActive.childName || '学员反馈'}}</text><text>{{serviceDetail.owner ? '老师沟通' : serviceRoleLabel + ' · 孩子档案与方案反馈'}}</text></view>
   <button wx:if="{{serviceStaff}}" class="service-nav-history" bindtap="showLegacyServiceChat">历史</button>
   <button class="service-nav-refresh" aria-label="刷新当前内容" bindtap="refreshServiceView">↻</button>
  </view>
@@ -11,7 +11,7 @@
  <block wx:if="{{serviceDetail}}">
   <view class="service-case-strip"><view><text class="service-case-name">{{serviceActive.childName}}</text><text wx:if="{{serviceDetail.staff && serviceMeta.level}}" class="service-grade">{{serviceMeta.level}}{{serviceMeta.subLevel}}</text><text wx:if="{{serviceDetail.staff && serviceMeta.priority}}" class="service-priority">重点</text></view><text>{{serviceDetail.appointment.contact_name}} · {{serviceRoleLabel}}</text><button bindtap="openServiceArchive">孩子档案 ›</button></view>
   <view wx:if="{{serviceDetail.staff && serviceMeta.danger}}" class="service-danger">危险因素：{{serviceMeta.danger}}</view>
-  <view class="service-content-tabs"><button class="{{serviceTab === 'feedback' ? 'active' : ''}}" data-tab="feedback" bindtap="switchServiceTab">沟通反馈<text wx:if="{{dialogueUnread && serviceTab !== 'feedback'}}" class="service-tab-badge">{{dialogueUnread}}</text></button><button wx:if="{{consult}}" class="{{serviceTab === 'consult' ? 'active' : ''}}" data-tab="consult" bindtap="switchServiceTab">咨询记录</button><button wx:if="{{serviceDetail.staff}}" class="{{serviceTab === 'plan' ? 'active' : ''}}" data-tab="plan" bindtap="switchServiceTab">方案审核</button><button wx:if="{{serviceCanManage}}" class="{{serviceAssignOpen ? 'active' : ''}}" bindtap="openServiceAssignment">服务管理</button></view>
+  <view class="service-content-tabs"><button class="{{serviceTab === 'feedback' ? 'active' : ''}}" data-tab="feedback" bindtap="switchServiceTab">老师沟通<text wx:if="{{dialogueUnread && serviceTab !== 'feedback'}}" class="service-tab-badge">{{dialogueUnread}}</text></button><button wx:if="{{consult}}" class="{{serviceTab === 'consult' ? 'active' : ''}}" data-tab="consult" bindtap="switchServiceTab">咨询记录</button><button wx:if="{{serviceDetail.staff}}" class="{{serviceTab === 'plan' ? 'active' : ''}}" data-tab="plan" bindtap="switchServiceTab">方案审核</button><button wx:if="{{serviceCanManage}}" class="{{serviceAssignOpen ? 'active' : ''}}" bindtap="openServiceAssignment">服务管理</button></view>
   <scroll-view scroll-y class="service-chat-content" scroll-into-view="{{serviceFeedbackScrollTarget}}" bindscroll="onServiceFeedbackScroll"><view id="service-content-top"></view>
    <block wx:if="{{serviceAssignOpen}}">
     <view class="service-panel"><text class="service-section-title">人员分配与方案信息</text>

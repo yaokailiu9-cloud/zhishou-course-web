@@ -646,7 +646,7 @@ test('独立孩子档案从我的方案直接进入聊天查看与反馈，原�
  let page=h.document.querySelector('#page');const plan=[...page.querySelectorAll('.settings-row')].find(row=>row.textContent.includes('我的方案'));assert.ok(plan);plan.dispatchEvent(new h.Event('click'));await tick();
  assert.equal(h.host.current.route,'pages/customer/customer');page=h.document.querySelector('#page');assert.match(page.textContent,/我的方案/);assert.doesNotMatch(page.textContent,/购买|预约下一次咨询|我的公开课报名|客户中心/);assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/在聊天中查看方案与反馈/);
  const card=[...page.querySelectorAll('.card')].find(row=>row.textContent.includes('合成孩子'));card.dispatchEvent(new h.Event('click'));await tick();await tick();assert.equal(h.host.current.route,'pages/chat/chat');
- page=h.document.querySelector('#page');assert.match(page.textContent,/合成孩子/);assert.match(page.textContent,/沟通反馈/);assert.doesNotMatch(page.textContent,/老师沟通/);assert.match(page.textContent,/咨询记录/);assert.doesNotMatch(page.textContent,/内部标记|重点|方案审核/,'家长看不到内部分级与审核');
+ page=h.document.querySelector('#page');assert.match(page.textContent,/合成孩子/);assert.equal(page.querySelector('.service-content-tabs .active').textContent.trim(),'老师沟通','打开聊天即在老师沟通');assert.doesNotMatch(page.textContent,/沟通反馈/);assert.match(page.textContent,/咨询记录/);assert.doesNotMatch(page.textContent,/内部标记|重点|方案审核/,'家长看不到内部分级与审核');
  h.host.wx.navigateTo({url:'/pages/consultation-detail/consultation-detail?id=31'});await tick();assert.equal(h.host.current.route,'pages/consultation-detail/consultation-detail');
  page=h.document.querySelector('#page');assert.doesNotMatch(page.textContent,/老师给出的方案内容/);page.querySelector('.archive-toggle').dispatchEvent(new h.Event('click'));await tick();assert.match(page.textContent,/老师给出的方案内容/);assert.match(page.textContent,/方案反馈/);assert.match(page.textContent,/发送消息/);assert.doesNotMatch(page.textContent,/本次咨询已完成/);
 });
@@ -1103,7 +1103,7 @@ test('未登录家长经过微信OAuth仍回到原缴费链接，付款资格仍
  const login=new URL(h.context.location.href,'http://localhost');assert.equal(login.searchParams.get('action'),'login');assert.equal(login.searchParams.get('return'),'/web/#/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN);
 });
 
-test('沟通反馈打开即显示：家长反馈、老师公开回复与老师直接消息按时间合在一起，工作人员可直接发消息或改为审核回复',async()=>{
+test('老师沟通打开即显示：家长反馈、老师公开回复与老师直接消息按时间合在一起，工作人员可直接发消息或改为审核回复',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
  p.serviceSelectedId=31;p.appointmentId=31;p.refreshServiceCase=async()=>{};
  p.setData({serviceMode:true,serviceTab:'feedback',serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{}},serviceLoading:false,canTalk:true,
