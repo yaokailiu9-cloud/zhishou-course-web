@@ -2,7 +2,7 @@
   <view class="custom-nav" style="height: {{navHeight}}px; padding-top: {{statusBarHeight}}px; padding-right: {{navPaddingRight}}px;">
     <view class="nav-left">
       <view class="nav-avatar nav-brand">
-        <image class="nav-avatar-img" src="/assets/branding/zhishou-logo.png" mode="aspectFit" aria-label="知守 Logo"/>
+        <image class="nav-avatar-img" src="/assets/branding/zhishou-logo-transparent.png" mode="aspectFit" aria-label="知守 Logo"/>
       </view>
       <view class="nav-copy">
         <text class="nav-title">{{userName}}</text>

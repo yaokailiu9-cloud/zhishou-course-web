@@ -85,6 +85,9 @@ test('从我的链接进入时落到首页，仍可主动切换我的且课程�
     assert.equal(h.replacements.at(-1),'/web/#/pages/index/index');
     h.document.querySelector('[data-route="pages/profile/profile"]').onclick();
     await tick();assert.equal(h.host.current.route,'pages/profile/profile');
+    assert.equal(h.document.querySelector('.profile-page .custom-nav'),null);
+    assert.equal(h.document.querySelector('.login-avatar-picker'),null);
+    assert.equal(h.document.querySelector('.login-brand-logo').getAttribute('src'),'/web/replica/assets/branding/zhishou-logo-transparent.png');
   }
   const h=await host({location:{hash:'#/pages/public-class-detail/public-class-detail?id=12'}});
   assert.equal(h.host.current.route,'pages/public-class-detail/public-class-detail');

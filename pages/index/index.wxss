@@ -172,7 +172,7 @@
 .nav-title { font-family:var(--em-font-family); font-size:27rpx; }
 .nav-greeting { font-weight:400; font-size: 24rpx; margin-top:10rpx; }
 
-.nav-brand { display:flex; align-items:center; justify-content:center; width:96rpx; height:96rpx; background:#fffcf3; border:0; border-radius:12rpx; }
+.nav-brand { display:flex; align-items:center; justify-content:center; width:96rpx; height:96rpx; background:transparent; border:0; border-radius:0; }
 .home-course-list { display:flex; flex-direction:column; gap:28rpx; }
 .home-course-card { overflow:hidden; border:1rpx solid #e6e1da; border-radius:22rpx; background:#fff; }
 .home-course-cover { position:relative; display:block; width:100%; height:auto; aspect-ratio:2752 / 1536; }

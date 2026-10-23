@@ -358,7 +358,6 @@
     if(current.route==='pages/profile/profile'){
       const subtitle=root.querySelector('.login-subtitle');if(subtitle)subtitle.textContent='在微信内打开，通过公众号授权登录';
       const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可报名公开课、查看自己的方案和聊天记录；昵称和头像可在个人资料中修改。';
-      const avatar=root.querySelector('.login-avatar-picker');if(avatar){avatar.disabled=true;avatar.setAttribute('aria-label','知守头像')}
     }
     if(!keptEditor&&focusKey!=null){const next=[...root.querySelectorAll('[data-focus-key]')].find(el=>el.dataset.focusKey===focusKey);if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
     scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el)el.scrollTop=v.top});

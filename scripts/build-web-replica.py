@@ -33,6 +33,13 @@ def replace_web_text(text):
 
 def patch_web_tree(route,nodes):
     for node in nodes:
+        if route=='pages/profile/profile' and 'login-avatar-shell' in class_names(node):
+            node.update(tag='image',attrs={
+                'class':['login-brand-logo'],
+                'src':['/assets/branding/zhishou-logo-transparent.png'],
+                'mode':['aspectFit'],
+                'aria-label':['知守 Logo'],
+            },children=[])
         if 'text' in node:
             node['text']=[replace_web_text(part) if isinstance(part,str) else part for part in node['text']]
             node['text']=[part for part in node['text'] if part != '']
