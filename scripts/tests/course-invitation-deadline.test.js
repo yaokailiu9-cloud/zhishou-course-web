@@ -41,9 +41,9 @@ test('课程邀请依据实时截止时间，兼容旧码且不放宽登录凭�
  course={...saved,registration_closes_at:new Date(Date.now()-1000).toISOString()};const before=operations.filter(c=>c.operation==='BIND_INVITATION').length;
  const callback=await req('/api/wechat-oauth-callback?'+new URLSearchParams({state,code:'test-only-code'}));assert.equal(callback.headers.location,'/web/?ticketClass=16#/pages/index/index','授权期间截止仍完成登录，并直接打开本场入场码');assert.equal(operations.filter(c=>c.operation==='BIND_INVITATION').length,before,'授权期间截止，不写入推荐绑定');
  const signedIn=await req('session');assert.equal(signedIn.body.data.loggedIn,true,'家长登录不被已截止的报名码阻断');assert.equal(signedIn.body.data.invitation,null);
- jar.delete('zhishou_h5_session');jar.set('zhishou_invitation',encodeURIComponent(sign({kind:'invitation',referrerId:'17',returnTo,exp:Math.floor(Date.now()/1000)+600})));const relogin=await req('login');const reloginState=verify(new URL(relogin.headers.location).searchParams.get('state'));assert.equal(reloginState.referrerId,null,'已截止课程的旧邀请不再阻断重新登录');assert.equal(reloginState.ticketClass,'16','已截止课程的邀请登录后打开入场码');assert.equal(jar.get('zhishou_invitation'),'','旧邀请随之清除');
+ jar.delete('zhishou_h5_session');jar.set('zhishou_invitation',encodeURIComponent(sign({kind:'invitation',referrerId:'17',returnTo,exp:Math.floor(Date.now()/1000)+600})));const relogin=await req('login');const reloginState=verify(decodeURIComponent(jar.get('zhishou_h5_oauth')));assert.equal(reloginState.referrerId,null,'已截止课程的旧邀请不再阻断重新登录');assert.equal(reloginState.ticketClass,'16','已截止课程的邀请登录后打开入场码');assert.equal(jar.get('zhishou_invitation'),'','旧邀请随之清除');
  assert.equal(verify(sign({kind:'oauth',exp:1})),null);assert.equal(verify(sign({account:{id:'101'},jwt:'stale',exp:1})),null);
  course=saved;expiredSession=true;jar.set('zhishou_h5_session',sign({account:{id:'101'},jwt:'stale-jwt',exp:Math.floor(Date.now()/1000)+60}));
  const stale=await capture(token);assert.equal(stale.status,401);assert.equal(stale.body.code,'INVITATION_LOGIN_REQUIRED');assert.ok(jar.get('zhishou_invitation'),'登录过期仍保存原课程');
- const reauth=await req('login');assert.equal(verify(new URL(reauth.headers.location).searchParams.get('state')).returnTo,returnTo);
+ const reauth=await req('login');assert.equal(verify(decodeURIComponent(jar.get('zhishou_h5_oauth'))).returnTo,returnTo);
 });

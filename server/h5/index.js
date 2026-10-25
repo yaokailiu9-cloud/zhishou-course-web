@@ -7,6 +7,8 @@ const ACTION_FLOW_ID = "9f60a0be-4628-4268-a769-661264846cf4";
 const ACTION_FLOW_VERSION = 1;
 const SESSION_COOKIE = "zhishou_h5_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 14;
+const OAUTH_COOKIE = 'zhishou_h5_oauth';
+const OAUTH_SECONDS = 600;
 const INVITATION_COOKIE = 'zhishou_invitation';
 const INVITATION_SECONDS = 60 * 60 * 24 * 30;
 let wechatJsapiCache = {accessToken:"", accessExpiresAt:0, ticket:"", ticketExpiresAt:0};
@@ -103,6 +105,27 @@ function clearSession(res) {
 function appendCookie(res, cookie) {
   const previous = res.getHeader('Set-Cookie');
   res.setHeader('Set-Cookie', [...(Array.isArray(previous)?previous:previous?[previous]:[]), cookie]);
+}
+
+// WeChat accepts at most 128 bytes of state. Keep the payload in a signed
+// HttpOnly cookie and send only its browser-bound random nonce to WeChat.
+function beginOauth(res, payload) {
+  const nonce = crypto.randomBytes(24).toString('hex');
+  const state = {...payload, kind:'oauth', appId:wechatAppId(), nonce, exp:Math.floor(Date.now()/1000)+OAUTH_SECONDS};
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  appendCookie(res, `${OAUTH_COOKIE}=${encodeURIComponent(sign(state))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${OAUTH_SECONDS}${secure}`);
+  return nonce;
+}
+
+function consumeOauth(req, res, nonce) {
+  const state = verify(parseCookies(req)[OAUTH_COOKIE]);
+  if (!state || state.kind !== 'oauth' || state.appId !== wechatAppId()
+    || !/^[0-9a-f]{48}$/.test(nonce || '') || typeof state.nonce !== 'string'
+    || state.nonce.length !== nonce.length || !crypto.timingSafeEqual(Buffer.from(state.nonce), Buffer.from(nonce))) {
+    throw new Error('AUTH:登录请求已过期或不属于当前微信窗口，请重新点击微信登录');
+  }
+  appendCookie(res, `${OAUTH_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  return state;
 }
 
 // Only public course routes may be restored from an invitation, never external URLs.
@@ -465,7 +488,7 @@ async function handleApi(req, res) {
       const returnTo=referrerId?requested:'/web/#/pages/index/index';
       const invitationAccountId=current?.account?.id||invitation?.accountId||null;
       if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:invitationAccountId});
-      const state = sign({kind:"oauth", referrerId, returnTo, invitationAccountId, notice, ticketClass, exp:Math.floor(Date.now()/1000)+600});
+      const state = beginOauth(res, {referrerId, returnTo, invitationAccountId, notice, ticketClass});
       const origin = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
       const callback = `${origin.replace(/\/$/, "")}/api/wechat-oauth-callback`;
       const auth = "https://open.weixin.qq.com/connect/oauth2/authorize"
@@ -531,8 +554,7 @@ async function handleOauthCallback(req, res) {
   if (!/MicroMessenger/i.test(req.headers["user-agent"] || "")) return json(res, 403, {ok:false, message:"请在微信内打开后登录"});
   try {
     const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
-    const state = verify(url.searchParams.get("state"));
-    if (!state || state.kind !== "oauth") throw new Error("AUTH:登录请求已过期，请重新发起");
+    const state = consumeOauth(req, res, url.searchParams.get('state'));
     const code = url.searchParams.get("code");
     if (!code) throw new Error("AUTH:未获得微信授权");
     const login = await authenticateWechatAccount(code);

@@ -26,7 +26,7 @@ test('扫码邀请跨登录、刷新、无参数首页、支付和登录重试�
  await req('/api/h5?action=capture-referral',{ref:refToken('17'),returnTo:'/web/#/pages/invite-login/invite-login'});
  assert.equal((await req('/api/h5?action=session')).data.invitation.returnTo,returnTo,'刷新登录门槛不覆盖原课程');
  let login=await req('/api/h5?action=login');let state=new URL(login.headers.location).searchParams.get('state');
- assert.equal(verify(state).referrerId,'17');assert.equal(verify(state).returnTo,returnTo);
+ assert.equal(verify(decodeURIComponent(jar.get('zhishou_h5_oauth'))).referrerId,'17');assert.equal(verify(decodeURIComponent(jar.get('zhishou_h5_oauth'))).returnTo,returnTo);
  const denied=await req('/api/wechat-oauth-callback?'+new URLSearchParams({code:'denied',state}));assert.match(denied.headers.location,/loginError/);
  assert.equal((await req('/api/h5?action=session')).data.invitation.returnTo,returnTo,'登录失败后的刷新保留原场次');
  login=await req('/api/h5?action=login');state=new URL(login.headers.location).searchParams.get('state');
@@ -42,7 +42,7 @@ test('扫码邀请跨登录、刷新、无参数首页、支付和登录重试�
  const bindsBefore=operations.filter(c=>c.operation==='BIND_INVITATION').length;assert.equal((await req('/api/h5?action=capture-referral',{ref:'forged',returnTo})).status,400);assert.equal(operations.filter(c=>c.operation==='BIND_INVITATION').length,bindsBefore);
  await req('/api/h5?action=enroll',{classId:7});assert.equal(operations.at(-1).payload.referrerId,'19');
  assert.equal((await req('/api/h5?action=capture-referral',{ref:refToken('20'),returnTo},{Origin:'https://evil.invalid'})).status,403);
- jar.delete('zhishou_h5_session');login=await req('/api/h5?action=login');state=new URL(login.headers.location).searchParams.get('state');assert.equal(verify(state).invitationAccountId,'101');
+ jar.delete('zhishou_h5_session');login=await req('/api/h5?action=login');state=new URL(login.headers.location).searchParams.get('state');assert.equal(verify(decodeURIComponent(jar.get('zhishou_h5_oauth'))).invitationAccountId,'101');
  assert.equal((await req('/api/wechat-oauth-callback?'+new URLSearchParams({code:'same-account',state}))).headers.location,returnTo,'会话到期后同一微信重新登录可恢复');
  jar.delete('zhishou_h5_session');login=await req('/api/h5?action=login');state=new URL(login.headers.location).searchParams.get('state');actor='102';const previousBindCount=operations.filter(c=>c.operation==='BIND_INVITATION').length;
  assert.equal((await req('/api/wechat-oauth-callback?'+new URLSearchParams({code:'different-account',state}))).headers.location,'/web/#/pages/index/index');assert.equal((await req('/api/h5?action=session')).data.invitation,null);assert.equal(operations.filter(c=>c.operation==='BIND_INVITATION').length,previousBindCount,'换号不得继承邀请绑定');

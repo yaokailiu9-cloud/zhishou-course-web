@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 process.env.SESSION_SECRET = 'isolated-relogin-test-session-secret';
-const {authenticateWechatAccount, sign} = require('../../server/h5');
+const {authenticateWechatAccount} = require('../../server/h5');
 const {createServer} = require('../../index');
 
 function mockBackend(t, options = {}) {
@@ -63,13 +63,16 @@ test('首次登录 → 退出 → 再次微信授权恢复同一账号，JWT 仍
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => server.close());
   const returnTo = '/web/#/pages/profile/profile';
-  const state = sign({kind:'oauth', returnTo, exp:Math.floor(Date.now()/1000)+60});
   async function login(code) {
-    const result = await request(server, '/api/wechat-oauth-callback?' + new URLSearchParams({state, code}));
+    const begin = await request(server, '/api/h5?action=login&return='+encodeURIComponent(returnTo));
+    const state = new URL(begin.headers.location).searchParams.get('state');
+    const oauthCookie = begin.headers['set-cookie'].find(c=>c.startsWith('zhishou_h5_oauth=')).split(';')[0];
+    const result = await request(server, '/api/wechat-oauth-callback?' + new URLSearchParams({state, code}), {cookie:oauthCookie});
     assert.equal(result.status, 302);
     assert.equal(result.headers.location, '/web/#/pages/index/index');
-    assert.match(result.headers['set-cookie'][0], /HttpOnly/);
-    const cookie = result.headers['set-cookie'][0].split(';')[0];
+    const saved = result.headers['set-cookie'].find(c=>c.startsWith('zhishou_h5_session='));
+    assert.match(saved, /HttpOnly/);
+    const cookie = saved.split(';')[0];
     const session = await request(server, '/api/h5?action=session', {cookie});
     assert.equal(JSON.parse(session.body).data.user.id, '101');
     assert.ok(!session.body.includes('private-user-jwt'));
