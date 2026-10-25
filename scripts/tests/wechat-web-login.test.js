@@ -22,18 +22,5 @@ test('缺少UnionID、冲突账号、微信错误或跨用户资料时不创建�
 test('真实新访客返回新身份，原账号不能凭昵称或手机号误匹配',()=>{
  const r=resolve({accounts:[]});assert.equal(r.data.existingAccount,null);assert.equal(r.data.profile.unionid,'same-wechat-union');assert.match(r.queries[0].query,/limit:2/);assert.doesNotMatch(r.queries[0].query,/nickname|phone/);
 });
-process.env.SESSION_SECRET='website-login-migration-test-only-secret';
-const {authenticateWechatAccount}=require('../../server/h5');
-test('跨公众号登录恢复原账号凭据，保留原OpenID；角色和已有账号不重新注册',async t=>{
- const original=global.fetch,calls=[],resolved=resolve().data,existing=resolved.existingAccount;
- global.fetch=async(url,init)=>{const b=JSON.parse(init.body);calls.push(b);let data;if(b.variables.args)data={fz_invoke_action_flow:{result:{ok:true,data:resolved}}};else if(b.query.includes('authenticateWithUsername'))data={authenticateWithUsername:{account:{id:'201',username:existing.username},jwt:{token:'private-existing-jwt'}}};else data={update_account_by_pk:{id:'201',wechat_nickname:'原微信用户'}};return {ok:true,text:async()=>JSON.stringify({data})};};t.after(()=>global.fetch=original);
- const login=await authenticateWechatAccount('real-one-use-code');assert.equal(login.account.id,'201');assert.equal(calls[1].variables.username,existing.username);assert.equal(calls[1].variables.password,'ZhS_'+crypto.createHmac('sha256',process.env.SESSION_SECRET).update('legacy-wechat-openid').digest('base64url'));assert.equal(calls[1].variables.register,false);assert.equal(calls[2].variables.data.wechat_openid,'legacy-wechat-openid');assert.ok(!Object.hasOwn(calls[2].variables.data,'user_type'));
-});
-test('匹配的老账号认证失败不注册新账号；无效凭据映射和账号ID冲突拒绝登录',async t=>{
- const original=global.fetch;t.after(()=>global.fetch=original);
- for(const mode of ['missing','mapping','account']){
-  const resolved=resolve().data;if(mode==='mapping')resolved.existingAccount.username=USERNAME(OLD,'another-openid');let registrations=0;
-  global.fetch=async(url,init)=>{const b=JSON.parse(init.body);let value;if(b.variables.args)value={data:{fz_invoke_action_flow:{result:{ok:true,data:resolved}}}};else {registrations+=Number(b.variables.register);value=mode==='missing'?{errors:[{message:'missing',extensions:{classification:'ACCOUNT_DOES_NOT_EXIST'}}]}:{data:{authenticateWithUsername:{account:{id:'999'},jwt:{token:'wrong'}}}};}return {ok:true,text:async()=>JSON.stringify(value)};};
-  await assert.rejects(authenticateWechatAccount('real-code'));assert.equal(registrations,0);
- }
-});
+// The website server login currently uses the old official account (see docs/zion-rules.md, 2026-10-25 rollback);
+// server-side cross-account restore tests return when the unified login is re-enabled.

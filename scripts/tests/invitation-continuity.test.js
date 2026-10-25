@@ -7,9 +7,10 @@ test('扫码邀请跨登录、刷新、无参数首页、支付和登录重试�
  process.env.WECHAT_OA_APP_SECRET='test-wechat-secret';let actor='101';const operations=[];
  global.fetch=async(url,options={})=>{
   let value;
-  {const {query,variables}=JSON.parse(options.body);
-   if(variables.args?.operation==='WEBSITE_WECHAT_LOGIN')value=variables.args.payload.code==='denied'?{errors:[{message:'微信授权已失效'}]}:{data:{fz_invoke_action_flow:{result:{ok:true,data:{appId:'wx8daa76a8eb887e47',profile:{openid:'wechat-openid-'+actor,unionid:'wechat-union-'+actor,nickname:'合成用户'},existingAccount:null}}}}};
-   else if(query.includes('authenticateWithUsername'))value={data:{authenticateWithUsername:{account:{id:actor},jwt:{token:'jwt-'+actor}}}};
+  if(String(url).includes('/sns/oauth2/access_token'))value=new URL(url).searchParams.get('code')==='denied'?{errcode:40029}:{openid:'test-'+actor,access_token:'test-access'};
+  else if(String(url).includes('/sns/userinfo'))value={openid:'test-'+actor,nickname:'合成用户'};
+  else {const {query,variables}=JSON.parse(options.body);
+   if(query.includes('authenticateWithUsername'))value={data:{authenticateWithUsername:{account:{id:actor},jwt:{token:'jwt-'+actor}}}};
    else if(query.includes('UpdateH5WechatProfile'))value={data:{update_account_by_pk:{id:actor,wechat_nickname:'合成用户'}}};
    else {operations.push({...variables.args,auth:options.headers.authorization});const op=variables.args.operation;value={data:{fz_invoke_action_flow:{result:{ok:true,data:op==='GET_CLASS'?{classInfo:{id:variables.args.payload.classId,status:'PUBLISHED',starts_at:'2099-01-02T00:00:00Z',registration_closes_at:'2099-01-01T00:00:00Z'}}:op==='PREPARE_COURSE_PAYMENT'?{enrollment:{id:8}}:op==='ENROLL'?{enrollment:{id:7}}:{candidate:{name:'合成推荐人'}}}}}};}
   }

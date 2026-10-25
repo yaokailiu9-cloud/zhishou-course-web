@@ -10,8 +10,9 @@ test('课程邀请依据实时截止时间，兼容旧码且不放宽登录凭�
  const operations=[];
  global.fetch=async(url,options={})=>{
   const response=data=>({ok:true,text:async()=>JSON.stringify(data)});
+  if(String(url).includes('/sns/oauth2/access_token'))return response({openid:'test-user',access_token:'test-only-access'});
+  if(String(url).includes('/sns/userinfo'))return response({openid:'test-user',nickname:'合成'});
   const {query,variables}=JSON.parse(options.body);
-  if(variables.args?.operation==='WEBSITE_WECHAT_LOGIN')return response({data:{fz_invoke_action_flow:{result:{ok:true,data:{appId:'wx8daa76a8eb887e47',profile:{openid:'new-test-user',unionid:'same-test-union',nickname:'合成'},existingAccount:null}}}}});
   if(query.includes('authenticateWithUsername'))return response({data:{authenticateWithUsername:{account:{id:'101'},jwt:{token:'fresh-jwt'}}}});
   if(query.includes('UpdateH5WechatProfile'))return response({data:{update_account_by_pk:{id:'101'}}});
   const {operation,payload}=variables.args;operations.push({operation,payload,auth:options.headers.authorization});
