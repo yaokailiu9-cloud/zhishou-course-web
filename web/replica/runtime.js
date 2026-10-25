@@ -1,5 +1,12 @@
 /* Browser host for the preserved mini-program. Source expressions are compiled at build time. */
 (function () {
+  // Old /web links must open a fresh canonical document before any WeChat SDK or bridge work.
+  if (location.pathname === '/web') {
+    const canonical = new URL(location.href);
+    canonical.pathname = '/web/';
+    location.replace(canonical.href);
+    return;
+  }
   const source = window.MiniSource;
   const paymentError=new URLSearchParams(location.search).get('paymentError');
   const wechatEntryUrl = location.href.split('#')[0];

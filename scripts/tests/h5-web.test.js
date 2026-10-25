@@ -242,3 +242,5 @@ test('外部浏览器不能发起或完成微信登录，拒绝时不调用上�
   }
   assert.equal(calls,0);
 });
+
+test('旧/web入口重定向到/web/，保留邀请与支付查询参数，避免支付目录有两种写法',async t=>{const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>server.close());const r=await request(server,'/web?ref=existing-invitation&paymentError=retry');assert.equal(r.status,302);assert.equal(r.headers.location,'/web/?ref=existing-invitation&paymentError=retry');assert.equal(r.headers['cache-control'],'no-store');assert.equal((await request(server,'/web/')).status,200);});

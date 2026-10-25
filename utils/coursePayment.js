@@ -11,13 +11,14 @@ async function enroll(payload,feeText,options={}){
   if(!prepared.payment){if(order&&order.status==='PAID_REVIEW')throw new Error(order.message);throw new Error('订单已结束，请刷新页面后重试');}
   if('￥'+Number(order.amount).toFixed(2)!==feeText&&!await confirm(`当前待支付订单金额为 ￥${Number(order.amount).toFixed(2)}。是否继续支付？`))return null;
   if(prepared.payment.appId!=='wx8daa76a8eb887e47'||order.merchantId!=='1119085869')throw new Error('微信支付收款配置正在更新，请稍后重试');
-  let canceled=false;
-  try{await new Promise((resolve,reject)=>wx.requestPayment({...prepared.payment,success:resolve,fail:reject}));}catch(e){canceled=/cancel/i.test(e.errMsg||e.message||'');}
-  for(let i=0;i<(canceled?1:5);i++){
+  let canceled=false,entryRejected=false;
+  try{await new Promise((resolve,reject)=>wx.requestPayment({...prepared.payment,success:resolve,fail:reject}));}catch(e){const message=e.errMsg||e.message||'';canceled=/cancel/i.test(message);entryRejected=/url.*(?:not[ _]*registered|未注册)|当前页面.*未注册|invalid[ _]*url/i.test(message);}
+  for(let i=0;i<(canceled||entryRejected?1:5);i++){
     const checked=await request('course-pay-status',{orderId:order.id});
     if(checked.enrollment&&checked.order.status==='PAID')return checked;
     if(checked.order.status==='PAID_REVIEW')throw new Error(checked.order.message);
     if(checked.order.status==='CLOSED')throw new Error('订单已关闭，请重新发起支付');
+    if(entryRejected)throw new Error('微信未识别当前付款入口。请关闭当前微信页面，从新的课程链接重新进入后重试；原订单会保留，请勿重复付款。');
     if(!canceled)await new Promise(resolve=>setTimeout(resolve,2000));
   }
   throw new Error(canceled?'已取消支付，尚未报名；再次点击可继续缴费。':'支付结果正在确认。请稍后刷新或再次点击报名查询原订单，不要重复付款。');

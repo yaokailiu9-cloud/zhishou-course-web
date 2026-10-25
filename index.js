@@ -81,6 +81,13 @@ function createServer() {
       res.end();
       return;
     }
+    // The WeChat payment entry must have one directory, including its final slash.
+    // A relative redirect keeps the current host, query and browser-held fragment.
+    if (url.pathname === '/web' && ['GET','HEAD'].includes(req.method)) {
+      res.writeHead(302, {location:'/web/' + url.search, 'cache-control':'no-store'});
+      res.end();
+      return;
+    }
     if (url.pathname === '/healthz') {
       json(res, 200, {
         ok: true,
