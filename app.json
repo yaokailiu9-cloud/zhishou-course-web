@@ -32,7 +32,8 @@
     "pages/invite-login/invite-login",
     "pages/course-poster/course-poster",
     "pages/support/support",
-    "pages/consultation-payment-link/consultation-payment-link"
+    "pages/consultation-payment-link/consultation-payment-link",
+    "pages/education-bundle/education-bundle"
   ],
   "window": {
     "navigationBarTitleText": "知守",

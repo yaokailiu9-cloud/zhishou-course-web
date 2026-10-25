@@ -32,19 +32,20 @@
     "pages/invite-login/invite-login",
     "pages/course-poster/course-poster",
     "pages/support/support",
-    "pages/consultation-payment-link/consultation-payment-link"
+    "pages/consultation-payment-link/consultation-payment-link",
+    "pages/education-bundle/education-bundle"
   ],
   "sha256": {
     "pages/index/index.js": "7ff4f809183157335eddfca58eebd5ea5a635db015322d761f86f956a58b2168",
     "pages/index/index.wxml": "df5dad9f95e0497bd4cdf9055e904cfba705594721ccaf7ffee13e85fcf245bb",
     "pages/index/index.wxss": "97524f2706c30eeb8a8d620068902fdcc2c64404ae21fcaaa8c1b8c2d8154627",
     "pages/index/index.json": "2c728cc275cad57201431c201d07ef269461e778694f2be33c75c1af5c5794f3",
-    "pages/plaza/plaza.js": "2fee1da827c71c1294a409b6e1db19267cb2e3d11c6f1dccb383ad168c019495",
-    "pages/plaza/plaza.wxml": "6299d9f9768f3d4b23736f67f20a228b06705735babb8b92136f97a121bbb9a8",
-    "pages/plaza/plaza.wxss": "007387db5e726658b9cd9ec5162270a3874d1d7e09b8f605091d1df144c5d498",
+    "pages/plaza/plaza.js": "5f38b9e37cff17d4be4e9e9720492c94537703781596162104e35fad6c58031f",
+    "pages/plaza/plaza.wxml": "c5657cc21e7dce3f576a84e4f77e382b4e991fdd1d464f98703faca7506df2a6",
+    "pages/plaza/plaza.wxss": "7b9637847440d827a5f490c4d10b255cebcb3d3f76b3f6e8415deffff6536073",
     "pages/plaza/plaza.json": "3bb9dadce615635f65ad15f3e3c93e0ab9120fe3a2b17a81990bc710f5633df8",
-    "pages/course-detail/course-detail.js": "da8222ea420e9ce484d8b00732036e42596ddba0d9bd713f7592e7510e890d13",
-    "pages/course-detail/course-detail.wxml": "d2f7d5991569ab242a899313cd4ddcfed8dacf960608bba0ba2aa02671b03da2",
+    "pages/course-detail/course-detail.js": "3085b7d6aa62c748b8b78c159660193957cb1ac864c58519086a1c52e10d0f5e",
+    "pages/course-detail/course-detail.wxml": "e1a911f5b8c951bfb2865a38f8daf5213c85d28f6ba0e42b12500c475cfa0cf0",
     "pages/course-detail/course-detail.wxss": "c372b0f7719fd36c53957214307443545b07769015cc07335c95e4ee3b4f3ee5",
     "pages/course-detail/course-detail.json": "a3e7dc591b4f7a8606db6b09d854d2a987dcbe6e9a4ccf417cb376d4468a1b15",
     "pages/chat/chat.js": "2d7688071740a276eac553bc6d6f4bcddd73f322418c15237db891f6bd11fc96",
@@ -166,6 +167,10 @@
     "pages/consultation-payment-link/consultation-payment-link.js": "cf96f40c0dca7d1ea3d7a59c87eef0281d55db753725d884a51663fba6b15090",
     "pages/consultation-payment-link/consultation-payment-link.wxml": "a58160f7261113e9faa6e48b3b53e6bf205285e56c6e9e7c1dd14f890e4d3626",
     "pages/consultation-payment-link/consultation-payment-link.wxss": "bfad0b429e2bbe52086b3f314e4eae41b1cbae04064adc49082302b8be62cdbb",
-    "pages/consultation-payment-link/consultation-payment-link.json": "6b68df6e53f0433ec359958fe5ffb8fbe3f44d8cc78725a2af8736eef87848be"
+    "pages/consultation-payment-link/consultation-payment-link.json": "6b68df6e53f0433ec359958fe5ffb8fbe3f44d8cc78725a2af8736eef87848be",
+    "pages/education-bundle/education-bundle.js": "e1e1c1798e2477d91342aff862f855cc1e8a726781e48853a1996600ef667faa",
+    "pages/education-bundle/education-bundle.wxml": "92bffae179905cd949cf5dac230082ac0d3d21de152c291d51da1ed5499b44a8",
+    "pages/education-bundle/education-bundle.wxss": "b3f70fe414c46ccb4db758cb659a1095494e11da1f84d87632bffb8c26fa1b22",
+    "pages/education-bundle/education-bundle.json": "e38456757aa37685964fd42060831ecf11ce60fc20a21fe319407bbe0ca4127f"
   }
 }

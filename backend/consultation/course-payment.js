@@ -49,9 +49,12 @@ function payRequest(o,kind){
 if(op==='PREPARE_COURSE_PAYMENT'){
   login(s);merchantKey(PAY_MERCHANT);payBuyer(s.actor.accountId);
   var c=one('public_class',p.classId,CLASS_FIELDS),linkGrant=p.paymentLinkToken?purchaseLinkGrant(p.paymentLinkToken,c):null,scope=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
+  var educationBundle=c.product_kind===EDUCATION_BUNDLE_KIND,educationContents=educationBundle?educationCourses(c):null;
+  if(educationBundle&&!educationContents.length)fail('课程包目录尚未配置完成');
   purchaseLinkBinding(s.actor.accountId,linkGrant);
   var enrollment=list('public_class_enrollment',scope,ENROLL_FIELDS,1)[0];
   // The 5-session package can be bought repeatedly; each paid order adds sessions.
+  if(educationBundle&&enrollment&&enrollment.status==='REGISTERED'&&!educationPaid(s.actor.accountId))fail('课程包付款记录待核实，请联系工作人员');
   if(enrollment&&enrollment.status==='REGISTERED'&&c.product_kind!=='CONSULT_PACKAGE')result(s,{enrollment:enrollment});
   else {
     var pending=list('course_registration_order',and(scope,eq('status','PENDING','text')),ORDER_FIELDS,1)[0];
@@ -68,10 +71,10 @@ if(op==='PREPARE_COURSE_PAYMENT'){
       if(c.product_kind==='CONSULT_PACKAGE'&&!linkGrant&&!paidLinkConsultationSource(s.actor.accountId)&&!list('offline_appointment',and(eq('customer_id',s.actor.accountId),{_or:[eq('status','COMPLETED','text'),and(eq('status','CONFIRMED','text'),compare('_lt','confirmed_at',new Date().toISOString(),'timestamptz'))]}),'id child_info',50).some(function(a){return !!a.child_info&&typeof a.child_info==='object'&&!Array.isArray(a.child_info);}))fail('首次咨询建立档案后才能购买5次咨询');
       var candidate=linkGrant&&linkGrant.agentAccountId?purchaseLinkAgent(linkGrant.agentAccountId):(p.referrerId&&String(p.referrerId)!==String(s.actor.accountId)?payReferrer(p.referrerId):null);
       if(c.product_kind==='QUESTIONNAIRE'&&!candidate)fail('请使用管理或代理发出的问卷二维码进入');
-      var cents=payCents(c.registration_fee),deadline=new Date(c.registration_closes_at||c.starts_at).getTime();
+      var cents=payCents(c.registration_fee),deadline=educationBundle?Date.now()+30*60000:new Date(c.registration_closes_at||c.starts_at).getTime();
       if(deadline-Date.now()<6*60000)fail('距离报名截止不足六分钟，请联系工作人员');
       var expires=new Date(Math.min(Date.now()+30*60000,deadline)).toISOString();
-      var values={order_no:'ZS'+Date.now()+entryCode().slice(0,16),amount:cents/100,status:'PENDING',customer_id:s.actor.accountId,public_class_id:c.id,registrant_name:text(p.name,'姓名',60,true),phone:phone(p.phone),course_title_snapshot:c.title,payment_channel:'WECHAT_JSAPI',request_key:'WX_COURSE:'+s.actor.accountId+':'+c.id,expires_at:expires,source:JSON.stringify({referrerId:candidate?candidate.account_id:null,linkPurchase:linkGrant||undefined,payment:{appId:PAY_APP,merchantId:PAY_MERCHANT,openid:paymentIdentity(p.paymentIdentity)}})};
+      var values={order_no:'ZS'+Date.now()+entryCode().slice(0,16),amount:cents/100,status:'PENDING',customer_id:s.actor.accountId,public_class_id:c.id,registrant_name:text(p.name,'姓名',60,true),phone:phone(p.phone),course_title_snapshot:c.title,payment_channel:'WECHAT_JSAPI',request_key:'WX_COURSE:'+s.actor.accountId+':'+c.id,expires_at:expires,source:JSON.stringify({educationBundle:educationBundle?{version:1,courseIds:educationContents.map(function(item){return String(item.id);})}:undefined,referrerId:candidate?candidate.account_id:null,linkPurchase:linkGrant||undefined,payment:{appId:PAY_APP,merchantId:PAY_MERCHANT,openid:paymentIdentity(p.paymentIdentity)}})};
       lockClass(c,{});
       var orderId=insert('course_registration_order',values,'course_registration_order_request_key_key');if(!orderId)fail('已有待支付订单，请重试');
       var order=one('course_registration_order',orderId,ORDER_FIELDS);result(s,{order:payPublic(order),request:payRequest(order,'unifiedorder')});
@@ -116,8 +119,9 @@ if(op==='CONFIRM_COURSE_PAYMENT'){
     var c=one('public_class',order.public_class_id,CLASS_FIELDS),scope=and(eq('customer_id',order.customer_id),eq('public_class_id',c.id));
     var existing=list('public_class_enrollment',scope,ENROLL_FIELDS,1)[0],firstEnrollment=!list('public_class_enrollment',eq('customer_id',order.customer_id),'id',1).length;
     // Never lose an actual payment if the final seat was taken during checkout.
-    var repeat=c.product_kind==='CONSULT_PACKAGE'&&!!existing&&existing.status==='REGISTERED';
-    var review=(!!(existing&&existing.status==='REGISTERED')&&!repeat)||!classView(c,false).canEnroll;
+    var repeat=(c.product_kind==='CONSULT_PACKAGE'||c.product_kind===EDUCATION_BUNDLE_KIND)&&!!existing&&existing.status==='REGISTERED';
+    var review=(!!(existing&&existing.status==='REGISTERED')&&!repeat)||(c.product_kind!==EDUCATION_BUNDLE_KIND&&!classView(c,false).canEnroll);
+    // An issued digital-course order keeps its purchased contents even if sales close during checkout.
     var source={};try{source=JSON.parse(order.source||'{}')||{};}catch(_){}
     var selectedGrant=source.linkPurchase,selectedAgent=selectedGrant&&selectedGrant.kind==='CONSULTATION_PURCHASE_LINK_V2'&&selectedGrant.agentAccountId?selectedGrant.agentAccountId:null;
     var referralReview=false;

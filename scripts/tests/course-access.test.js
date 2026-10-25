@@ -9,6 +9,7 @@ function harness(){
   account:[{id:101,username:'manager',account_profile:{user_name:'刘老师'}},{id:201,username:'p1',wechat_nickname:'家长甲',fz_phone_number:'13800001234'},{id:202,username:'p2',account_profile:{user_name:'家长乙'}},{id:209,username:'gone',fz_deleted:true}],
   course:[{id:14,title:'什么是沟通',enabled:true},{id:8,title:'倾诉的陷阱',enabled:true}],
   course_lesson:[{id:22,course_id:14,sort_order:1,video:{id:9,url:'https://cdn.test/comm.mp4'}},{id:23,course_id:14,sort_order:2,video:null,video_url:null},{id:16,course_id:8,sort_order:1,video:{id:8,url:'https://cdn.test/talk.mp4'}}],
+  public_class:[{id:99,product_kind:'CHILD_EDUCATION_BUNDLE'}],course_registration_order:[],
   course_view_grant:[]
  };
  const now={value:Date.parse('2026-10-10T10:00:00Z')};
@@ -24,7 +25,7 @@ function harness(){
  const accountOf=id=>db.account.find(a=>String(a.id)===String(id))||null;
  const decorate=g=>({...g,course:db.course.find(c=>c.id===g.course_id),viewer:accountOf(g.viewer_id),granted_by:accountOf(g.granted_by_id)});
  function runGql(name,q,v){
-  if(name==='ServiceRows'){const table=q.match(/rows: (\w+)\(/)[1],limit=Number(q.match(/limit: (\d+)/)[1]);let rows=db[table].filter(r=>match(r,v.where)).sort((a,b)=>b.id-a.id).slice(0,limit);if(table==='course_view_grant')rows=rows.map(decorate);return {rows:structuredClone(rows)};}
+  if(name==='ServiceRows'){const table=q.match(/rows: (\w+)\(/)[1],limit=Number(q.match(/limit: (\d+)/)[1]);let rows=db[table].map(r=>table==='course_registration_order'?{...r,public_class:db.public_class.find(c=>c.id===r.public_class_id)}:r).filter(r=>match(r,v.where)).sort((a,b)=>b.id-a.id).slice(0,limit);if(table==='course_view_grant')rows=rows.map(decorate);return {rows:structuredClone(rows)};}
   if(name==='ServiceInsert'){const table=q.match(/insert_(\w+)\(/)[1];if(table==='course_view_grant'&&db[table].some(r=>r.request_key===v.object.request_key))return {saved:{returning:[],affected_rows:0}};const row={id:db[table].length+1,created_at:new Date(now.value).toISOString(),revoked_at:null,...v.object};db[table].push(row);return {saved:{returning:[{id:row.id}],affected_rows:1}};}
   if(name==='ServiceUpdate'){const table=q.match(/update_(\w+)\(/)[1],rows=db[table].filter(r=>match(r,v.where));rows.forEach(r=>Object.assign(r,v.object));return {saved:{affected_rows:rows.length,returning:rows.map(r=>({id:r.id}))}};}
   if(name==='CourseViewCourse')return {course_by_pk:db.course.find(c=>c.id===v.id)||null};
@@ -122,3 +123,5 @@ test('已打包加密的课时恢复完整MP4；未授权用户仍拿不到地�
  assert.equal(locked.canWatch,false);assert.equal(locked.lessons[0].videoUrl,'');assert.equal(locked.lessons[0].hls,null);
  assert.doesNotMatch(JSON.stringify(locked),/cdn\.test|secret/);
 });
+
+test('课程包付款权限按真实账号和订单快照开放，退款、待支付、跨账号均不开放',()=>{const h=harness();h.db.course.forEach(c=>c.subtitle='《答案库》系列课程');const o={id:1,customer_id:201,public_class_id:99,status:'PENDING',amount:688,amount_paid:688,transaction_id:'4200000000001',source:JSON.stringify({educationBundle:{version:1,courseIds:['14']}})};h.db.course_registration_order.push(o);assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false);o.status='PAID';assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,true);assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:8}).canWatch,false);assert.equal(h.run(202,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false);o.status='REFUNDED';assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false);o.status='PAID';o.amount_paid=0.01;assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false);o.amount_paid=688;h.db.course[0].subtitle='个人成长课程';assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false);h.db.course[0].subtitle='《答案库》系列课程';h.db.course[0].enabled=false;assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false);});

@@ -1,0 +1,26 @@
+// Real database, forced rollback, synthetic gateway signatures; never calls WeChat.
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'.codex-work/education-bundle');
+const cli=process.env.ZION_CLI||'/Users/nidie/.codex/plugins/cache/zion/zion-nocode/2.8.0/bin/zion-mcp';
+const classes=fs.readFileSync(path.join(out,'sui9sl3ko.js'),'utf8'),access=fs.readFileSync(path.join(out,'dv4kpohsg.js'),'utf8');
+const hmac=fs.readFileSync(path.join(root,'backend/consultation/link-signature.js'),'utf8');
+const code=`var native=context,KEY='0123456789abcdef0123456789abcdef',NEW_KEY='fedcba9876543210fedcba9876543210';
+${hmac}
+function query(n,q,v){var r=native.runGql(n,q,v||{},{role:'admin'});if(typeof r==='string')r=JSON.parse(r);if(r.errors)throw new Error('GraphQL failed');return r.data||r;}
+function check(v,m){if(!v)throw new Error(m);}
+function ticket(actor){var m=['v1',actor,'synthetic-new-openid',Math.floor(Date.now()/1000)+3600].join('.');return m+'.'+linkHmac(linkHmac(NEW_KEY,'zhishou/payment-identity/v1'),m);}
+function invoke(actor,op,payload,view){var output;payload=payload||{};if(op==='PREPARE_COURSE_PAYMENT')payload.paymentIdentity=ticket(actor);var ctx={getArg:function(k){return k==='wechat_pay_key'?KEY:k==='guanzhishou_pay_key'?NEW_KEY:k==='guanzhishou_app_secret'?'a'.repeat(32):{operation:op,payload:payload,actor:{accountId:actor}};},setReturn:function(k,v){output=v;},runGql:function(n,q,v,o){return native.runGql(n,q,v,o);}};if(view)(function(context){${access}})(ctx);else (function(context){${classes}})(ctx);return (output.result||output).data;}
+var accounts=query('BundleTestActors','query BundleTestActors{account(limit:1000){id username wechat_openid service_provider{id can_accept_order service_status}}}').account;
+var buyers=accounts.filter(function(a){return String(a.username).indexOf('wxh5_')===0&&a.wechat_openid&&!a.service_provider;});
+var staff=accounts.filter(function(a){return a.service_provider&&a.service_provider.can_accept_order&&a.service_provider.service_status==='ACTIVE';})[0];check(buyers.length>1&&staff,'Missing test actors');var buyer=buyers[0].id,other=buyers[1].id;
+var product=query('BundleTestProduct','mutation BundleTestProduct($o:public_class_insert_input!){insert_public_class_one(object:$o){id}}',{o:{title:'自动回滚-孩子教育课程包',product_kind:'CHILD_EDUCATION_BUNDLE',status:'PUBLISHED',organizer_id:staff.service_provider.id,registration_fee:688,capacity:0,reserved_count:0,revision:0,notice:JSON.stringify({version:1,courseIds:[7,8,9,10,11,12,13,14]})}}).insert_public_class_one;
+check(invoke(null,'GET_EDUCATION_BUNDLE').offer.courses.length===8,'Eight paid courses');check(!invoke(buyer,'COURSE_VIEW_ACCESS',{courseId:7},true).canWatch,'Unpaid denied');check(invoke(null,'COURSE_VIEW_ACCESS',{courseId:15},true).canWatch,'Public remains open');
+var p=invoke(buyer,'PREPARE_COURSE_PAYMENT',{classId:product.id,name:'自动回滚',phone:'13800000000',amount:0.01});check(p.order.amount===688&&p.request.total_fee==='68800','Server price 688');check(invoke(buyer,'PREPARE_COURSE_PAYMENT',{classId:product.id,name:'自动回滚',phone:'13800000000'}).order.id===p.order.id,'Pending reused');
+var gateway={appid:'wx8daa76a8eb887e47',mch_id:'1119085869',return_code:'SUCCESS',result_code:'SUCCESS',trade_type:'JSAPI',trade_state:'SUCCESS',openid:'synthetic-new-openid',out_trade_no:p.order.orderNo,total_fee:'68800',fee_type:'CNY',transaction_id:'499988'+String(Date.now()),nonce_str:'rollback-only'};
+${fs.readFileSync(path.join(root,'utils/md5.js'),'utf8').replace('module.exports = { md5Base64 };','')}
+var u=unescape(encodeURIComponent(Object.keys(gateway).sort().map(function(k){return k+'='+gateway[k];}).join('&')+'&key='+NEW_KEY)),b=new Uint8Array(u.length);for(var i=0;i<u.length;i++)b[i]=u.charCodeAt(i);gateway.sign=wordsToBytes(md5Core(bufferToWords(b.buffer))).map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('').toUpperCase();
+check(invoke(null,'CONFIRM_COURSE_PAYMENT',{gateway:gateway}).confirmed,'Signed payment');check(invoke(null,'CONFIRM_COURSE_PAYMENT',{gateway:gateway}).confirmed,'Idempotent callback');
+for(var cid=7;cid<=14;cid++)check(invoke(buyer,'COURSE_VIEW_ACCESS',{courseId:cid},true).canWatch,'Unlock course '+cid);
+check(!invoke(other,'COURSE_VIEW_ACCESS',{courseId:7},true).canWatch,'Other buyer denied');check(!invoke(buyer,'COURSE_VIEW_ACCESS',{courseId:17},true).canWatch,'Personal growth excluded');check(invoke(buyer,'GET_EDUCATION_BUNDLE').purchased,'Purchase restored');
+native.setReturn('result',{passed:true,checks:19,rollback:true,gatewayCalls:0});`;
+try{console.log(cp.execFileSync(cli,['runtime','run-code','--projectExId','JmAxbl1MMe4','--no-updateDb','--jsCode',code],{cwd:process.env.ZION_PROJECT_CWD||root,env:{...process.env,MCP_LOG_FILE:'off'},encoding:'utf8',timeout:120000,maxBuffer:3000000}));}catch(e){console.error(String(e.stderr||e.stdout||'Rollback validation failed').slice(0,3000));process.exit(1);}

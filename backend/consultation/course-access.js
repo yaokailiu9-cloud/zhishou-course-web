@@ -10,7 +10,7 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
   function viewActive(g) { return !g.revoked_at && new Date(g.expires_at).getTime() > Date.now(); }
   function viewRequireManager() { login(s); if (!viewManager) fail('只有管理人员可以开通课程观看'); }
   function viewCourse(value) {
-    var c = gql('query CourseViewCourse($id:bigint!){course_by_pk(id:$id){id title enabled public_video}}', {id:id(value)}).course_by_pk;
+    var c = gql('query CourseViewCourse($id:bigint!){course_by_pk(id:$id){id title subtitle enabled public_video}}', {id:id(value)}).course_by_pk;
     if (!c) fail('课程不存在或已下架');
     return c;
   }
@@ -26,7 +26,7 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
     if (!canWatch && !s.actor.accountId) reason = 'LOGIN';
     else if (!canWatch) {
       var grants = list('course_view_grant', and(eq('viewer_id', s.actor.accountId), eq('course_id', course.id)), 'id expires_at revoked_at', 50);
-      canWatch = grants.some(viewActive);
+      canWatch = course.enabled === true && (grants.some(viewActive) || (course.subtitle === '《答案库》系列课程' && educationPaid(s.actor.accountId, course.id)));
       reason = canWatch ? '' : grants.length ? 'ENDED' : 'NOT_GRANTED';
     }
     // Use the complete original video. Encrypted segment/key relays are paused while playback reliability

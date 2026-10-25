@@ -31,3 +31,5 @@
 .card-meta { display:flex; align-items:center; justify-content:space-between; gap:4px; margin-top:8px; color:#8a908d; font-size:11px; line-height:16px; }
 .empty-state { padding:32px 12px; color:#717878; text-align:center; line-height:1.8; }
 .retry-button { display:block; margin:16px auto 0; padding:12px 20px; border-radius:8px; color:#fff; background:#002727; font-size:14px; }
+
+.bundle-entry{display:flex;align-items:center;justify-content:space-between;gap:calc(20 * var(--rpx));padding:calc(28 * var(--rpx)) 0;border-bottom:calc(1 * var(--rpx)) solid #d9e2df;margin-bottom:calc(24 * var(--rpx))}.bundle-entry-title{display:block;font-size:calc(30 * var(--rpx));font-weight:600;color:#002727}.bundle-entry-note{display:block;font-size:calc(24 * var(--rpx));line-height:1.7;color:#49625a;margin-top:calc(8 * var(--rpx))}.bundle-entry-button{flex-shrink:0;background:#002727;color:#fff;border-radius:calc(12 * var(--rpx));font-size:calc(25 * var(--rpx));padding:0 calc(22 * var(--rpx));margin:0}.bundle-entry-button::after{border:0}

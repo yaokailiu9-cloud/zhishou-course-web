@@ -135,3 +135,29 @@ function refreshSummaryJob(job) {
   }
   return job;
 }
+
+// CHILD_EDUCATION_BUNDLE_START
+// Product notice stores the reviewed course IDs; paid orders snapshot them permanently.
+var EDUCATION_BUNDLE_KIND = 'CHILD_EDUCATION_BUNDLE';
+function educationProduct() {
+  var products = list('public_class', eq('product_kind', EDUCATION_BUNDLE_KIND, 'text'), CLASS_FIELDS, 2);
+  if (products.length !== 1) fail('孩子教育课程包暂未开放购买');
+  return products[0];
+}
+function educationCourses(product) {
+  var config; try { config = JSON.parse(product.notice || '{}'); } catch (_) {}
+  if (!config || config.version !== 1 || !Array.isArray(config.courseIds) || !config.courseIds.length || config.courseIds.length > 100) fail('课程包目录尚未配置完成');
+  var where = {_or:config.courseIds.map(function(value) { return eq('id', id(value)); })};
+  var courses = gql('query EducationBundleCourses($where:course_bool_exp!){rows: course(where:$where,order_by:{sort_order:asc},limit:100){id title subtitle enabled public_video}}', {where:where}).rows || [];
+  return courses.filter(function(c) { return c.enabled === true && c.subtitle === '《答案库》系列课程' && c.public_video !== true; });
+}
+function educationPaid(accountId, courseId) {
+  if (!accountId) return false;
+  if (SERVICE_TABLES.indexOf('course_registration_order') < 0) SERVICE_TABLES.push('course_registration_order');
+  var orders = list('course_registration_order', and(eq('customer_id', accountId), eq('status', 'PAID', 'text'), {public_class:eq('product_kind', EDUCATION_BUNDLE_KIND, 'text')}), 'id amount amount_paid transaction_id source', 100);
+  return orders.some(function(o) {
+    var snapshot; try { snapshot = JSON.parse(o.source || '{}').educationBundle; } catch (_) {}
+    return !!(o.transaction_id && Number(o.amount) > 0 && Number(o.amount_paid) === Number(o.amount) && snapshot && snapshot.version === 1 && Array.isArray(snapshot.courseIds) && (!courseId || snapshot.courseIds.some(function(value) { return String(value) === String(courseId); })));
+  });
+}
+// CHILD_EDUCATION_BUNDLE_END

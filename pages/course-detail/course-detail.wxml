@@ -41,6 +41,7 @@
 
       <view wx:if="{{viewAccess.checked}}" class="course-access-note">{{viewAccess.isPublic ? '本课程对外开放，可直接观看' : (viewAccess.canWatch ? '已为你开通观看' : '可查看课程图片与介绍，视频需开通观看权限')}}</view>
 
+      <button wx:if="{{isAnswerLibrary && viewAccess.checked && !viewAccess.isPublic && !viewAccess.canWatch}}" class="retry-button" bindtap="openEducationBundle">¥688 购买孩子教育课程包</button>
       <view wx:for="{{contentSections}}" wx:key="title" class="course-info-section"><text class="course-info-title">{{item.title}}</text><text class="course-info-body">{{item.body}}</text></view>
 
       <view class="catalog-head">

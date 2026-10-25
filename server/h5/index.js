@@ -132,6 +132,7 @@ function consumeOauth(req, res, nonce) {
 function invitationReturn(value) {
   const route=String(value||'');
   return /^\/web\/#\/pages\/(?:public-class-detail\/public-class-detail|class-enroll\/class-enroll)\?id=[1-9][0-9]*$/.test(route)
+    || route==='/web/#/pages/education-bundle/education-bundle'
     || route==='/web/#/pages/questionnaire/questionnaire'
     || /^\/web\/#\/pages\/(?:plaza\/plaza|public-class\/public-class)$/.test(route) ? route : '/web/#/pages/plaza/plaza';
 }
@@ -460,7 +461,7 @@ async function handleApi(req, res) {
       if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
       return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
     }
-    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status", "questionnaire-pay", "payment-access", "hls-session"].includes(action)) {
+    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status", "questionnaire-pay", "education-bundle-pay", "payment-access", "hls-session"].includes(action)) {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
       if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
@@ -517,7 +518,7 @@ async function handleApi(req, res) {
         if(incoming&&!referrerId)throw new Error('INPUT:报名二维码已失效，请联系分享人重新发送');
         if(referrerId&&!incoming)await assertInvitationCourse(invitationClassId(requested));
       }catch(error){if(!invitationRejected(error))throw error;referrerId=null;notice=friendly(error);if(courseClosed(error))ticketClass=ticketClass||invitationClassId(requested);clearInvitation(res);}
-      const returnTo=referrerId?requested:'/web/#/pages/index/index';
+      const returnTo=referrerId||requested==='/web/#/pages/education-bundle/education-bundle'?requested:'/web/#/pages/index/index';
       const invitationAccountId=current?.account?.id||invitation?.accountId||null;
       if(referrerId)setInvitation(res,{referrerId,returnTo,accountId:invitationAccountId});
       const state = beginOauth(res, {referrerId, returnTo, invitationAccountId, notice, ticketClass});
@@ -554,6 +555,7 @@ async function handleApi(req, res) {
       if(data.offer)delete data.offer.inviterName;
       return json(res,200,{ok:true,data});
     }
+    if (action === 'education-bundle' && req.method === 'GET') return json(res,200,{ok:true,data:await invoke(readSession(req)?.jwt,'GET_EDUCATION_BUNDLE',{})});
     const session = readSession(req);
     if (!session) return json(res, 401, {ok:false, message:"请先微信登录"});
     if (action === "staff" && req.method === "GET") return json(res, 200, {ok:true, data:await invoke(session.jwt, "STAFF_CLASSES", {})});
@@ -564,6 +566,11 @@ async function handleApi(req, res) {
     if (action === "questionnaire-pay") {
       const referrerId=invitationRef(req,session,input.ref),context=await invoke(session.jwt,'GET_QUESTIONNAIRE',{referrerId});
       return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:context.offer.id,name:input.name,phone:input.phone,referrerId,paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
+    }
+    if (action === 'education-bundle-pay') {
+      const context=await invoke(session.jwt,'GET_EDUCATION_BUNDLE',{});
+      if(!context.offer.available&&!context.purchased)throw new Error('COURSE:课程包暂未开放购买');
+      return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:context.offer.id,name:input.name,phone:input.phone,referrerId:invitationRef(req,session,input.ref),paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
     }
     if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,paymentLinkToken:typeof input.paymentLinkToken==='string'?input.paymentLinkToken:undefined,referrerId:invitationRef(req,session,input.ref),paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
     if (action === "course-pay-status") return json(res,200,{ok:true,data:await require('./course-payment').status(invoke,session.jwt,input.orderId)});
@@ -593,7 +600,7 @@ async function handleOauthCallback(req, res) {
     // Bind the authenticated customer from the verified invitation before returning to the course.
     const sameAccount=!state.invitationAccountId||String(state.invitationAccountId)===String(login.account.id);
     let referrerId = sameAccount && state.referrerId && String(state.referrerId) !== String(login.account.id) ? state.referrerId : null;
-    let returnTo=referrerId?invitationReturn(state.returnTo):'/web/#/pages/index/index',notice=state.notice||'',ticketClass=/^[1-9][0-9]*$/.test(state.ticketClass||'')?state.ticketClass:'';
+    let returnTo=referrerId||state.returnTo==='/web/#/pages/education-bundle/education-bundle'?invitationReturn(state.returnTo):'/web/#/pages/index/index',notice=state.notice||'',ticketClass=/^[1-9][0-9]*$/.test(state.ticketClass||'')?state.ticketClass:'';
     if(referrerId){
       // The WeChat identity is already verified: a closed course or failed binding skips the referral, not the login.
       try{await assertInvitationCourse(invitationClassId(returnTo));await invoke(login.jwt, 'BIND_INVITATION', {referrerId});}

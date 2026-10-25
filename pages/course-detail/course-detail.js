@@ -47,6 +47,8 @@ Page({
     this.fetchCourse(this.courseId);
   },
 
+  onShow() { if(this.data.course && !this.data.loading)this.loadViewAccess(this.data.course); },
+
   onUnload() {
     this.stopVideo();
   },
@@ -116,6 +118,7 @@ Page({
     const url = this.data.course && this.data.course.coverUrl;
     if (url) wx.previewImage({current:url,urls:[url]});
   },
+  openEducationBundle(){wx.navigateTo({url:'/pages/education-bundle/education-bundle'});},
   retryCourse(){this.fetchCourse();},
   goBack() {
     this.stopVideo();

@@ -105,6 +105,8 @@ Page({
     wx.navigateTo({ url: `/pages/course-detail/course-detail?id=${courseId}` });
   },
 
+  openEducationBundle() { wx.navigateTo({url:'/pages/education-bundle/education-bundle'}); },
+
   goHome() {
     wx.switchTab({ url: "/pages/index/index" });
   },

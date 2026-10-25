@@ -1,5 +1,5 @@
 // One login continuation per app session. Personal form values are never persisted to storage.
-const ALLOWED = new Set(['customer','public-class','public-class-detail','class-enroll','my-enrollments','class-ticket','course-manage','course-edit','course-roster','service-workbench','consultation-detail','advisor','profile-edit','consultation-payment-link','questionnaire-share','questionnaire-work-orders','questionnaire-review','questionnaire','chat']);
+const ALLOWED = new Set(['customer','public-class','public-class-detail','class-enroll','my-enrollments','class-ticket','course-manage','course-edit','course-roster','service-workbench','consultation-detail','advisor','profile-edit','consultation-payment-link','questionnaire-share','questionnaire-work-orders','questionnaire-review','questionnaire','chat','education-bundle']);
 const MAX_AGE = 30 * 60 * 1000;
 let pending = null;
 let enrollmentDraft = null;
@@ -59,5 +59,5 @@ function restore(page,name,id) {
   return true;
 }
 function clear() { pending = null; enrollmentDraft = null; restoredDraft = null; }
-function paymentLinkReturn(){return pending&&pending.name==='customer'&&pending.url.includes('?paymentLinkToken=')&&Date.now()-pending.createdAt<=MAX_AGE?'/web/#'+pending.url:'';}
+function paymentLinkReturn(){return pending&&(pending.name==='education-bundle'||pending.name==='customer'&&pending.url.includes('?paymentLinkToken='))&&Date.now()-pending.createdAt<=MAX_AGE?'/web/#'+pending.url:'';}
 module.exports = { remember, resume, takeEnrollmentForm, restore, clear, paymentLinkReturn };
