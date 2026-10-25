@@ -3,12 +3,14 @@ function confirm(content,title='确认缴费'){return new Promise(resolve=>wx.sh
 async function enroll(payload,feeText,options={}){
   const noun=options.noun||'课程报名';
   if(!wx.isH5||!wx.canUseCoursePayment||!wx.canUseCoursePayment())throw new Error(`请在微信内打开网页完成${noun}缴费；如已在微信中，请刷新后重试`);
+  if(wx.authorizeCoursePayment&&!await wx.authorizeCoursePayment(payload))return null;
   if(!await confirm(`${noun}费用为 ${feeText}。完成支付并确认到账后才可继续。`,options.confirmTitle||'确认缴费'))return null;
   const prepared=await request(options.action||'course-pay',{...payload,ref:wx.getReferralToken?wx.getReferralToken():''});
   if(prepared.enrollment)return prepared;
   const order=prepared.order;
   if(!prepared.payment){if(order&&order.status==='PAID_REVIEW')throw new Error(order.message);throw new Error('订单已结束，请刷新页面后重试');}
   if('￥'+Number(order.amount).toFixed(2)!==feeText&&!await confirm(`当前待支付订单金额为 ￥${Number(order.amount).toFixed(2)}。是否继续支付？`))return null;
+  if(prepared.payment.appId!=='wx8daa76a8eb887e47'||order.merchantId!=='1119085869')throw new Error('微信支付收款配置正在更新，请稍后重试');
   let canceled=false;
   try{await new Promise((resolve,reject)=>wx.requestPayment({...prepared.payment,success:resolve,fail:reject}));}catch(e){canceled=/cancel/i.test(e.errMsg||e.message||'');}
   for(let i=0;i<(canceled?1:5);i++){

@@ -481,7 +481,7 @@ test('browser payment fails before creating orders and recorder clearly reports 
 test('课程网页只把服务端签名交给微信桥，取消不等于支付成功',async()=>{
   const h=await host({navigator:{userAgent:'MicroMessenger'}});let passed,out,failure;
   h.context.WeixinJSBridge={invoke:(method,args,callback)=>{passed={method,args};callback({err_msg:'get_brand_wcpay_request:cancel'});}};
-  h.host.wx.requestPayment({appId:'wx6dafecca8d5fd24e',timeStamp:'1',nonceStr:'nonce',package:'prepay_id=wx1234567890123',signType:'MD5',paySign:'A'.repeat(32),success:r=>out=r,fail:r=>failure=r});
+  h.host.wx.requestPayment({appId:'wx8daa76a8eb887e47',timeStamp:'1',nonceStr:'nonce',package:'prepay_id=wx1234567890123',signType:'MD5',paySign:'A'.repeat(32),success:r=>out=r,fail:r=>failure=r});
   assert.equal(passed.method,'getBrandWCPayRequest');assert.equal(out,undefined);assert.match(failure.errMsg,/cancel/);assert.equal(passed.args.paySign,'A'.repeat(32));
 });
 test('支付API携带同源会话，不把微信签名当成支付成功凭证',async()=>{
@@ -1145,3 +1145,6 @@ test('聊天档案：筛选标签与内容标签只高亮当前项，「标记�
   assert.deepEqual(active('.service-content-tabs'),['方案审核']);
   assert.deepEqual(active('.service-list-tabs'),['总管审核']);
 });
+
+test('网页拒绝旧公众号的收银台参数，只允许观知守新服务号',async()=>{const h=await host({navigator:{userAgent:'MicroMessenger'}});let invoked=0,failure;h.context.WeixinJSBridge={invoke:()=>invoked++};h.host.wx.requestPayment({appId:'wx6dafecca8d5fd24e',package:'prepay_id=wx1234567890123',signType:'MD5',paySign:'A'.repeat(32),fail:r=>failure=r});assert.equal(invoked,0);assert.match(failure.errMsg,/参数无效/);});
+test('网页付款预检使用当前会话，只向新商户发起独立授权并带回原页面',async()=>{const h=await host({navigator:{userAgent:'MicroMessenger'}});let sent;h.context.fetch=async(url,options)=>{sent={url,options};return {ok:true,json:async()=>({ok:true,data:{appId:'wx8daa76a8eb887e47',merchantId:'1119085869',authorized:false}})};};assert.equal(await h.host.wx.authorizeCoursePayment({name:'合成家长',phone:'13800000000'}),false);assert.equal(sent.options.credentials,'same-origin');assert.equal(JSON.parse(sent.options.body).name,'合成家长');assert.match(h.context.location.href,/action=payment-login/);assert.ok(!h.context.location.href.includes('13800000000'));h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'old',merchantId:'1666219884',authorized:true}})});await assert.rejects(h.host.wx.authorizeCoursePayment(),/配置正在更新/);});

@@ -1,6 +1,7 @@
 /* Browser host for the preserved mini-program. Source expressions are compiled at build time. */
 (function () {
   const source = window.MiniSource;
+  const paymentError=new URLSearchParams(location.search).get('paymentError');
   const wechatEntryUrl = location.href.split('#')[0];
   const buildVersion = new URL(document.currentScript.src).searchParams.get('v');
   const root = document.getElementById('page');
@@ -450,7 +451,9 @@
     page.setCustomNav=function(){this.setData({statusBarHeight:12,navHeight:76,navPaddingRight:0})};
     stack.push(page);showPage(page);
     if(!fromHistory){const hash=route===INVITE_LOGIN?'#'+(invitation?.returnTo||invitationTarget).split('#')[1]:'#/'+route+(Object.keys(options).length?'?'+new URLSearchParams(options):'');history[mode==='replace'?'replaceState':'pushState']({route},'',location.pathname+location.search+hash)}
-    lifecycle(page,'onLoad',options);lifecycle(page,'onShow').then(()=>{if(page===current&&[HOME,'pages/plaza/plaza','pages/public-class/public-class','pages/checkin/checkin'].includes(page.route))prepareWechatShare(page).catch(()=>false);});queueMicrotask(()=>lifecycle(page,'onReady'));
+    lifecycle(page,'onLoad',options);lifecycle(page,'onShow').then(()=>{
+      const contact=session&&session.paymentContact;if(page===current&&contact){const clean=new URL(location.href);clean.searchParams.delete('paymentError');if(contact.returnTo===clean.pathname+clean.search+clean.hash){const d=page.data;if(page.route==='pages/class-enroll/class-enroll')page.setData({form:{...d.form,name:d.form.name||contact.name,phone:d.form.phone||contact.phone}});if(page.route==='pages/questionnaire/questionnaire')page.setData({form:{...d.form,guardianName:d.form.guardianName||contact.name,guardianPhone:d.form.guardianPhone||contact.phone}});if(page.route==='pages/customer/customer')page.setData({packageContact:{name:d.packageContact.name||contact.name,phone:d.packageContact.phone||contact.phone}});session.paymentContact=null;}}
+      if(page===current&&[HOME,'pages/plaza/plaza','pages/public-class/public-class','pages/checkin/checkin'].includes(page.route))prepareWechatShare(page).catch(()=>false);});queueMicrotask(()=>lifecycle(page,'onReady'));
   }
   function back(){if(stack.length>1){if(unloadMessage){wx.showModal({title:'尚未保存',content:unloadMessage,success:r=>{if(r.confirm){unloadMessage='';history.back()}}});return}history.back()}else navigate('/'+HOME,'tab')}
   window.addEventListener('popstate',()=>{unloadMessage='';const {route,options}=parseRoute(location.hash);const previous=stack[stack.length-2];if(previous&&previous.route===route&&JSON.stringify(previous.options)===JSON.stringify(options)){lifecycle(current,'onUnload');stack.pop();showPage(previous);lifecycle(previous,'onShow')}else navigate(location.hash,'replace',true)});
@@ -675,10 +678,17 @@
     },
     prepareCourseShare:page=>prepareWechatShare(page).then(ready=>{if(ready)page.setData({shareReady:true,shareError:''});return ready;}).catch(error=>{shareProblem(page,error);return false;}),
     getReferralToken:()=>new URLSearchParams(location.search).get('ref')||'',
+    authorizeCoursePayment:async(contact={})=>{
+      const response=await fetch('/api/h5?action=payment-access',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({name:contact.name,phone:contact.phone,returnTo:location.pathname+location.search+location.hash})}),result=await response.json();
+      if(!response.ok||!result.ok)throw new Error(result.message||'微信支付授权暂不可用');
+      if(result.data.appId!=='wx8daa76a8eb887e47'||result.data.merchantId!=='1119085869')throw new Error('微信支付收款配置正在更新，请稍后重试');
+      if(result.data.authorized)return true;
+      location.href='/api/h5?action=payment-login&return='+encodeURIComponent(location.pathname+location.search+location.hash);return false;
+    },
     canUseCoursePayment:()=>/MicroMessenger/i.test(navigator.userAgent)&&!!window.WeixinJSBridge,
     requestPayment:o=>{
       if(!/MicroMessenger/i.test(navigator.userAgent)||!window.WeixinJSBridge){complete(o,{errMsg:'请在微信中打开课程网页后缴费'},true);return;}
-      if(!/^prepay_id=\w{10,128}$/.test(o.package||'')||o.signType!=='MD5'||!/^[A-F0-9]{32}$/.test(o.paySign||'')){complete(o,{errMsg:'微信支付参数无效'},true);return;}
+      if(o.appId!=='wx8daa76a8eb887e47'||!/^prepay_id=\w{10,128}$/.test(o.package||'')||o.signType!=='MD5'||!/^[A-F0-9]{32}$/.test(o.paySign||'')){complete(o,{errMsg:'微信支付参数无效'},true);return;}
       window.WeixinJSBridge.invoke('getBrandWCPayRequest',{appId:o.appId,timeStamp:o.timeStamp,nonceStr:o.nonceStr,package:o.package,signType:o.signType,paySign:o.paySign},r=>complete(o,{errMsg:r.err_msg||'微信支付结果未知'},r.err_msg!=='get_brand_wcpay_request:ok'));
     },
     chooseLocation:o=>{
@@ -768,7 +778,7 @@
     const initial=location.hash.slice(1)||(/^[1-9][0-9]*$/.test(courseId||'')?'/pages/course-detail/course-detail?id='+courseId:'');
     const target=invitationDropped?HOME:aliases[initial]||(parseRoute(initial).route===INVITE_LOGIN&&session?invitation?.returnTo?.split('#')[1]||HOME:initial)||HOME;
     navigate(parseRoute(target).route==='pages/profile/profile'?HOME:target,'replace');
-    const error=new URLSearchParams(location.search).get('loginError');if(error)wx.showToast({title:error});
+    const error=new URLSearchParams(location.search).get('loginError')||paymentError;if(error)wx.showToast({title:error});
     if(ticketClass)openEntryCode();else showInvitationNotice();
   }
   window.MiniHost={start,parseRoute,value,requireModule,get current(){return current},wx};

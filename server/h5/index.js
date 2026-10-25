@@ -428,13 +428,16 @@ async function handleApi(req, res) {
     if (action === "session") {
       const session = readSession(req);
       const invitation=readInvitation(req,session);
-      return json(res, 200, {ok:true, data:{loggedIn:!!session, user:session ? session.account : null, invitation:invitation?{returnTo:invitationReturn(invitation.returnTo)}:null}});
+      const contact=session?.paymentContact;const paymentContact=contact&&contact.exp>Math.floor(Date.now()/1000)?contact:null;
+      if(contact){const clean={...session};delete clean.paymentContact;setSession(res,clean);}
+      return json(res, 200, {ok:true, data:{loggedIn:!!session, user:session ? session.account : null, invitation:invitation?{returnTo:invitationReturn(invitation.returnTo)}:null,...(paymentContact?{paymentContact}:{})}});
     }
+    if (action === 'payment-config' && req.method === 'GET') return json(res,200,{ok:true,data:await invoke(null,'PAYMENT_CONFIGURATION',{})});
     if (action === "share-signature") {
       if (req.method !== "GET") return json(res, 405, {ok:false,message:"请求方式无效"});
       return json(res, 200, {ok:true, data:await wechatShareConfig(req, url.searchParams.get("url"))});
     }
-    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status", "questionnaire-pay", "hls-session"].includes(action)) {
+    if (["graphql", "logout", "capture-referral", "enroll", "course-pay", "course-pay-status", "questionnaire-pay", "payment-access", "hls-session"].includes(action)) {
       const origin = req.headers.origin;
       const expected = process.env.PUBLIC_ORIGIN || `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`;
       if (req.method !== "POST") return json(res, 405, {ok:false,message:"请求方式无效"});
@@ -442,6 +445,7 @@ async function handleApi(req, res) {
         return json(res, 403, {ok:false,message:"请求来源无效"});
       }
     }
+    if (['payment-access','payment-login','payment-callback'].includes(action)) return await require('./payment-identity').handle(action,req,res,{session:readSession(req),invoke,sign,verify,json,redirect,appendCookie,body,setSession});
     // Native HLS players (iPhone) get short-lived same-origin URLs for the playlist the page already holds.
     if (action === "hls-session") return json(res, 200, {ok:true, data:await createHlsSession(req)});
     if(action==='capture-referral') {
@@ -536,9 +540,9 @@ async function handleApi(req, res) {
     const input = await body(req);
     if (action === "questionnaire-pay") {
       const referrerId=invitationRef(req,session,input.ref),context=await invoke(session.jwt,'GET_QUESTIONNAIRE',{referrerId});
-      return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:context.offer.id,name:input.name,phone:input.phone,referrerId})});
+      return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:context.offer.id,name:input.name,phone:input.phone,referrerId,paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
     }
-    if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,paymentLinkToken:typeof input.paymentLinkToken==='string'?input.paymentLinkToken:undefined,referrerId:invitationRef(req,session,input.ref)})});
+    if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,paymentLinkToken:typeof input.paymentLinkToken==='string'?input.paymentLinkToken:undefined,referrerId:invitationRef(req,session,input.ref),paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
     if (action === "course-pay-status") return json(res,200,{ok:true,data:await require('./course-payment').status(invoke,session.jwt,input.orderId)});
     if (action === "enroll") return json(res, 200, {ok:true, data:await invoke(session.jwt, "ENROLL", {classId:input.classId,name:input.name,phone:input.phone,referrerId:invitationRef(req,session,input.ref)})});
     if (action === "cancel") return json(res, 200, {ok:true, data:await invoke(session.jwt, "CANCEL_ENROLLMENT", {enrollmentId:input.enrollmentId})});
