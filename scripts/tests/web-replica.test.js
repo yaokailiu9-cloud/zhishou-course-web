@@ -836,7 +836,7 @@ test('所有家长共用反馈模板：无审核与历史入口，单档案头�
   p.setData({serviceMode:true,serviceStaff:false,serviceRoleLabel:'家长',serviceAllCases:[{id:31}],serviceActive:{id:31,childName:'本人孩子'},serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{customer_id:parentId}},serviceLoading:false,serviceFeedback:[],serviceMessages:[],serviceTab:'feedback'});await tick();
   assert.equal(h.document.querySelector('[data-tab="plan"]'),null);assert.equal(h.document.querySelector('.service-nav-history'),null);assert.equal(h.document.querySelector('button.service-profile'),null);assert.ok(h.document.querySelector('.service-profile-static'));
   assert.equal(h.document.querySelector('.service-composer textarea').disabled,false);assert.match(h.document.querySelector('.service-composer .service-primary').textContent,/发送反馈/);
-  h.document.querySelector('.service-case-strip button').click();await tick();assert.equal(p.data.serviceTab,'archive');assert.ok(h.document.querySelector('.service-composer textarea'));
+  h.document.querySelector('.service-content-tabs [data-tab="archive"]').click();await tick();assert.equal(p.data.serviceTab,'archive');assert.ok(h.document.querySelector('.service-composer textarea'));
  }
  p.setData({serviceTab:'feedback',serviceAllCases:[{id:31},{id:32}],serviceMessages:[{id:'feedback-17',content:'家长反馈',timeText:'今天'},{id:'reply-52',content:'老师公开回复',timeText:'今天',isReply:true}]});p.buildServiceTimeline();await tick();assert.ok(h.document.querySelector('button.service-profile'));
  assert.doesNotMatch(h.document.querySelector('.service-chat-content').textContent,/监护专员整理|总监复核|总管终审/);assert.match(h.document.querySelector('.teacher-message').textContent,/老师公开回复/);assert.deepEqual(h.errors,[]);
