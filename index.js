@@ -89,7 +89,7 @@ function createServer() {
       });
       return;
     }
-    if (['/MP_verify_GFzG9U79F1ySzmh4.txt', '/MP_verify_KiDe3aPfcIUcyqaY.txt'].includes(url.pathname)) {
+    if (['/MP_verify_GFzG9U79F1ySzmh4.txt', '/MP_verify_KiDe3aPfcIUcyqaY.txt', '/MP_verify_ywP9K8aHniKOJR49.txt'].includes(url.pathname)) {
       await serveWeb(req, res, '/web' + url.pathname);
       return;
     }
