@@ -41,11 +41,11 @@
     "pages/index/index.wxss": "97524f2706c30eeb8a8d620068902fdcc2c64404ae21fcaaa8c1b8c2d8154627",
     "pages/index/index.json": "2c728cc275cad57201431c201d07ef269461e778694f2be33c75c1af5c5794f3",
     "pages/plaza/plaza.js": "5f38b9e37cff17d4be4e9e9720492c94537703781596162104e35fad6c58031f",
-    "pages/plaza/plaza.wxml": "c5657cc21e7dce3f576a84e4f77e382b4e991fdd1d464f98703faca7506df2a6",
+    "pages/plaza/plaza.wxml": "4964652e60147b9b2974e298c9dad2e5b040d4b23d74db3e869575730c2e5d5d",
     "pages/plaza/plaza.wxss": "7b9637847440d827a5f490c4d10b255cebcb3d3f76b3f6e8415deffff6536073",
     "pages/plaza/plaza.json": "3bb9dadce615635f65ad15f3e3c93e0ab9120fe3a2b17a81990bc710f5633df8",
-    "pages/course-detail/course-detail.js": "3085b7d6aa62c748b8b78c159660193957cb1ac864c58519086a1c52e10d0f5e",
-    "pages/course-detail/course-detail.wxml": "e1a911f5b8c951bfb2865a38f8daf5213c85d28f6ba0e42b12500c475cfa0cf0",
+    "pages/course-detail/course-detail.js": "e7e0f1cce43800e49fbed42ef0a45079229ad7165e603c01b037d6f340b61407",
+    "pages/course-detail/course-detail.wxml": "18f85de17d03eda1daa29beb241e7946a473737fe9b2e1cb838e994b2c38bc12",
     "pages/course-detail/course-detail.wxss": "c372b0f7719fd36c53957214307443545b07769015cc07335c95e4ee3b4f3ee5",
     "pages/course-detail/course-detail.json": "a3e7dc591b4f7a8606db6b09d854d2a987dcbe6e9a4ccf417cb376d4468a1b15",
     "pages/chat/chat.js": "2d7688071740a276eac553bc6d6f4bcddd73f322418c15237db891f6bd11fc96",
@@ -168,9 +168,9 @@
     "pages/consultation-payment-link/consultation-payment-link.wxml": "a58160f7261113e9faa6e48b3b53e6bf205285e56c6e9e7c1dd14f890e4d3626",
     "pages/consultation-payment-link/consultation-payment-link.wxss": "bfad0b429e2bbe52086b3f314e4eae41b1cbae04064adc49082302b8be62cdbb",
     "pages/consultation-payment-link/consultation-payment-link.json": "6b68df6e53f0433ec359958fe5ffb8fbe3f44d8cc78725a2af8736eef87848be",
-    "pages/education-bundle/education-bundle.js": "3aac855aaafe35e09ceaf05e909fbf58c7975f1088be75e1b5638a9e477a47a3",
-    "pages/education-bundle/education-bundle.wxml": "9534c6488ba2392d819edb5846b3f70f19e8870c373bce7c4fab72e3356257de",
+    "pages/education-bundle/education-bundle.js": "d9dbb5b319f01b8a94361ef22fa1a7e952c62823719d15d3a8eb14a4c2646c5b",
+    "pages/education-bundle/education-bundle.wxml": "b0ad74dc2d641aef68d77e0301f6f49f4d66bfe0d7601b0cce138f3ea5b2958f",
     "pages/education-bundle/education-bundle.wxss": "b3f70fe414c46ccb4db758cb659a1095494e11da1f84d87632bffb8c26fa1b22",
-    "pages/education-bundle/education-bundle.json": "e38456757aa37685964fd42060831ecf11ce60fc20a21fe319407bbe0ca4127f"
+    "pages/education-bundle/education-bundle.json": "176a4e5e42ac97b79d15eb8aa8dc2e996f57bef7efa4471a5ec1787286fc1bb5"
   }
 }

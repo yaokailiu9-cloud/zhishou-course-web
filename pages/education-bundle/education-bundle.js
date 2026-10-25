@@ -3,13 +3,13 @@ const auth=require('../../utils/auth');
 const payment=require('../../utils/coursePayment');
 const viewSession=require('../../utils/viewSession');
 Page({
-  data:{loading:true,busy:false,loggedIn:false,error:'',offer:null,purchased:false},
+  data:{loading:true,busy:false,loggedIn:false,error:'',offer:null,purchased:false,expired:false},
   onShow(){this.refresh();},
   onUnload(){this.generation=(this.generation||0)+1;},
   async refresh(){
     const generation=this.generation=(this.generation||0)+1,identity=viewSession.capture();
-    this.setData({loading:true,loggedIn:auth.isLoggedIn(),error:'',offer:null,purchased:false});
-    try{const data=await service.call('GET_EDUCATION_BUNDLE');if(generation!==this.generation||!viewSession.current(identity))return;this.setData({offer:data.offer,purchased:!!data.purchased});}
+    this.setData({loading:true,loggedIn:auth.isLoggedIn(),error:'',offer:null,purchased:false,expired:false});
+    try{const data=await service.call('GET_EDUCATION_BUNDLE');if(generation!==this.generation||!viewSession.current(identity))return;this.setData({offer:data.offer,purchased:!!data.purchased,expired:!!data.expired});}
     catch(e){if(generation===this.generation&&viewSession.current(identity))service.error(this,e);}
     finally{if(generation===this.generation)this.setData({loading:false});}
   },
@@ -18,12 +18,12 @@ Page({
     if(!auth.requireLogin('登录后购买课程包，观看权限将绑定你的微信账号。'))return;
     const identity=viewSession.capture(),generation=this.generation;
     this.setData({busy:true,error:''});
-    try{const result=await payment.enroll({},this.data.offer.feeText,{action:'education-bundle-pay',noun:'孩子教育课程包',confirmTitle:'购买课程包'});if(result&&generation===this.generation&&viewSession.current(identity)){await this.refresh();if(this.data.purchased)wx.showToast({title:'已解锁课程',icon:'success'});}}
+    try{const result=await payment.enroll({},this.data.offer.feeText,{action:'education-bundle-pay',noun:'答案库课程系列',confirmTitle:'购买课程包'});if(result&&generation===this.generation&&viewSession.current(identity)){await this.refresh();if(this.data.purchased)wx.showToast({title:'已解锁课程',icon:'success'});}}
     catch(e){if(generation===this.generation&&viewSession.current(identity))service.error(this,e);}
     finally{this.setData({busy:false});}
   },
   openCourse(e){wx.navigateTo({url:'/pages/course-detail/course-detail?id='+e.currentTarget.dataset.id});},
   copyLink(){wx.setClipboardData({data:'https://www.apply.tianqiwushu.cn/web/#/pages/education-bundle/education-bundle'});},
   goBack(){wx.navigateBack({fail:()=>wx.switchTab({url:'/pages/plaza/plaza'})});},
-  onShareAppMessage(){return {title:'孩子教育课程包 · ¥688',path:'/pages/education-bundle/education-bundle'};}
+  onShareAppMessage(){return {title:'答案库课程系列 · ¥688',path:'/pages/education-bundle/education-bundle'};}
 });

@@ -49,12 +49,12 @@ if(op==='LIST_CLASSES'||op==='STAFF_CLASSES') {
   result(s,{classes:page.items.map(function(c){return classView(c,op==='STAFF_CLASSES');}),nextCursor:page.nextCursor});
 }
 if(op==='GET_EDUCATION_BUNDLE') {
-  var product=educationProduct(),courses=educationCourses(product);
-  result(s,{offer:{id:String(product.id),title:product.title,description:product.description,price:Number(product.registration_fee),feeText:'￥'+Number(product.registration_fee).toFixed(2),available:product.status==='PUBLISHED'&&courses.length>0,courses:courses.map(function(c){return {id:String(c.id),title:c.title};})},purchased:educationPaid(s.actor.accountId)});
+  var product=educationProduct(),courses=educationCourses(product),purchase=educationPurchaseState(s.actor.accountId);
+  result(s,{offer:{id:String(product.id),title:product.title,description:product.description,price:Number(product.registration_fee),feeText:'￥'+Number(product.registration_fee).toFixed(2),available:product.status==='PUBLISHED'&&courses.length>0,courses:courses.map(function(c){return {id:String(c.id),title:c.title};})},purchased:purchase.canWatch,expired:purchase.expired&&!purchase.canWatch});
 }
 if(op==='GET_CLASS') {
   var c=one('public_class',p.classId,CLASS_FIELDS),own=s.actor.accountId?list('public_class_enrollment',and(eq('public_class_id',c.id),eq('customer_id',s.actor.accountId)),ENROLL_FIELDS,1)[0]:null;
-  if(c.product_kind===EDUCATION_BUNDLE_KIND)fail('孩子教育课程包请从课程包购买页进入');if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');if(c.product_kind==='CONSULT_PACKAGE')fail('5次咨询请在“我的线下咨询”中购买');
+  if(c.product_kind===EDUCATION_BUNDLE_KIND)fail('答案库课程系列请从课程包购买页进入');if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');if(c.product_kind==='CONSULT_PACKAGE')fail('5次咨询请在“我的线下咨询”中购买');
   if(c.status!=='PUBLISHED' && c.status!=='CLOSED' && !managesClass(c))fail('本场课程暂未开放');
   result(s,{classInfo:classView(c,!!own&&own.status==='REGISTERED'),enrollment:own||null,canManage:managesClass(c)});
 }
@@ -71,7 +71,7 @@ if(op==='GENERATE_CLASS_SHARE_CODE') {
 }
 if(op==='SAVE_CLASS') {
   staff(s,'canAccept');var previous=p.id?ownedClass(p.id):null;
-  if(previous&&previous.product_kind===EDUCATION_BUNDLE_KIND)fail('孩子教育课程包不能在公开课管理中修改');
+  if(previous&&previous.product_kind===EDUCATION_BUNDLE_KIND)fail('答案库课程系列不能在公开课管理中修改');
   if(isQuestionnaire(previous))fail('系统问卷不能在课程管理中修改');if(previous&&previous.product_kind==='CONSULT_PACKAGE')fail('5次咨询不能在课程管理中修改');
   var status=p.status;
   if(['PUBLISHED','CLOSED','DRAFT'].indexOf(status)<0)fail('课程状态无效');
@@ -99,7 +99,7 @@ if(op==='SAVE_CLASS') {
 }
 if(op==='ENROLL') {
   login(s);var c=one('public_class',p.classId,CLASS_FIELDS);
-  if(c.product_kind===EDUCATION_BUNDLE_KIND)fail('孩子教育课程包请从课程包购买页进入');if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');if(c.product_kind==='CONSULT_PACKAGE')fail('5次咨询请在“我的线下咨询”中购买');
+  if(c.product_kind===EDUCATION_BUNDLE_KIND)fail('答案库课程系列请从课程包购买页进入');if(isQuestionnaire(c))fail('请使用专属问卷二维码进入');if(c.product_kind==='CONSULT_PACKAGE')fail('5次咨询请在“我的线下咨询”中购买');
   var key=and(eq('customer_id',s.actor.accountId),eq('public_class_id',c.id));
   var existing=list('public_class_enrollment',key,ENROLL_FIELDS,1)[0];
   if(existing&&existing.status==='REGISTERED')result(s,{enrollment:existing});

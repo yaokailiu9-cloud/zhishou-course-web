@@ -54,8 +54,7 @@ if(op==='PREPARE_COURSE_PAYMENT'){
   purchaseLinkBinding(s.actor.accountId,linkGrant);
   var enrollment=list('public_class_enrollment',scope,ENROLL_FIELDS,1)[0];
   // The 5-session package can be bought repeatedly; each paid order adds sessions.
-  if(educationBundle&&enrollment&&enrollment.status==='REGISTERED'&&!educationPaid(s.actor.accountId))fail('课程包付款记录待核实，请联系工作人员');
-  if(enrollment&&enrollment.status==='REGISTERED'&&c.product_kind!=='CONSULT_PACKAGE')result(s,{enrollment:enrollment});
+  if(enrollment&&enrollment.status==='REGISTERED'&&c.product_kind!=='CONSULT_PACKAGE'&&(!educationBundle||educationPaid(s.actor.accountId)))result(s,{enrollment:enrollment});
   else {
     var pending=list('course_registration_order',and(scope,eq('status','PENDING','text')),ORDER_FIELDS,1)[0];
     if(pending){

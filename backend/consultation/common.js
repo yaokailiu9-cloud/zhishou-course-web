@@ -141,7 +141,7 @@ function refreshSummaryJob(job) {
 var EDUCATION_BUNDLE_KIND = 'CHILD_EDUCATION_BUNDLE';
 function educationProduct() {
   var products = list('public_class', eq('product_kind', EDUCATION_BUNDLE_KIND, 'text'), CLASS_FIELDS, 2);
-  if (products.length !== 1) fail('孩子教育课程包暂未开放购买');
+  if (products.length !== 1) fail('答案库课程系列暂未开放购买');
   return products[0];
 }
 function educationCourses(product) {
@@ -151,13 +151,32 @@ function educationCourses(product) {
   var courses = gql('query EducationBundleCourses($where:course_bool_exp!){rows: course(where:$where,order_by:{sort_order:asc},limit:100){id title subtitle enabled public_video}}', {where:where}).rows || [];
   return courses.filter(function(c) { return c.enabled === true && c.subtitle === '《答案库》系列课程' && c.public_video !== true; });
 }
-function educationPaid(accountId, courseId) {
-  if (!accountId) return false;
-  if (SERVICE_TABLES.indexOf('course_registration_order') < 0) SERVICE_TABLES.push('course_registration_order');
-  var orders = list('course_registration_order', and(eq('customer_id', accountId), eq('status', 'PAID', 'text'), {public_class:eq('product_kind', EDUCATION_BUNDLE_KIND, 'text')}), 'id amount amount_paid transaction_id source', 100);
-  return orders.some(function(o) {
-    var snapshot; try { snapshot = JSON.parse(o.source || '{}').educationBundle; } catch (_) {}
-    return !!(o.transaction_id && Number(o.amount) > 0 && Number(o.amount_paid) === Number(o.amount) && snapshot && snapshot.version === 1 && Array.isArray(snapshot.courseIds) && (!courseId || snapshot.courseIds.some(function(value) { return String(value) === String(courseId); })));
-  });
+// One calendar year from order creation (payment initiation), using China business time.
+// No client timestamp, first-play timestamp, or display countdown participates in authorization.
+function educationYearEnd(value) {
+  if (!value) return 0;
+  var start = new Date(value).getTime();
+  if (!isFinite(start)) return 0;
+  var anniversary = new Date(start + 8 * 3600000), month = anniversary.getUTCMonth();
+  anniversary.setUTCFullYear(anniversary.getUTCFullYear() + 1);
+  if (anniversary.getUTCMonth() !== month) anniversary.setUTCDate(0);
+  return anniversary.getTime() - 8 * 3600000;
 }
+function educationPurchaseState(accountId, courseId) {
+  var state = {canWatch:false, expired:false};
+  if (!accountId) return state;
+  if (SERVICE_TABLES.indexOf('course_registration_order') < 0) SERVICE_TABLES.push('course_registration_order');
+  var orders = list('course_registration_order', and(eq('customer_id', accountId), eq('status', 'PAID', 'text'), {public_class:eq('product_kind', EDUCATION_BUNDLE_KIND, 'text')}), 'id created_at amount amount_paid transaction_id source', 100);
+  orders.forEach(function(o) {
+    var snapshot; try { snapshot = JSON.parse(o.source || '{}').educationBundle; } catch (_) {}
+    var valid = o.transaction_id && Number(o.amount) > 0 && Number(o.amount_paid) === Number(o.amount) && snapshot && snapshot.version === 1 && Array.isArray(snapshot.courseIds) && (!courseId || snapshot.courseIds.some(function(value) { return String(value) === String(courseId); }));
+    if (!valid) return;
+    var start = new Date(o.created_at).getTime(), end = educationYearEnd(o.created_at);
+    if (!isFinite(start) || !end || start > Date.now()) return;
+    if (Date.now() < end) state.canWatch = true;
+    else state.expired = true;
+  });
+  return state;
+}
+function educationPaid(accountId, courseId) { return educationPurchaseState(accountId, courseId).canWatch; }
 // CHILD_EDUCATION_BUNDLE_END

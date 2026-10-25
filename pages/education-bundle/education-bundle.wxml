@@ -4,12 +4,12 @@
   <block wx:elif="{{offer}}">
     <image class="bundle-cover" src="/assets/course-covers/child-education.png" mode="aspectFit"/>
     <text class="bundle-title">{{offer.title}}</text>
-    <view class="bundle-price"><text>¥{{offer.price}}</text><text class="bundle-price-note">一次购买 · {{offer.courses.length}} 门课程</text></view>
+    <view class="bundle-price"><text>¥{{offer.price}}</text><text class="bundle-price-note">1年观看 · {{offer.courses.length}} 门课程</text></view>
     <text class="bundle-description">{{offer.description}}</text>
     <view wx:if="{{purchased}}" class="bundle-success">已购买，以下课程已为当前账号解锁。</view>
-    <view wx:else class="bundle-checkout">
+    <view wx:else class="bundle-checkout"><text wx:if="{{expired}}" class="bundle-note">观看期已结束，重新购买后可继续学习。</text>
 
-      <text class="bundle-note">微信登录后直接支付 ¥688，到账后自动解锁到当前微信账号。公开课程可继续直接观看。</text>
+      <text class="bundle-note">支付 ¥688 后解锁到当前微信账号，观看期自发起付款时起算1年。公开课程可继续直接观看。</text>
       <button class="bundle-pay" bindtap="buy" disabled="{{busy || !offer.available}}" loading="{{busy}}">{{busy ? '正在确认支付…' : (offer.available ? (loggedIn ? '微信支付 ¥' + offer.price + '，解锁课程' : '微信登录，购买课程包') : '暂未开放购买')}}</button>
     </view>
     <text wx:if="{{error}}" class="bundle-error" role="alert">{{error}}</text>

@@ -4,6 +4,7 @@ const consultationService = require("../../utils/consultationService");
 const auth = require("../../utils/auth");
 // Parents see only whether a course is open now; grant periods stay in the manager console.
 const VIEW_BLOCKED = {
+  PURCHASE_EXPIRED: { title: "观看期已结束", content: "答案库课程系列的1年观看期已结束，可重新购买后继续学习。" },
   LOGIN: { title: "请先登录", content: "登录后才能观看已为你开通的课程。" },
   ENDED: { title: "暂不能观看", content: "本课程观看权限已结束，请联系老师。" },
   NOT_GRANTED: { title: "暂不能观看", content: "本课程需要老师为你开通后才能观看，请联系老师。" }

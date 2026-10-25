@@ -26,8 +26,9 @@ if (op.indexOf('COURSE_VIEW_') === 0) {
     if (!canWatch && !s.actor.accountId) reason = 'LOGIN';
     else if (!canWatch) {
       var grants = list('course_view_grant', and(eq('viewer_id', s.actor.accountId), eq('course_id', course.id)), 'id expires_at revoked_at', 50);
-      canWatch = course.enabled === true && (grants.some(viewActive) || (course.subtitle === '《答案库》系列课程' && educationPaid(s.actor.accountId, course.id)));
-      reason = canWatch ? '' : grants.length ? 'ENDED' : 'NOT_GRANTED';
+      var purchase = course.subtitle === '《答案库》系列课程' ? educationPurchaseState(s.actor.accountId, course.id) : {canWatch:false,expired:false};
+      canWatch = course.enabled === true && (grants.some(viewActive) || purchase.canWatch);
+      reason = canWatch ? '' : purchase.expired ? 'PURCHASE_EXPIRED' : grants.length ? 'ENDED' : 'NOT_GRANTED';
     }
     // Use the complete original video. Encrypted segment/key relays are paused while playback reliability
     // is restored. Keep authorization here; private courses still require a staff identity or active grant.
