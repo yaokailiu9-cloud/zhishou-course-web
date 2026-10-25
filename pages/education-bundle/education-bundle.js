@@ -3,12 +3,12 @@ const auth=require('../../utils/auth');
 const payment=require('../../utils/coursePayment');
 const viewSession=require('../../utils/viewSession');
 Page({
-  data:{loading:true,busy:false,error:'',offer:null,purchased:false,form:{name:'',phone:''}},
+  data:{loading:true,busy:false,loggedIn:false,error:'',offer:null,purchased:false,form:{name:'',phone:''}},
   onShow(){this.refresh();},
   onUnload(){this.generation=(this.generation||0)+1;},
   async refresh(){
     const generation=this.generation=(this.generation||0)+1,identity=viewSession.capture();
-    this.setData({loading:true,error:'',offer:null,purchased:false});
+    this.setData({loading:true,loggedIn:auth.isLoggedIn(),error:'',offer:null,purchased:false});
     try{const data=await service.call('GET_EDUCATION_BUNDLE');if(generation!==this.generation||!viewSession.current(identity))return;this.setData({offer:data.offer,purchased:!!data.purchased});}
     catch(e){if(generation===this.generation&&viewSession.current(identity))service.error(this,e);}
     finally{if(generation===this.generation)this.setData({loading:false});}
