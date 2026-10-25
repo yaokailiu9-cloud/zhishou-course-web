@@ -13,14 +13,13 @@ function mockBackend(t, options = {}) {
   const response = value => ({ok:true, text:async () => JSON.stringify(value)});
   const failure = classification => response({errors:[{message:classification, extensions:{classification}}]});
   global.fetch = async (url, init = {}) => {
-    if (String(url).includes('/sns/oauth2/access_token')) {
-      const code = new URL(url).searchParams.get('code');
+    const {query, variables} = JSON.parse(init.body);
+    if (variables.args?.operation === 'WEBSITE_WECHAT_LOGIN') {
+      const code = variables.args.payload.code;
       assert.ok(!codes.includes(code), 'each OAuth callback uses a fresh code');
       codes.push(code);
-      return response({openid:'same-wechat-user', access_token:'test-access-token'});
+      return response({data:{fz_invoke_action_flow:{result:{ok:true,data:{appId:'wx8daa76a8eb887e47',profile:{openid:'same-wechat-user',unionid:'same-union-id',nickname:'测试用户'},existingAccount:null}}}}});
     }
-    if (String(url).includes('/sns/userinfo')) return response({openid:'same-wechat-user', nickname:'测试用户'});
-    const {query, variables} = JSON.parse(init.body);
     if (query.includes('authenticateWithUsername')) {
       attempts.push(variables.register);
       if (options.error) return failure(options.error);
