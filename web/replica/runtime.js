@@ -7,6 +7,7 @@
   const root = document.getElementById('page');
   const modules = {}, definitions = {}, files = new Map(), storage = new Map();
   const app = {globalData:{}};
+  let serviceScrollObserver = null;
   let current = null, renderedPage = null, stack = [], renderPending = false, toastTimer, unloadMessage = '', session = null, wechatSdkLoading = null, wechatShareReady = null, wechatSignedUrl = '';
   let composition = null, renderDeferred = false;
   // A poll or another setData must never detach an editor while the IME owns it.
@@ -252,11 +253,13 @@
       if(tag==='video'){el.setAttribute('controlslist','nodownload');el.setAttribute('playsinline','');el.setAttribute('webkit-playsinline','');el.setAttribute('x5-playsinline','');el.draggable=false;on('contextmenu',event=>event.preventDefault())}
       if(tag==='scroll-view'&&values['scroll-y']!==undefined)el.setAttribute('scroll-y','');
       if(tag==='scroll-view'&&values['scroll-x']!==undefined)el.setAttribute('scroll-x','');
+      if(tag==='scroll-view')for(const event of ['wheel','touchstart','pointerdown'])on(event,()=>{el._autoScrolling=false;});
       const eventMap={tap:'click',input:'input',change:'change',confirm:'keydown',submit:'submit',error:'error',load:'load',blur:'blur',focus:'focus',longpress:'contextmenu',scroll:'scroll',scrolltolower:'scroll',touchstart:'touchstart',touchend:'touchend'};
       for(const [key,handler]of Object.entries(values)){
         const match=key.match(/^(bind|catch):?(.+)$/);if(!match||!eventMap[match[2]])continue;
         const emit=event=>{
           if(match[2]==='error'&&el._mediaStream)return;
+          if(match[2]==='scroll'&&el._autoScrolling)return;
           if(match[1]==='catch')event.stopPropagation();
           if(match[2]==='confirm'&&(event.key!=='Enter'||event.isComposing||event.keyCode===229||composition?.element===el))return;
           if(match[2]==='scrolltolower'&&el.scrollTop+el.clientHeight<el.scrollHeight-30)return;
@@ -304,9 +307,17 @@
         }
       }
       parent.append(el);
-      if(values['scroll-into-view'])requestAnimationFrame(()=>{const target=document.getElementById(values['scroll-into-view']);if(target)target.scrollIntoView({block:'nearest'})});
+      if(values['scroll-into-view'])requestAnimationFrame(()=>{
+        const target=document.getElementById(values['scroll-into-view']);
+        if(!el.isConnected||!target||!el.contains(target))return;
+        // Move only this scroll-view. Native scrollIntoView can also move the page and its fixed header.
+        if(values['scroll-into-view']==='service-feedback-end')moveScrollView(el,el.scrollHeight);
+        else if(values['scroll-into-view']==='service-content-top')moveScrollView(el,0);
+        else if(target.getBoundingClientRect&&el.getBoundingClientRect){const a=target.getBoundingClientRect(),b=el.getBoundingClientRect();if(a.bottom>b.bottom)el.scrollTop+=a.bottom-b.bottom;else if(a.top<b.top)el.scrollTop+=a.top-b.top;}
+      });
     }
   }
+  function moveScrollView(el,top){el._autoScrolling=true;el.scrollTop=top;requestAnimationFrame(()=>{el._autoScrolling=false;});}
   function replaceKeepingEditor(fragment,focused){
     const key=focused?.dataset.focusKey;
     if(key==null||renderedPage!==current)return false;
@@ -378,6 +389,13 @@
     }
     if(!keptEditor&&focusKey!=null){const next=[...root.querySelectorAll('[data-focus-key]')].find(el=>el.dataset.focusKey===focusKey);if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
     scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el)el.scrollTop=v.top});
+    serviceScrollObserver?.disconnect();serviceScrollObserver=null;
+    const serviceScroller=root.querySelector('#service-message-scroll');
+    if(serviceScroller&&typeof ResizeObserver==='function'){
+      // CSS, text wrapping and the composer can settle after the first frame.
+      serviceScrollObserver=new ResizeObserver(()=>{if(serviceScroller.isConnected&&current.data.serviceFeedbackScrollTarget==='service-feedback-end')moveScrollView(serviceScroller,serviceScroller.scrollHeight);});
+      serviceScrollObserver.observe(serviceScroller);for(const child of serviceScroller.children)serviceScrollObserver.observe(child);
+    }
   }
   function schedule(){if(!renderPending){renderPending=true;queueMicrotask(render)}}
   // A same-reference object counts as changed (it may have been mutated in place); equal copies do not.

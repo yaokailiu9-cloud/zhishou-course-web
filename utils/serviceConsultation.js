@@ -14,7 +14,7 @@ function same(page,identity,epoch,version){return !page.unloaded&&viewSession.cu
 const methods={
  ...dialogue.methods,
  // Direct messages join the main conversation, so every merge rebuilds that timeline.
- mergeDialogue(messages){dialogue.methods.mergeDialogue.call(this,messages);if(this.buildServiceTimeline)this.buildServiceTimeline();},
+ mergeDialogue(messages){dialogue.methods.mergeDialogue.call(this,messages);if(this.buildServiceTimeline)this.buildServiceTimeline();if(this.refreshServiceOverview)this.refreshServiceOverview();},
  resetConsult(){this.suspendDialogue();this.dialogueIdentity=null;this.dialoguePending=null;this.dialogueAfterId=null;this.dialogueSeenId=undefined;this.consultKeys={};this.consultRequest=null;this.setData({...data});},
  async loadConsult(silent=false){
   const id=this.serviceSelectedId;if(!id||this.consultRequest)return;

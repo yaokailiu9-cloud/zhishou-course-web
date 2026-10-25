@@ -1,6 +1,6 @@
 // DIALOGUE_UNREAD_START
 // New plan-feedback messages for the current reader: the other side's messages after
-// this reader's read mark or the latest message from the reader's own side.
+// this reader's read mark or the reader's own latest message. Other staff never advance it.
 function dialogueUnread(apps) {
   var out={},ids=[],byId={};
   (apps||[]).forEach(function(a){if(a&&a.id&&a.customer_id&&!byId[a.id]&&(!a.status||["PENDING","CONFIRMED","COMPLETED","孩子档案"].indexOf(a.status)>=0)){byId[a.id]=a;ids.push(id(a.id));out[a.id]={unread:0,mark:0};}});
@@ -10,7 +10,7 @@ function dialogueUnread(apps) {
   marks.forEach(function(r){var o=out[r.appointment_id];if(o)o.mark=Math.max(o.mark,Number(r.last_read_id)||0);});
   var rows=gql("query DialogueUnreadRows($where:consultation_feedback_bool_exp!){rows: consultation_feedback(where:$where,order_by:{id:desc},limit:501){id appointment_id author_id}}",{where:and(eq("advice_key","__consultation_dialogue__","text"),scope)}).rows||[];
   function ownSide(row){var a=byId[row.appointment_id],readerIsCustomer=String(a.customer_id)===String(s.actor.accountId);return (String(row.author_id)===String(a.customer_id))===readerIsCustomer;}
-  rows.forEach(function(row){var o=out[row.appointment_id];if(o&&ownSide(row))o.mark=Math.max(o.mark,Number(row.id));});
+  rows.forEach(function(row){var o=out[row.appointment_id];if(o&&String(row.author_id)===String(s.actor.accountId))o.mark=Math.max(o.mark,Number(row.id));});
   rows.forEach(function(row){var o=out[row.appointment_id];if(o&&!ownSide(row)&&Number(row.id)>o.mark)o.unread++;});
   return out;
 }

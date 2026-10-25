@@ -1148,3 +1148,16 @@ test('聊天档案：筛选标签与内容标签只高亮当前项，「标记�
 
 test('网页拒绝旧公众号的收银台参数，只允许观知守新服务号',async()=>{const h=await host({navigator:{userAgent:'MicroMessenger'}});let invoked=0,failure;h.context.WeixinJSBridge={invoke:()=>invoked++};h.host.wx.requestPayment({appId:'wx6dafecca8d5fd24e',package:'prepay_id=wx1234567890123',signType:'MD5',paySign:'A'.repeat(32),fail:r=>failure=r});assert.equal(invoked,0);assert.match(failure.errMsg,/参数无效/);});
 test('网页付款预检使用当前会话，只向新商户发起独立授权并带回原页面',async()=>{const h=await host({navigator:{userAgent:'MicroMessenger'}});let sent;h.context.fetch=async(url,options)=>{sent={url,options};return {ok:true,json:async()=>({ok:true,data:{appId:'wx8daa76a8eb887e47',merchantId:'1119085869',authorized:false}})};};assert.equal(await h.host.wx.authorizeCoursePayment({name:'合成家长',phone:'13800000000'}),false);assert.equal(sent.options.credentials,'same-origin');assert.equal(JSON.parse(sent.options.body).name,'合成家长');assert.match(h.context.location.href,/action=payment-login/);assert.ok(!h.context.location.href.includes('13800000000'));h.context.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{appId:'old',merchantId:'1666219884',authorized:true}})});await assert.rejects(h.host.wx.authorizeCoursePayment(),/配置正在更新/);});
+
+test('聊天和孩子档案仅滚动内容容器到底部，阅读历史后刷新保留位置，不移动页面外框',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
+ const observers=[];let contentHeight=1600;h.context.ResizeObserver=class{constructor(callback){this.callback=callback;observers.push(this);}observe(){}disconnect(){}};
+ const proto=Object.getPrototypeOf(h.document.createElement('scroll-view'));
+ Object.defineProperty(proto,'scrollHeight',{configurable:true,get(){return this.id==='service-message-scroll'?contentHeight:0;}});
+ Object.defineProperty(proto,'clientHeight',{configurable:true,get(){return this.id==='service-message-scroll'?500:0;}});
+ let outerScrolls=0;h.context.scrollTo=()=>outerScrolls++;
+ p.setData({serviceMode:true,serviceLoading:false,serviceTab:'feedback',serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,appointment:{}},serviceTimeline:[{kind:'feedback',key:'feedback-1',id:1,content:'最新反馈'}]});
+ p.scrollServiceFeedbackToBottom();await tick();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,1600);assert.equal(outerScrolls,0);contentHeight=1900;observers.at(-1).callback();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,1900);
+ const box=h.document.getElementById('service-message-scroll');box.dispatchEvent(new h.Event('scroll'));assert.equal(p.data.serviceFeedbackScrollTarget,'service-feedback-end');box.dispatchEvent(new h.Event('wheel'));box.scrollTop=100;box.dispatchEvent(new h.Event('scroll'));await tick();p.setData({serviceError:'刷新后的状态'});await tick();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,100);contentHeight=2200;observers.at(-1).callback();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,100);
+ p.openServiceArchive();await tick();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,2200);assert.equal(outerScrolls,0);assert.deepEqual(h.errors,[]);
+});

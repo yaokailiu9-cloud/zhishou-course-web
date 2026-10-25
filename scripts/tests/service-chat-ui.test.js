@@ -6,7 +6,7 @@ const load=(file,stubs)=>{const m={exports:{}};vm.runInNewContext(fs.readFileSyn
 const shared=name=>name==='./consultationService'?service:name==='./viewSession'?identity:name==='./childArchive'?{answeredSections:()=>[]}:name==='./auth'?{isLoggedIn:()=>true}:name==='./chatBadge'?{apply(){},refresh(){}}:{};
 const dialogue=load('consultationDialogue.js',shared),consultation=load('serviceConsultation.js',name=>name==='./consultationDialogue'?dialogue:shared(name));
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../utils/serviceChat.js'),'utf8'),{module,require:name=>name==='./serviceConsultation'?consultation:shared(name),wx,setInterval:()=>1,clearInterval(){},Date,Number,Map,Promise});
-const p={...module.exports.methods,data:structuredClone(module.exports.data),setData(v){Object.assign(this.data,v);},serviceEpoch:1,serviceCaseVersion:1,serviceSelectedId:31,serviceChatIdentity:identity.capture()};p.data.serviceMode=true;p.data.serviceTab='feedback';return {p,service,calls,wx,changeId:x=>id=x};}
+const p={...module.exports.methods,data:structuredClone(module.exports.data),setData(v,callback){Object.assign(this.data,v);if(callback)callback();},serviceEpoch:1,serviceCaseVersion:1,serviceSelectedId:31,serviceChatIdentity:identity.capture()};p.data.serviceMode=true;p.data.serviceTab='feedback';return {p,service,calls,wx,changeId:x=>id=x};}
 test('选中草稿时捕获版本，后台刷新不把旧输入变成可覆盖的新版本',async()=>{const {p,service,calls}=harness();p.data.serviceFeedback=[{id:1,reply:{id:2,revision:3,stage:'DRAFT',body:{content:'旧稿'}}}];p.selectServiceReply({currentTarget:{dataset:{id:1}}});p.data.serviceFeedback[0].reply.revision=4;p.data.serviceInput='本地编辑';service.call=async(op,payload)=>{calls.push({op,payload});throw Error('内容已更新');};await p.saveServiceDraft();assert.equal(calls[0].payload.revision,3);assert.equal(p.data.serviceInput,'本地编辑');assert.match(p.data.serviceError,/已更新/);});
 test('家长发送失败保留输入和同一请求号，重试不会改变幂等键',async()=>{const h=harness();h.p.data.serviceInput='未发出的反馈';h.service.call=async(op,p)=>{h.calls.push({op,p});throw Error('网络失败');};await h.p.sendServiceFeedback();await h.p.sendServiceFeedback();assert.equal(h.p.data.serviceInput,'未发出的反馈');assert.equal(h.calls[0].p.requestKey,h.calls[1].p.requestKey);});
 test('换号或离开后旧请求不能恢复客户内容或特权状态',async()=>{const h=harness();let resolve;h.service.call=()=>new Promise(r=>resolve=r);const loading=h.p.loadServiceChat();h.changeId('202');resolve({staff:true,canManage:true,cases:[{id:999,childName:'旧用户孩子'}]});await loading;assert.equal(h.p.data.serviceCases.length,0);assert.equal(h.p.data.serviceCanManage,false);});
@@ -65,10 +65,19 @@ test('服务管理可暂不分配监护专员：默认选中“暂不分配”�
 });
 test('档案头像显示其他档案的新消息数，列表把有新消息的档案排前并标出发送家长，打开后清零',async()=>{
  const h=harness();h.p.serviceSelectedId=null;
- h.service.call=async op=>op==='SERVICE_CHAT_OVERVIEW'?{staff:true,unreadTotal:5,cases:[{id:31,childName:'甲',unread:2,latest:'甲家长消息',latestFrom:'甲妈妈（家长）'},{id:30,childName:'乙',unread:3,latest:'乙家长消息',latestFrom:'乙爸爸（家长）'},{id:32,childName:'丙',unread:0}]}:{owner:false,staff:true,appointment:{id:31,child_info:{}},feedback:[]};
+ h.service.call=async op=>op==='SERVICE_CHAT_OVERVIEW'?{staff:true,unreadTotal:5,cases:[{id:31,childName:'甲',unread:2,latest:'甲家长消息',latestFrom:'甲妈妈（家长）'},{id:30,childName:'乙',unread:3,latest:'乙家长消息',latestFrom:'乙爸爸（家长）'},{id:32,childName:'丙',unread:0}]}:{owner:false,staff:true,unread:0,appointment:{id:31,child_info:{}},feedback:[]};
  await h.p.loadServiceChat();
  assert.equal(h.p.data.serviceActive.id,31);assert.equal(h.p.data.serviceOtherUnread,3);
  assert.deepEqual(h.p.data.serviceCases.map(c=>[c.id,c.unread]),[[30,3],[32,0],[31,0]]);assert.equal(h.p.data.serviceCases[0].latestFrom,'乙爸爸（家长）');
  await h.p.selectServiceCase({currentTarget:{dataset:{id:30}}});
  assert.equal(h.p.data.serviceOtherUnread,0);assert.ok(h.p.data.serviceCases.every(c=>c.unread===0));
+});
+
+test('打开聊天和孩子档案默认定位底部；读历史时轮询不拉回，失败不提前清未读',async()=>{
+ const h=harness();h.p.data.serviceAllCases=[{id:31,childName:'甲',serverUnread:2,unread:2,pending:2}];h.p.serviceUnreadTotal=2;
+ h.service.call=async(op,p)=>{h.calls.push({op,p});if(op==='GET_SERVICE_CASE')return {owner:false,staff:true,unread:p.markRead?0:2,appointment:{id:31,child_info:{}},feedback:[{id:1,content:'较早消息',createdAt:'2026-10-25T10:00:00Z'},{id:2,content:'最新消息',createdAt:'2026-10-25T11:00:00Z'}]};return {};};
+ await h.p.refreshServiceCase();assert.equal(h.p.data.serviceFeedbackScrollTarget,'service-feedback-end');assert.equal(h.p.data.serviceOtherUnread,0);assert.equal(h.p.data.serviceAllCases[0].pending,2);
+ h.p.openServiceArchive();assert.equal(h.p.data.serviceTab,'archive');assert.equal(h.p.data.serviceFeedbackScrollTarget,'service-feedback-end');
+ h.p.data.serviceTab='feedback';h.p.onServiceFeedbackScroll({detail:{scrollTop:0,scrollHeight:1500,clientHeight:500}});await h.p.refreshServiceCase(true);assert.equal(h.calls.at(-1).p.markRead,false);assert.equal(h.p.data.serviceFeedbackScrollTarget,'');
+ h.service.call=async()=>{throw Error('读取失败')};h.p.data.serviceAllCases[0].serverUnread=2;h.p.serviceUnreadTotal=2;h.p.applyServiceUnread();await h.p.selectServiceCase({currentTarget:{dataset:{id:32}}});assert.equal(h.p.data.serviceAllCases[0].unread,2);assert.equal(h.p.data.serviceOtherUnread,2);
 });
