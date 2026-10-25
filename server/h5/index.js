@@ -570,7 +570,7 @@ async function handleApi(req, res) {
     if (action === 'education-bundle-pay') {
       const context=await invoke(session.jwt,'GET_EDUCATION_BUNDLE',{});
       if(!context.offer.available&&!context.purchased)throw new Error('COURSE:课程包暂未开放购买');
-      return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:context.offer.id,name:input.name,phone:input.phone,referrerId:invitationRef(req,session,input.ref),paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
+      return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:context.offer.id,referrerId:invitationRef(req,session,input.ref),paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
     }
     if (action === "course-pay") return json(res,200,{ok:true,data:await require('./course-payment').prepare(invoke,session.jwt,{classId:input.classId,name:input.name,phone:input.phone,paymentLinkToken:typeof input.paymentLinkToken==='string'?input.paymentLinkToken:undefined,referrerId:invitationRef(req,session,input.ref),paymentIdentity:require('./payment-identity').identity(req,session,verify)})});
     if (action === "course-pay-status") return json(res,200,{ok:true,data:await require('./course-payment').status(invoke,session.jwt,input.orderId)});

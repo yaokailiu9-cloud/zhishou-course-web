@@ -3,7 +3,7 @@ const auth=require('../../utils/auth');
 const payment=require('../../utils/coursePayment');
 const viewSession=require('../../utils/viewSession');
 Page({
-  data:{loading:true,busy:false,loggedIn:false,error:'',offer:null,purchased:false,form:{name:'',phone:''}},
+  data:{loading:true,busy:false,loggedIn:false,error:'',offer:null,purchased:false},
   onShow(){this.refresh();},
   onUnload(){this.generation=(this.generation||0)+1;},
   async refresh(){
@@ -13,15 +13,12 @@ Page({
     catch(e){if(generation===this.generation&&viewSession.current(identity))service.error(this,e);}
     finally{if(generation===this.generation)this.setData({loading:false});}
   },
-  input(e){this.setData({['form.'+e.currentTarget.dataset.key]:e.detail.value});},
   async buy(){
     if(this.data.busy||!this.data.offer||!this.data.offer.available||this.data.purchased)return;
     if(!auth.requireLogin('登录后购买课程包，观看权限将绑定你的微信账号。'))return;
-    const name=this.data.form.name.trim(),phone=this.data.form.phone.trim();
-    if(!name||name.length>60||!/^1[3-9][0-9]{9}$/.test(phone)){this.setData({error:'请填写姓名和有效的11位手机号。'});return;}
     const identity=viewSession.capture(),generation=this.generation;
     this.setData({busy:true,error:''});
-    try{const result=await payment.enroll({name,phone},this.data.offer.feeText,{action:'education-bundle-pay',noun:'孩子教育课程包',confirmTitle:'购买课程包'});if(result&&generation===this.generation&&viewSession.current(identity)){await this.refresh();if(this.data.purchased)wx.showToast({title:'已解锁课程',icon:'success'});}}
+    try{const result=await payment.enroll({},this.data.offer.feeText,{action:'education-bundle-pay',noun:'孩子教育课程包',confirmTitle:'购买课程包'});if(result&&generation===this.generation&&viewSession.current(identity)){await this.refresh();if(this.data.purchased)wx.showToast({title:'已解锁课程',icon:'success'});}}
     catch(e){if(generation===this.generation&&viewSession.current(identity))service.error(this,e);}
     finally{this.setData({busy:false});}
   },

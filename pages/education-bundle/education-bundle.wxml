@@ -8,9 +8,8 @@
     <text class="bundle-description">{{offer.description}}</text>
     <view wx:if="{{purchased}}" class="bundle-success">已购买，以下课程已为当前账号解锁。</view>
     <view wx:else class="bundle-checkout">
-      <block wx:if="{{loggedIn}}"><text class="bundle-label">购买人姓名</text><input class="bundle-input" value="{{form.name}}" data-key="name" bindinput="input" aria-label="购买人姓名" placeholder="请输入姓名" maxlength="60" disabled="{{busy}}"/>
-      <text class="bundle-label">联系手机</text><input class="bundle-input" value="{{form.phone}}" data-key="phone" bindinput="input" aria-label="联系手机" placeholder="请输入11位手机号" type="number" maxlength="11" disabled="{{busy}}"/></block>
-      <text class="bundle-note">在微信内支付，确认到账后自动解锁给付款账号。公开课程可继续直接观看。</text>
+
+      <text class="bundle-note">微信登录后直接支付 ¥688，到账后自动解锁到当前微信账号。公开课程可继续直接观看。</text>
       <button class="bundle-pay" bindtap="buy" disabled="{{busy || !offer.available}}" loading="{{busy}}">{{busy ? '正在确认支付…' : (offer.available ? (loggedIn ? '微信支付 ¥' + offer.price + '，解锁课程' : '微信登录，购买课程包') : '暂未开放购买')}}</button>
     </view>
     <text wx:if="{{error}}" class="bundle-error" role="alert">{{error}}</text>
