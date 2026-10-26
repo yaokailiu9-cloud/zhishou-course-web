@@ -51,11 +51,12 @@ if(op==='GET_SERVICE_CASE'){
  var feedback=pageRows('consultation_feedback',and(eq('appointment_id',a.id),eq('advice_key','__service_feedback__','text')),'id created_at content status',p.beforeId,20,true),reviews=list('service_review_item',and(eq('appointment_id',a.id),{_or:[eq('kind','PLAN','text')].concat(feedback.items.map(function(f){return eq('feedback_id',f.id);}))}),SERVICE_REVIEW_FIELDS,21);
  var remaining=serviceIncomingUnread([a])[a.id]||0;if(p.markRead===true&&!p.beforeId&&remaining){markServiceMessagesRead(a);remaining=0;}var directUnread=serviceTalk(a)?dialogueUnread([a])[a.id].unread:0;
  var plan=reviews.filter(function(r){return r.kind==='PLAN';})[0];if(!access.staff){a=Object.assign({},a,{service_metadata:{}});}
- result(s,{appointment:a,unread:directUnread+remaining,owner:access.owner,staff:access.staff,role:serviceRole(),canManage:serviceGeneral(),canDraft:access.staff&&!!s.actor.canReply,plan:serviceView(plan,access.staff),feedback:feedback.items.map(function(f){return {id:f.id,content:f.content,status:f.status,createdAt:f.created_at,reply:serviceView(reviews.filter(function(r){return r.kind==='REPLY'&&String(r.feedback_id)===String(f.id);})[0],access.staff)};}),nextCursor:feedback.nextCursor});
+ result(s,{appointment:a,unread:directUnread+remaining,owner:access.owner,staff:access.staff,role:serviceRole(),canManage:serviceGeneral(),canDraft:access.staff&&!!s.actor.canReply,parentServiceReadAt:access.staff?parentReadState(a).parentServiceReadAt:undefined,plan:serviceView(plan,access.staff),feedback:feedback.items.map(function(f){return {id:f.id,content:f.content,status:f.status,createdAt:f.created_at,reply:serviceView(reviews.filter(function(r){return r.kind==='REPLY'&&String(r.feedback_id)===String(f.id);})[0],access.staff)};}),nextCursor:feedback.nextCursor});
 }
 if(op==='SEND_SERVICE_FEEDBACK'){
  var access=serviceCase(p.appointmentId);if(!access.owner)fail('只有档案所属家长可以提交反馈');
  var key=requestKey(s,'service-feedback:'+access.row.id),content=text(p.content,'反馈内容',6000,true);
+ if(content.indexOf(QUOTE_MARK)>=0)fail('反馈包含无效字符');content=dialogueQuote(access.row)+content;
  insert('consultation_feedback',{request_key:key,appointment_id:access.row.id,author_id:s.actor.accountId,advice_key:'__service_feedback__',content:content,status:'PENDING'},'consultation_feedback_request_key');result(s,{id:access.row.id});
 }
 if(op==='SAVE_SERVICE_DRAFT'){

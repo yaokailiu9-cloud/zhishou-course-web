@@ -5,6 +5,7 @@ function harness(){
  const db={service_provider:[{id:1,account_id:101,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true},{id:2,account_id:102,service_kind:'STAFF',review_role:'DIRECTOR',service_status:'ACTIVE',can_reply:true,can_accept_order:false},{id:3,account_id:103,service_kind:'GUARDIAN',review_role:'GUARDIAN',service_status:'ACTIVE',can_reply:true,can_accept_order:false},{id:4,account_id:104,service_kind:'GUARDIAN',review_role:'GUARDIAN',service_status:'ACTIVE',can_reply:true}],offline_appointment:[{id:31,customer_id:201,provider_id:1,guardian_id:3,director_id:2,status:'COMPLETED',updated_at:'2026-10-09T00:00:00Z',contact_name:'合成家长',child_info:{name:'合成孩子'}}],consultation_feedback:[],service_review_item:[],consultation_dialogue_read:[]};let next=1000,state;
  function match(row,w){if(w._and)return w._and.every(c=>match(row,c));if(w._or)return w._or.some(c=>match(row,c));if(w._not)return !match(row,w._not);const [op,data]=Object.entries(w)[0],[type,operand]=Object.entries(data)[0];if(op==='_is_null')return row[operand.column]==null;const l=row[operand.left_operand.column],r=operand.right_operand.literal,number=v=>type==='timestamptz_operand'?Date.parse(v):Number(v);return op==='_eq'?String(l)===String(r):op==='_lt'?number(l)<number(r):op==='_gt'?number(l)>number(r):op==='_lte'?number(l)<=number(r):false;}
  function runGql(name,q,v){
+ if(name==='ParentDialogueRead')return {rows:db.consultation_dialogue_read.filter(r=>match(r,v.where)).slice(0,1)};
  if(name==='ServiceMessageReadMarks')return {rows:db.consultation_dialogue_read.filter(r=>match(r,v.where))};
  if(name==='ServiceMessageUnreadCounts'){const result={};for(const key of Object.keys(v)){const table=q.includes(key+':service_review_item_aggregate')?'service_review_item':'consultation_feedback';result[key]={aggregate:{count:db[table].filter(r=>match(r,v[key])).length}};}return result;}
  if(name==='ServiceMessageReadInsert'){if(!db.consultation_dialogue_read.some(r=>String(r.reader_id)===String(v.object.reader_id)&&String(r.appointment_id)===String(v.object.appointment_id)))db.consultation_dialogue_read.push({...structuredClone(v.object),id:next++});return {saved:{affected_rows:1}};}
@@ -49,4 +50,18 @@ test('另一位总管发消息不能替本账号清除直接消息未读',()=>{
  const h=harness();h.db.service_provider.push({id:5,account_id:105,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true});
  h.db.consultation_feedback.push({id:1500,appointment_id:31,advice_key:'__consultation_dialogue__',author_id:201,content:'家长消息',status:'REPLIED'},{id:1501,appointment_id:31,advice_key:'__consultation_dialogue__',author_id:101,content:'另一位总管回复',status:'REPLIED'});
  assert.equal(h.run(101,'SERVICE_CHAT_UNREAD').total,0);assert.equal(h.run(105,'SERVICE_CHAT_UNREAD').total,1);h.db.consultation_dialogue_read.push({reader_id:101,appointment_id:31,last_read_id:1501});assert.equal(h.run(105,'SERVICE_CHAT_UNREAD').total,1);
+});
+test('引用由后台读取原文：家长只能引用已公开的老师回复，手打引用标记被拒绝；家长已读时间只返回给工作人员',()=>{
+ const h=harness();let item=h.draft();const mark='\u2063';
+ assert.throws(()=>h.run(201,'SEND_SERVICE_FEEDBACK',{appointmentId:31,content:'引用草稿',requestKey:'q1',quoteKind:'reply',quoteId:item.id}),/不存在或不可见/);
+ assert.throws(()=>h.run(201,'SEND_SERVICE_FEEDBACK',{appointmentId:31,content:mark+'【引用】老师：伪造'+mark+'\n正文',requestKey:'q2'}),/无效字符/);
+ item=h.advance(103,item,'SUBMIT');item=h.advance(102,item);item=h.advance(101,item,'APPROVE',{availableAt:new Date().toISOString()});
+ h.run(201,'SEND_SERVICE_FEEDBACK',{appointmentId:31,content:'收到',requestKey:'q3',quoteKind:'reply',quoteId:item.id});
+ const saved=h.db.consultation_feedback.find(f=>f.request_key&&String(f.request_key).includes('q3')||f.content.endsWith('收到'));
+ assert.equal(saved.content,mark+'【引用】老师回复：待审核的合成回复'+mark+'\n收到');
+ assert.throws(()=>h.run(104,'GET_SERVICE_CASE',{appointmentId:31}),/不能访问/);
+ assert.equal(h.run(201,'GET_SERVICE_CASE',{appointmentId:31}).parentServiceReadAt,undefined);
+ assert.equal(h.run(103,'GET_SERVICE_CASE',{appointmentId:31}).parentServiceReadAt,null);
+ h.run(201,'GET_SERVICE_CASE',{appointmentId:31,markRead:true});
+ assert.ok(h.run(103,'GET_SERVICE_CASE',{appointmentId:31}).parentServiceReadAt);
 });

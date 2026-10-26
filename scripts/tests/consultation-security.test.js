@@ -373,3 +373,18 @@ test('未付款、其他家长、伪造来源及单账号旧特例均不能获�
  for(const change of [d=>{d.course_registration_order[0].status='PENDING';},d=>{d.course_registration_order[0].customer_id=202;},d=>{d.course_registration_order[0].source=JSON.stringify({linkPurchase:{kind:'CONSULTATION_PURCHASE_LINK_V1',issuerAccountId:'203',productId:90}});},d=>{d.course_registration_order[0].source='null';}]){const db=paidLinkDb();change(db);const e=engine(db);assert.equal(e.run(201,'GET_PACKAGE',{viaPurchaseLink:true,paid:true}).data.eligible,false);}
  const db=fixture();db.offline_appointment=[];db.account.find(a=>a.id===201).id=1000000000000031;assert.equal(engine(db).run(1000000000000031,'GET_PACKAGE').data.eligible,false);
 });
+test('老师端看到家长已读位置，家长端拿不到任何已读状态；引用只取本档案可见消息',()=>{
+ const e=completedDialogue();
+ const t1=e.run(101,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,requestKey:'r1',content:'老师第一条'}).data.message;
+ let staffView=e.run(101,'GET_CONSULTATION_DIALOGUE',{appointmentId:31}).data;assert.equal(staffView.parentReadId,0);
+ const parentView=e.run(201,'GET_CONSULTATION_DIALOGUE',{appointmentId:31}).data;assert.equal(parentView.parentReadId,undefined);assert.equal(parentView.parentServiceReadAt,undefined);
+ staffView=e.run(101,'GET_CONSULTATION_DIALOGUE',{appointmentId:31,afterId:t1.id}).data;assert.equal(staffView.parentReadId,Number(t1.id));
+ const t2=e.run(101,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,requestKey:'r2',content:'老师第二条'}).data.message;
+ assert.equal(e.run(101,'GET_CONSULTATION_DIALOGUE',{appointmentId:31}).data.parentReadId,Number(t1.id));
+ const quoted=e.run(201,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,requestKey:'r3',content:'好的',quoteKind:'dialogue',quoteId:t2.id}).data.message;
+ assert.equal(quoted.content,'\u2063【引用】老师：老师第二条\u2063\n好的');
+ const again=e.run(101,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,requestKey:'r4',content:'嗯',quoteKind:'dialogue',quoteId:quoted.id}).data.message;
+ assert.equal(again.content,'\u2063【引用】家长：好的\u2063\n嗯','引用不嵌套旧引用');
+ assert.throws(()=>e.run(201,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,requestKey:'r5',content:'x',quoteKind:'dialogue',quoteId:999999}),/不存在或不可见/);
+ assert.throws(()=>e.run(201,'SEND_CONSULTATION_MESSAGE',{appointmentId:31,requestKey:'r6',content:'x',quoteKind:'other',quoteId:t2.id}),/引用类型/);
+});

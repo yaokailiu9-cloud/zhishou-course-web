@@ -377,7 +377,9 @@ test('家长与工作人员拼音组词期间的自动刷新不能替换输入�
  for(const owner of [true,false]){
   const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
   p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {item:{id:52,revision:1}};};
-  p.setData({serviceMode:true,serviceActive:{id:31,childName:'测试孩子'},serviceDetail:{owner,staff:!owner,canDraft:!owner,appointment:{}},serviceLoading:false,serviceTab:'feedback',serviceDraftFeedbackId:owner?null:17,serviceFeedback:[{id:17,content:'反馈'}],serviceInput:''});await tick();
+  const field=owner?'serviceInput':'dialogueContent';
+  if(!owner){p.appointmentId=31;p.dialogueIdentity=h.host.requireModule('utils/viewSession').capture();h.host.requireModule('utils/consultationService').call=async(op,payload)=>{calls.push({op,payload});return {message:{id:10,content:payload.content,createdAt:'2026-10-20T06:00:00Z',senderRole:'teacher',isMine:true}};};}
+  p.setData({serviceMode:true,serviceActive:{id:31,childName:'测试孩子'},serviceDetail:{owner,staff:!owner,canDraft:!owner,appointment:{}},serviceLoading:false,serviceTab:'feedback',canTalk:!owner,dialogueOpen:!owner,serviceFeedback:[{id:17,content:'反馈'}],serviceInput:'',dialogueContent:''});await tick();
   const input=h.document.querySelector('.service-composer textarea');assert.ok(input);
   Object.defineProperty(h.document,'activeElement',{configurable:true,get:()=>input});
   const ancestors=[];for(let el=input;el&&el.id!=='page';el=el.parentNode)ancestors.push(el);
@@ -387,17 +389,17 @@ test('家长与工作人员拼音组词期间的自动刷新不能替换输入�
    p.setData({serviceMessages:[{id:'new',content:'刷新收到新回复'}]});await tick();
    assert.equal(h.document.querySelector('.service-composer textarea')===input,true);assert.equal(input.value,pinyin);assert.ok(input.isConnected);
    input.value=committed;input.dispatchEvent(new h.Event('compositionend',{bubbles:true}));await tick();
-   assert.equal(p.data.serviceInput,committed);assert.equal(h.document.querySelector('.service-composer textarea')===input,true);
+   assert.equal(p.data[field],committed);assert.equal(h.document.querySelector('.service-composer textarea')===input,true);
    input.dispatchEvent(new h.Event('input',{bubbles:true}));await tick();
-   assert.equal(p.data.serviceInput,committed);assert.equal(input.value,committed);
+   assert.equal(p.data[field],committed);assert.equal(input.value,committed);
   }
   assert.ok(ancestors.every(el=>el.isConnected),'文本框及其父级持续连接，手机键盘和撤销栈不被打断');
   input.value+='很好';input.dispatchEvent(new h.Event('input',{bubbles:true}));await tick();
   assert.equal(h.document.querySelector('.service-composer textarea')===input,true);
   assert.equal(h.document.querySelector('.service-composer .service-primary').disabled,false);
   h.document.querySelector('.service-composer .service-primary').click();await tick();
-  assert.equal(calls.length,1);assert.equal(calls[0].op,owner?'SEND_SERVICE_FEEDBACK':'SAVE_SERVICE_DRAFT');assert.equal(calls[0].payload.content,'孩子最近很好');
-  assert.equal(input.value,owner?'':'孩子最近很好');assert.equal(p.data.serviceInput,owner?'':'孩子最近很好');assert.deepEqual(h.errors,[]);
+  const sends=calls.filter(c=>/^SEND_/.test(c.op));assert.equal(sends.length,1);assert.equal(sends[0].op,owner?'SEND_SERVICE_FEEDBACK':'SEND_CONSULTATION_MESSAGE');assert.equal(sends[0].payload.content,'孩子最近很好');
+  assert.equal(input.value,'');assert.equal(p.data[field],'');assert.deepEqual(h.errors,[]);
  }
 });
 test('中文输入中的回车只选字，正常回车可确认；切换页面不会被旧输入法锁住',async()=>{
@@ -804,32 +806,41 @@ test('工作台与我的页面在进入前显示方案反馈新消息数',async(
  assert.deepEqual(badges,['3条新消息','2条新消息']);
 });
 
-test('服务反馈空状态不显示无法输入的回复框，方案入口与只读权限提示清楚',async()=>{
+test('服务反馈空状态不显示无法输入的回复框，没有直接发消息权限时只读提示清楚',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
- p.setData({serviceMode:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{}},serviceFeedback:[],serviceLoading:false});await tick();
+ p.setData({serviceMode:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{}},serviceFeedback:[],serviceLoading:false,canTalk:false});await tick();
  assert.equal(h.document.querySelector('.service-composer textarea'),null);
- assert.equal(h.document.querySelector('.service-review-settings'),null);
- assert.match(h.document.querySelector('.service-composer').textContent,/等待家长提交反馈/);
- h.document.querySelector('.service-empty-action').click();await tick();assert.equal(p.data.serviceTab,'plan');
- p.setData({serviceTab:'feedback',serviceDetail:{staff:true,canDraft:false,appointment:{}},serviceFeedback:[{id:17,content:'合成反馈'}]});await tick();
+ assert.equal(h.document.querySelector('.service-review-settings'),null);assert.equal(h.document.querySelector('.service-empty-action'),null);
+ assert.match(h.document.querySelector('.service-composer').textContent,/仅可查看/);
+ p.setData({serviceDetail:{staff:true,canDraft:false,appointment:{}},serviceFeedback:[{id:17,content:'合成反馈'}]});p.buildServiceTimeline();await tick();
  assert.equal(h.document.querySelector('.service-reply-button'),null);assert.equal(h.document.querySelector('.service-composer textarea'),null);
- assert.match(h.document.querySelector('.service-composer').textContent,/仅可查看和审核/);assert.deepEqual(h.errors,[]);
+ assert.match(h.document.querySelector('.service-composer').textContent,/仅可查看/);assert.deepEqual(h.errors,[]);
 });
-
-test('选择反馈后回复框可输入，保存携带反馈ID；审核设置独立展开且家长仍可发送',async()=>{
+test('老师沟通不再整理审核回复：长按反馈引用后直接发消息，家长也可长按引用老师回复',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
- p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {item:{id:52,revision:1}};};
- p.setData({serviceMode:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{}},serviceCanManage:true,serviceFeedback:[{id:17,content:'合成反馈'}],serviceLoading:false});p.buildServiceTimeline();await tick();
- h.document.querySelector('.service-reply-button').click();await tick();let input=h.document.querySelector('.service-composer textarea');assert.equal(input.disabled,false);
- input.value='合成回复';input.dispatchEvent(new h.Event('input'));await tick();h.document.querySelector('.service-composer .service-primary').click();await tick();
- assert.equal(calls[0].op,'SAVE_SERVICE_DRAFT');assert.equal(calls[0].payload.feedbackId,17);assert.equal(calls[0].payload.content,'合成回复');
- assert.equal(h.document.querySelector('.service-review-settings textarea'),null);h.document.querySelector('.service-settings-toggle').click();await tick();assert.ok(h.document.querySelector('.service-release input'));
- p.switchServiceTab({currentTarget:{dataset:{tab:'plan'}}});assert.equal(p.data.serviceReviewSettingsOpen,false);
- p.setData({serviceTab:'feedback',serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{}},serviceInput:'',serviceFeedback:[]});await tick();
- input=h.document.querySelector('.service-composer textarea');assert.equal(input.disabled,false);input.value='家长执行反馈';input.dispatchEvent(new h.Event('input'));await tick();h.document.querySelector('.service-composer .service-primary').click();await tick();
- assert.equal(calls[1].op,'SEND_SERVICE_FEEDBACK');assert.equal(calls[1].payload.content,'家长执行反馈');assert.equal(p.data.serviceInput,'');assert.deepEqual(h.errors,[]);
+ h.host.wx.showActionSheet=o=>o.success({tapIndex:0});
+ h.host.requireModule('utils/consultationService').call=async(op,payload)=>{calls.push({op,payload});return op==='SEND_CONSULTATION_MESSAGE'?{message:{id:10,content:'\u2063【引用】家长反馈：合成反馈\u2063\n'+payload.content,createdAt:'2026-10-20T06:00:00Z',senderRole:'teacher',isMine:true}}:{};};
+ p.serviceSelectedId=31;p.appointmentId=31;p.refreshServiceCase=async()=>{};p.dialogueIdentity=h.host.requireModule('utils/viewSession').capture();
+ p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {id:31};};
+ const draft={id:52,stage:'DRAFT',revision:1,kind:'REPLY',body:{content:'旧草稿'},history:[{role:'GENERAL',action:'CREATE',at:'2026-10-26T04:11:00Z'}]};
+ p.setData({serviceMode:true,serviceTab:'feedback',serviceCanManage:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:null}},canTalk:true,dialogueOpen:true,serviceFeedback:[{id:17,content:'合成反馈',createdAt:'2026-10-20T01:00:00Z',reply:draft}],serviceLoading:false});p.buildServiceTimeline();await tick();
+ const text=h.document.querySelector('.service-chat-content').textContent;
+ for(const gone of ['提交总监复核','还没有分配总监','编辑回复草稿','回复这条反馈','监护专员整理'])assert.ok(!text.includes(gone),gone);
+ assert.match(text,/家长看不到/);assert.equal(h.document.querySelector('.service-review-settings'),null);
+ h.document.querySelector('.service-chat-content .service-feedback-card').dispatchEvent(new h.Event('contextmenu',{bubbles:true,cancelable:true}));await tick();
+ assert.match(h.document.querySelector('.service-quote-bar').textContent,/家长反馈：合成反馈/);
+ const input=h.document.querySelector('.service-composer textarea');input.value='收到，我们这样做';input.dispatchEvent(new h.Event('input'));await tick();
+ h.document.querySelector('.service-composer .service-primary').click();await tick();await tick();
+ const sent=calls.find(c=>c.op==='SEND_CONSULTATION_MESSAGE');assert.equal(sent.payload.quoteKind,'feedback');assert.equal(String(sent.payload.quoteId),'17');assert.equal(sent.payload.content,'收到，我们这样做');
+ assert.equal(p.data.serviceQuote,null);assert.equal(h.document.querySelector('.service-quote-bar'),null);
+ const mine=p.data.serviceTimeline.find(t=>t.key==='dialogue-10');assert.equal(mine.quote,'家长反馈：合成反馈');assert.equal(mine.content,'收到，我们这样做');
+ // Parent: long-press an approved teacher reply and send feedback quoting it.
+ p.setData({serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{}},canTalk:true,serviceInput:'',serviceFeedback:[],dialogueMessages:[],serviceMessages:[{id:'reply-60',content:'审核后的老师回复',quote:'',quoteKind:'reply',quoteId:60,time:'2026-10-20T05:00:00Z',timeText:'晚',isReply:true}]});p.buildServiceTimeline();await tick();
+ h.document.querySelector('.service-chat-content .service-feedback-card').dispatchEvent(new h.Event('contextmenu',{bubbles:true,cancelable:true}));await tick();
+ assert.match(h.document.querySelector('.service-quote-bar').textContent,/老师回复：审核后的老师回复/);
+ const box=h.document.querySelector('.service-composer textarea');box.value='明白了';box.dispatchEvent(new h.Event('input'));await tick();h.document.querySelector('.service-composer .service-primary').click();await tick();
+ const fb=calls.find(c=>c.op==='SEND_SERVICE_FEEDBACK');assert.equal(fb.payload.quoteKind,'reply');assert.equal(String(fb.payload.quoteId),'60');assert.equal(p.data.serviceQuote,null);assert.deepEqual(h.errors,[]);
 });
-
 test('所有家长共用反馈模板：无审核与历史入口，单档案头像静态，档案页保留发送',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
  for(const parentId of ['1000000000000039','1000000000000060','1000000000000080']){
@@ -1100,30 +1111,31 @@ test('未登录家长经过微信OAuth仍回到原缴费链接，付款资格仍
  const login=new URL(h.context.location.href,'http://localhost');assert.equal(login.searchParams.get('action'),'login');assert.equal(login.searchParams.get('return'),'/web/#/pages/customer/customer?paymentLinkToken='+PAYMENT_LINK_TOKEN);
 });
 
-test('老师沟通打开即显示：家长反馈、老师公开回复与老师直接消息按时间合在一起，工作人员可直接发消息或改为审核回复',async()=>{
- const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
+test('老师沟通打开即显示：家长反馈、老师公开回复与老师直接消息按时间合在一起，工作人员直接发消息并看到家长已读',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
  p.serviceSelectedId=31;p.appointmentId=31;p.refreshServiceCase=async()=>{};
- p.setData({serviceMode:true,serviceTab:'feedback',serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{}},serviceLoading:false,canTalk:true,
+ p.setData({serviceMode:true,serviceTab:'feedback',serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{}},serviceLoading:false,canTalk:true,dialogueParentReadId:null,
   serviceMessages:[{id:'feedback-1',content:'家长第一条',time:'2026-10-20T01:00:00Z',timeText:'早'},{id:'reply-2',content:'审核后的老师回复',time:'2026-10-20T05:00:00Z',timeText:'晚',isReply:true}],
   dialogueMessages:[{id:9,content:'老师直接消息',createdAt:'2026-10-20T03:00:00Z',timeText:'中',senderRole:'teacher',isMine:false}]});p.buildServiceTimeline();await tick();
- const text=h.document.querySelector('.service-chat-content').textContent;assert.ok(text.indexOf('家长第一条')<text.indexOf('老师直接消息')&&text.indexOf('老师直接消息')<text.indexOf('审核后的老师回复'));
+ let text=h.document.querySelector('.service-chat-content').textContent;assert.ok(text.indexOf('家长第一条')<text.indexOf('老师直接消息')&&text.indexOf('老师直接消息')<text.indexOf('审核后的老师回复'));
+ assert.doesNotMatch(text,/已读|未读/,'家长看不到任何已读状态');
  assert.equal(h.document.querySelector('[data-tab="talk"]'),null);assert.match(h.document.querySelector('.service-composer .service-primary').textContent,/发送反馈/);
- // Staff: the composer sends a direct message by default; choosing a feedback card switches to the reviewed reply draft.
- h.host.requireModule('utils/consultationService').call=async(op,payload)=>{calls.push({op,payload});return op==='SEND_CONSULTATION_MESSAGE'?{message:{id:10,content:payload.content,createdAt:'2026-10-20T06:00:00Z',senderRole:'teacher',isMine:true}}:{};};
- p.setData({serviceDetail:{owner:false,staff:true,canDraft:true,appointment:{}},serviceFeedback:[{id:17,content:'合成反馈',createdAt:'2026-10-20T01:00:00Z'}],dialogueOpen:true});p.buildServiceTimeline();await tick();
- assert.match(h.document.querySelector('.service-composer-label').textContent,/直接给家长发消息/);
- h.document.querySelector('.service-reply-button').click();await tick();assert.match(h.document.querySelector('.service-composer-label').textContent,/回复所选家长反馈/);
- h.document.querySelector('.service-composer .service-secondary').click();await tick();assert.match(h.document.querySelector('.service-composer-label').textContent,/直接给家长发消息/);assert.deepEqual(h.errors,[]);
+ // Staff: only the direct-message composer; teacher messages show whether the parent has read them.
+ const approved={id:60,stage:'APPROVED',kind:'REPLY',availableAt:'2026-10-20T02:00:00Z',body:{content:'公开回复'}};
+ p.setData({serviceDetail:{owner:false,staff:true,canDraft:true,appointment:{},parentServiceReadAt:'2026-10-20T02:30:00Z'},serviceFeedback:[{id:17,content:'合成反馈',createdAt:'2026-10-20T01:00:00Z',reply:approved}],dialogueOpen:true,dialogueParentReadId:9,
+  dialogueMessages:[{id:9,content:'老师直接消息',createdAt:'2026-10-20T03:00:00Z',timeText:'中',senderRole:'teacher',isMine:true},{id:11,content:'第二条老师消息',createdAt:'2026-10-20T04:00:00Z',timeText:'晚',senderRole:'teacher',isMine:true},{id:12,content:'家长回话',createdAt:'2026-10-20T04:30:00Z',timeText:'晚',senderRole:'customer',isMine:false}]});p.buildServiceTimeline();await tick();
+ assert.match(h.document.querySelector('.service-composer-label').textContent,/直接给家长发消息/);assert.equal(h.document.querySelector('.service-reply-button'),null);
+ const states=[...h.document.querySelectorAll('.service-read-state')].map(e=>e.textContent.trim());assert.deepEqual(states,['家长已读','家长已读','家长未读']);
+ p.setData({dialogueParentReadId:11});p.buildServiceTimeline();await tick();
+ assert.deepEqual([...h.document.querySelectorAll('.service-read-state')].map(e=>e.textContent.trim()),['家长已读','家长已读','家长已读']);assert.deepEqual(h.errors,[]);
 });
-
-test('档案未分配总监时不显示提交总监复核，改为提示；不在孩子页提供分配入口，分配后恢复提交按钮',async()=>{
- const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
- p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {items:[{id:7,display_name:'合成监护',service_kind:'STAFF'},{id:8,display_name:'合成总监',review_role:'DIRECTOR'}]};};
- const draft={id:52,stage:'DRAFT',revision:1,kind:'REPLY',body:{content:'草稿'},history:[]};
- p.setData({serviceMode:true,serviceTab:'feedback',serviceCanManage:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:null}},serviceFeedback:[{id:17,content:'合成反馈',createdAt:'2026-10-20T01:00:00Z',reply:draft}],serviceLoading:false});p.buildServiceTimeline();await tick();
+test('方案审核仍按总监分配控制提交；不在孩子页提供分配入口，分配后恢复提交按钮',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
+ p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};
+ const plan={id:52,stage:'DRAFT',revision:1,kind:'PLAN',body:{summary:'方案草稿'},history:[]};
+ p.setData({serviceMode:true,serviceTab:'plan',serviceCanManage:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:null}},servicePlan:plan,serviceFeedback:[],serviceLoading:false});await tick();
  let text=h.document.querySelector('.service-chat-content').textContent;assert.doesNotMatch(text,/提交总监复核/);assert.match(text,/还没有分配总监/);
  assert.equal(h.document.querySelector('.review-hint button'),null);assert.match(h.document.querySelector('.review-hint').textContent,/我的 → 工作台 → 服务管理/);assert.equal(p.openServiceAssignment,undefined);
- p.setData({serviceAssignOpen:false,serviceCanManage:false});await tick();assert.equal(h.document.querySelector('.review-hint button'),null);assert.match(h.document.querySelector('.review-hint').textContent,/请由总管/);
  p.setData({serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:8}}});await tick();text=h.document.querySelector('.service-chat-content').textContent;assert.match(text,/提交总监复核/);assert.equal(h.document.querySelector('.review-hint'),null);assert.deepEqual(h.errors,[]);
 });
 test('聊天档案保留审核筛选与内容标签，不显示服务管理和人员分配表单',async()=>{

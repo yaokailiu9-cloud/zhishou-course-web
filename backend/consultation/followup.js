@@ -65,15 +65,16 @@ if(op==="GET_CONSULTATION_DIALOGUE") {
     var newer=gql("query DialogueNewRows($where:consultation_feedback_bool_exp!){rows: consultation_feedback(where:$where,order_by:{id:asc},limit: 21){"+fields+"}}",{where:and(scope,compare("_gt","id",id(p.afterId)))}).rows||[];
     var more=newer.length>20;newer=newer.slice(0,20);
     if(newer.length)markDialogueRead(a,newer[newer.length-1].id);
-    result(s,{messages:newer.map(function(row){return dialogueMessage(a,row);}),hasMoreNewer:more});
+    result(s,Object.assign({messages:newer.map(function(row){return dialogueMessage(a,row);}),hasMoreNewer:more},parentReadState(a)));
   } else {
     var page=pageRows("consultation_feedback",scope,fields,p.beforeId,20,true);
     if(!p.beforeId && page.items.length)markDialogueRead(a,page.items[0].id);
-    result(s,{messages:page.items.reverse().map(function(row){return dialogueMessage(a,row);}),nextCursor:page.nextCursor});
+    result(s,Object.assign({messages:page.items.reverse().map(function(row){return dialogueMessage(a,row);}),nextCursor:page.nextCursor},parentReadState(a)));
   }
 }
 if(op==="SEND_CONSULTATION_MESSAGE") {
   var a=dialogueAppointment(),key=requestKey(s,"dialogue:"+a.id),content=text(p.content,"消息",6000,true);
+  if(content.indexOf(QUOTE_MARK)>=0)fail("消息包含无效字符");content=dialogueQuote(a)+content;
   insert("consultation_feedback",{request_key:key,appointment_id:a.id,author_id:s.actor.accountId,advice_key:"__consultation_dialogue__",content:content,status:"REPLIED"},"consultation_feedback_request_key");
   var saved=list("consultation_feedback",and(eq("request_key",key,"text"),eq("appointment_id",a.id),eq("author_id",s.actor.accountId)),"id created_at author_id content",1)[0];
   if(!saved)fail("消息发送失败，请重试");

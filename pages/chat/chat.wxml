@@ -14,26 +14,13 @@
   <scroll-view id="service-message-scroll" scroll-y class="service-chat-content" scroll-into-view="{{serviceFeedbackScrollTarget}}" bindscroll="onServiceFeedbackScroll"><view id="service-content-top"></view>
    <block wx:if="{{serviceTab === 'feedback'}}">
     <view wx:if="{{serviceFeedbackCursor || dialogueCursor}}" class="service-more"><button disabled="{{serviceBusy || dialogueLoading}}" bindtap="moreServiceTimeline">查看更早消息</button></view>
-    <view wx:if="{{!serviceTimeline.length && !dialogueLoading}}" class="service-empty service-feedback-empty"><text class="service-empty-mark">信</text><text class="service-empty-title">还没有沟通记录</text><text class="service-empty-description">{{serviceDetail.owner ? '可以在下方填写孩子的执行情况，或向老师反馈问题。' : '家长的反馈和消息会显示在这里。可以直接给家长发消息，或选择一条反馈整理回复并提交审核。'}}</text><button wx:if="{{serviceDetail.canDraft}}" class="service-empty-action" data-tab="plan" bindtap="switchServiceTab">先去整理方案 ›</button></view>
+    <view wx:if="{{!serviceTimeline.length && !dialogueLoading}}" class="service-empty service-feedback-empty"><text class="service-empty-mark">信</text><text class="service-empty-title">还没有沟通记录</text><text class="service-empty-description">{{serviceDetail.owner ? '可以在下方填写孩子的执行情况，或向老师反馈问题。' : '家长的反馈和消息会显示在这里，可以直接在下方给家长发消息。'}}</text></view>
     <block wx:for="{{serviceTimeline}}" wx:key="key">
-    <view wx:if="{{item.kind === 'dialogue'}}" class="service-feedback-card service-feedback-message talk-message {{item.isMine ? 'mine-message' : ''}} {{item.isTeacher ? 'teacher-message' : ''}}"><view class="service-message-head"><text><text wx:if="{{item.isNew}}" class="service-new-tag">新</text>{{item.label}}</text><text>{{item.timeText}}</text></view><text class="service-message-body">{{item.content}}</text></view>
-    <view wx:elif="{{item.kind === 'message'}}" class="service-feedback-card service-feedback-message {{item.isReply ? 'teacher-message' : ''}}"><view class="service-message-head"><text>{{item.isReply ? '老师回复' : '我的反馈'}}</text><text>{{item.timeText}}</text></view><text class="service-message-body">{{item.content}}</text></view>
-    <view wx:else class="service-feedback-card {{item.id === serviceDraftFeedbackId ? 'service-feedback-selected' : ''}}">
-     <view class="service-message-head"><text>家长反馈</text><text>{{item.timeText}}</text></view><text class="service-message-body">{{item.content}}</text>
-     <view wx:if="{{item.reply && (serviceDetail.staff || item.reply.body)}}" class="service-reply"><text class="service-message-head">{{item.reply.body ? '老师回复' : '老师正在处理'}}</text><text wx:if="{{item.reply.body}}" class="service-message-body">{{item.reply.body.content}}</text>
-     <view wx:if="{{serviceDetail.staff}}" class="review-flow"><text>监护专员整理</text><text>›</text><text>总监复核</text><text>›</text><text>总管终审</text></view>
-<view wx:if="{{serviceDetail.staff}}" class="review-status"><text>{{item.reply.stageText}}</text><text wx:if="{{item.reply.availableText}}">{{item.reply.availableText}} 可见</text></view>
-<block wx:if="{{serviceDetail.staff}}">
- <view class="review-actions">
-  <button wx:if="{{item.reply.stage === 'DRAFT' && serviceDetail.appointment.director_id}}" data-id="{{item.reply.id}}" data-action="SUBMIT" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">提交总监复核</button><view wx:if="{{item.reply.stage === 'DRAFT' && !serviceDetail.appointment.director_id}}" class="review-hint"><text>本档案还没有分配总监，暂时不能提交复核。</text><text>请由总管前往「我的 → 工作台 → 服务管理」安排。</text></view>
-  <button wx:if="{{item.reply.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || item.reply.stage === 'GENERAL' && serviceCanManage}}" data-id="{{item.reply.id}}" data-action="APPROVE" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">{{item.reply.stage === 'GENERAL' ? '终审通过' : '复核通过'}}</button>
-  <button wx:if="{{item.reply.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || item.reply.stage === 'GENERAL' && serviceCanManage}}" data-id="{{item.reply.id}}" data-action="RETURN" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">退回修改</button>
-  <button wx:if="{{item.reply.kind === 'PLAN' && (item.reply.stage === 'DIRECTOR' && serviceRole === 'DIRECTOR' || item.reply.stage === 'GENERAL' && serviceCanManage)}}" data-id="{{item.reply.id}}" data-action="SUPPLEMENT" disabled="{{serviceBusy}}" bindtap="reviewServiceItem">让家长补充信息</button>
- </view>
- <view wx:for="{{item.reply.history}}" wx:for-item="log" wx:key="at" class="review-history"><text>{{log.roleText}} · {{log.actionText}} · {{log.timeText}}</text><text wx:if="{{log.note}}">{{log.note}}</text></view>
-</block>
-     </view>
-     <button wx:if="{{serviceDetail.canDraft && (!item.reply || item.reply.stage === 'DRAFT')}}" class="service-reply-button" data-id="{{item.id}}" bindtap="selectServiceReply">{{item.reply ? '编辑回复草稿' : '回复这条反馈'}}</button>
+    <view wx:if="{{item.kind === 'dialogue'}}" class="service-feedback-card service-feedback-message talk-message {{item.isMine ? 'mine-message' : ''}} {{item.isTeacher ? 'teacher-message' : ''}}" data-key="{{item.key}}" data-kind="dialogue" data-id="{{item.id}}" bindlongpress="quoteServiceItem"><view class="service-message-head"><text><text wx:if="{{item.isNew}}" class="service-new-tag">新</text>{{item.label}}</text><text>{{item.timeText}}</text></view><view wx:if="{{item.quote}}" class="service-quote"><text>{{item.quote}}</text></view><text class="service-message-body">{{item.content}}</text><text wx:if="{{item.readText}}" class="service-read-state {{item.read ? 'read' : ''}}">{{item.readText}}</text></view>
+    <view wx:elif="{{item.kind === 'message'}}" class="service-feedback-card service-feedback-message {{item.isReply ? 'teacher-message' : ''}}" data-key="{{item.key}}" data-kind="{{item.quoteKind}}" data-id="{{item.quoteId}}" bindlongpress="quoteServiceItem"><view class="service-message-head"><text>{{item.isReply ? '老师回复' : '我的反馈'}}</text><text>{{item.timeText}}</text></view><view wx:if="{{item.quote}}" class="service-quote"><text>{{item.quote}}</text></view><text class="service-message-body">{{item.content}}</text></view>
+    <view wx:else class="service-feedback-card" data-key="{{item.key}}" data-kind="feedback" data-id="{{item.id}}" bindlongpress="quoteServiceItem">
+     <view class="service-message-head"><text>家长反馈</text><text>{{item.timeText}}</text></view><view wx:if="{{item.quote}}" class="service-quote"><text>{{item.quote}}</text></view><text class="service-message-body">{{item.content}}</text>
+     <view wx:if="{{item.reply.body.content}}" class="service-reply" data-key="{{item.key}}" data-kind="reply" data-id="{{item.reply.id}}" catchlongpress="quoteServiceItem"><text class="service-message-head">{{item.replyShown ? '老师回复' : '未发出的回复草稿 · 家长看不到'}}</text><text class="service-message-body">{{item.reply.body.content}}</text><text wx:if="{{item.readText}}" class="service-read-state {{item.read ? 'read' : ''}}">{{item.readText}}</text></view>
     </view>
     </block>
    </block>
@@ -85,7 +72,7 @@
      <block wx:if="{{serviceDetail.owner && servicePlan.stage === 'SUPPLEMENT'}}"><textarea maxlength="6000" placeholder="按老师要求补充信息" value="{{serviceInput}}" bindinput="inputService" /><button class="service-primary" disabled="{{serviceBusy}}" bindtap="supplementServiceCase">提交补充信息</button></block>
     </view>
    </block>
-   <view wx:if="{{serviceDetail.staff && (serviceTab === 'plan' && servicePlan || serviceTab === 'feedback' && serviceFeedback.length)}}" class="service-panel service-review-settings">
+   <view wx:if="{{serviceDetail.staff && serviceTab === 'plan' && servicePlan}}" class="service-panel service-review-settings">
     <button class="service-settings-toggle" aria-expanded="{{serviceReviewSettingsOpen}}" bindtap="toggleServiceReviewSettings"><view><text>审核设置</text><text>退回说明{{serviceCanManage ? ' · 家长可见时间' : ''}}</text></view><text>{{serviceReviewSettingsOpen ? '收起 −' : '展开 +'}}</text></button>
     <block wx:if="{{serviceReviewSettingsOpen}}">
      <text class="service-field-label">退回 / 补充说明</text><textarea aria-label="退回或补充说明" placeholder="填写原因或需要补充的信息" value="{{serviceNote}}" data-field="serviceNote" bindinput="inputService" maxlength="2000" /><text class="service-field-help">退回修改或要求补充时必填。</text>
@@ -95,17 +82,17 @@
    <view id="service-feedback-end" class="service-feedback-end"></view>
   </scroll-view>
   <view wx:if="{{(serviceTab === 'feedback' || serviceDetail.owner && serviceTab === 'archive')}}" class="service-composer">
-   <block wx:if="{{serviceDetail.owner || serviceDetail.canDraft && serviceDraftFeedbackId}}">
-    <view class="service-composer-head"><text class="service-composer-label">{{serviceDetail.owner ? '反馈给老师' : '回复所选家长反馈 · 保存后需提交审核'}}</text><button wx:if="{{!serviceDetail.owner && canTalk}}" class="service-secondary" disabled="{{serviceBusy}}" bindtap="cancelServiceReply">改为直接发消息</button></view>
-    <block wx:if="{{!serviceDetail.owner}}"><block wx:for="{{serviceFeedback}}" wx:key="id"><text wx:if="{{item.id === serviceDraftFeedbackId}}" class="service-composer-quote">{{item.content}}</text></block></block>
-    <view class="service-composer-actions"><textarea aria-label="{{serviceDetail.owner ? '家长反馈内容' : '回复草稿内容'}}" auto-height maxlength="6000" value="{{serviceInput}}" placeholder="{{serviceDetail.owner ? '填写执行情况，或想反馈的问题…' : '填写给家长的回复…'}}" bindinput="inputService" disabled="{{serviceBusy}}" /><button class="service-primary" disabled="{{serviceBusy || !serviceInput}}" bindtap="{{serviceDetail.owner ? 'sendServiceFeedback' : 'saveServiceDraft'}}">{{serviceDetail.owner ? '发送反馈' : '保存草稿'}}</button></view>
+   <view wx:if="{{serviceQuote && (serviceDetail.owner || serviceTab === 'feedback' && canTalk)}}" class="service-quote-bar"><text>{{serviceQuote.label}}：{{serviceQuote.text}}</text><button aria-label="取消引用" bindtap="clearServiceQuote">×</button></view>
+   <block wx:if="{{serviceDetail.owner}}">
+    <view class="service-composer-head"><text class="service-composer-label">反馈给老师</text></view>
+    <view class="service-composer-actions"><textarea aria-label="家长反馈内容" auto-height maxlength="6000" value="{{serviceInput}}" placeholder="填写执行情况，或想反馈的问题…" bindinput="inputService" disabled="{{serviceBusy}}" /><button class="service-primary" disabled="{{serviceBusy || !serviceInput}}" bindtap="sendServiceFeedback">发送反馈</button></view>
    </block>
    <block wx:elif="{{serviceTab === 'feedback' && canTalk}}">
-    <text class="service-composer-label">直接给家长发消息</text>
+    <text class="service-composer-label">直接给家长发消息 · 长按消息可引用</text>
     <text wx:if="{{dialogueError}}" class="service-composer-error">{{dialogueError}}</text>
     <view class="service-composer-actions"><textarea aria-label="给家长的消息" auto-height maxlength="6000" value="{{dialogueContent}}" placeholder="给家长发消息…" bindinput="inputDialogue" disabled="{{dialogueSending}}" /><button class="service-primary" loading="{{dialogueSending}}" disabled="{{dialogueSending || !dialogueContent}}" bindtap="sendServiceDialogue">发送</button></view>
    </block>
-   <view wx:else class="service-composer-notice"><text>{{!serviceDetail.canDraft ? '当前账号仅可查看和审核反馈' : !serviceFeedback.length ? '等待家长提交反馈' : '先选择一条反馈，再整理回复'}}</text><text>{{!serviceDetail.canDraft ? '回复由有权限的工作人员整理。' : !serviceFeedback.length ? '收到反馈后，即可在这里回复。' : '点击反馈卡片上的「回复这条反馈」或「编辑回复草稿」。'}}</text></view>
+   <view wx:else class="service-composer-notice"><text>当前账号仅可查看这个孩子的沟通记录</text><text>需要回复家长时，请由负责老师直接发消息。</text></view>
   </view>
  </block>
  <view wx:if="{{serviceDrawer}}" class="service-drawer-root"><view class="service-drawer-mask" bindtap="closeServiceDrawer"></view><view class="service-drawer">

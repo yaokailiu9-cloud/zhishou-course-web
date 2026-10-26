@@ -1,6 +1,8 @@
 const service=require('./consultationService');
 const viewSession=require('./viewSession');
-const data={canTalk:false,dialogueUnread:0,dialogueOpen:false,dialogueMessages:[],dialogueCursor:null,dialogueLoading:false,dialogueSending:false,dialogueContent:'',dialogueError:''};
+// The backend stores a WeChat-style quote ahead of the message between invisible U+2063 markers.
+function splitQuote(value){const text=String(value==null?'':value),m=/^\u2063【引用】([\s\S]*?)\u2063\n/.exec(text);return m?{quote:m[1],content:text.slice(m[0].length)}:{quote:'',content:text};}
+const data={canTalk:false,dialogueParentReadId:null,dialogueUnread:0,dialogueOpen:false,dialogueMessages:[],dialogueCursor:null,dialogueLoading:false,dialogueSending:false,dialogueContent:'',dialogueError:''};
 function active(page,identity,generation){return !page.unloaded&&!page.hidden&&page.data.dialogueOpen&&page.data.canTalk&&viewSession.current(identity)&&generation===page.dialogueGeneration;}
 const methods={
  syncDialogue(){
@@ -19,7 +21,7 @@ const methods={
  inputDialogue(e){this.dialogueEditVersion=(this.dialogueEditVersion||0)+1;this.setData({dialogueContent:e.detail.value});},
  mergeDialogue(messages){
   const rows=new Map(this.data.dialogueMessages.map(row=>[String(row.id),row]));
-  for(const message of messages||[])rows.set(String(message.id),{...message,timeText:service.formatTime(message.createdAt),senderLabel:message.senderRole==='teacher'?'老师':'学生/家长',isNew:!message.isMine&&this.dialogueSeenId!=null&&Number(message.id)>Number(this.dialogueSeenId)});
+  for(const message of messages||[])rows.set(String(message.id),{...message,...splitQuote(message.content),timeText:service.formatTime(message.createdAt),senderLabel:message.senderRole==='teacher'?'老师':'学生/家长',isNew:!message.isMine&&this.dialogueSeenId!=null&&Number(message.id)>Number(this.dialogueSeenId)});
   this.setData({dialogueMessages:[...rows.values()].sort((a,b)=>Number(a.id)-Number(b.id))});
  },
  refreshDialogue(){return this.loadDialogue(this.dialogueAfterId?'poll':'initial');},
@@ -33,6 +35,8 @@ const methods={
    const params={appointmentId:this.appointmentId,...(mode==='more'?{beforeId:this.data.dialogueCursor}:mode==='poll'&&this.dialogueAfterId?{afterId:this.dialogueAfterId}:{})};
    const result=await service.call('GET_CONSULTATION_DIALOGUE',params);
    if(!active(this,identity,generation))return;
+   // Staff only: how far the parent has read. Parents never receive any staff read state.
+   if(result.parentReadId!=null)this.setData({dialogueParentReadId:Number(result.parentReadId)||0});
    this.mergeDialogue(result.messages);const rows=result.messages||[];if(mode!=='more'&&rows.length)this.dialogueAfterId=rows[rows.length-1].id;
    this.setData({dialogueError:'',...(mode==='more'?{}:{dialogueUnread:0}),...(mode==='poll'?{}:{dialogueCursor:result.nextCursor||null})});
   }catch(error){if(active(this,identity,generation))this.setData({dialogueError:error.message||'对话读取失败，请重试'});}
@@ -44,17 +48,19 @@ const methods={
   const content=String(this.data.dialogueContent||'').trim();
   if(!content||content.length>6000){this.setData({dialogueError:content?'消息最多6000字':'请填写消息内容'});return;}
   const identity=this.dialogueIdentity,generation=this.dialogueGeneration,version=this.dialogueEditVersion||0;
-  if(!this.dialoguePending||this.dialoguePending.content!==content)this.dialoguePending={content,key:service.requestKey()};
+  const quote=this.data.serviceQuote||null,quoteKey=quote?quote.kind+':'+quote.id:'';
+  if(!this.dialoguePending||this.dialoguePending.content!==content||this.dialoguePending.quoteKey!==quoteKey)this.dialoguePending={content,quoteKey,key:service.requestKey()};
   const pending=this.dialoguePending;this.setData({dialogueSending:true,dialogueError:''});
   try{
-   const saved=await service.call('SEND_CONSULTATION_MESSAGE',{appointmentId:this.appointmentId,content,requestKey:pending.key});
+   const saved=await service.call('SEND_CONSULTATION_MESSAGE',{appointmentId:this.appointmentId,content,requestKey:pending.key,...(quote?{quoteKind:quote.kind,quoteId:quote.id}:{})});
    if(!viewSession.current(identity)||this.unloaded||generation!==this.dialogueGeneration)return;
    this.dialoguePending=null;
    if(saved.message)this.mergeDialogue([saved.message]);
+   if(quote)this.setData({serviceQuote:null});
    if((this.dialogueEditVersion||0)===version)this.setData({dialogueContent:''});
    this.setData({dialogueError:''});
   }catch(error){if(viewSession.current(identity)&&!this.unloaded&&generation===this.dialogueGeneration)this.setData({dialogueError:'发送未确认，内容已保留。可刷新对话后重试。'});}
   finally{if(viewSession.current(identity)&&!this.unloaded&&generation===this.dialogueGeneration)this.setData({dialogueSending:false});}
  }
 };
-module.exports={data,methods};
+module.exports={data,methods,splitQuote};
