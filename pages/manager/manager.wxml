@@ -17,6 +17,8 @@
       <text class="hero-copy">当前绑定客户的服务状态如下。</text>
     </view>
 
+    <view class="workbench-tip"><text>服务管理</text><text>统一安排总监、监护专员和方案信息。</text><button class="primary-action" bindtap="goServiceManagement">进入服务管理</button></view>
+
     <view class="stats-grid stats-grid-compact">
       <view wx:for="{{stats}}" wx:key="label" class="stat-card">
         <text class="stat-value">{{item.value}}</text>
@@ -147,7 +149,7 @@
       <text class="customer-service-desc">公开课报名、线下预约与咨询跟进</text>
     </view>
     <view class="customer-service-actions">
-      <button class="primary-action" bindtap="goOfflineWorkbench">服务管理</button>
+      <button class="primary-action" bindtap="goOfflineWorkbench">公开课与线下咨询</button>
       <button class="ghost-action" bindtap="goCustomerPortal">进入客户端</button>
     </view>
   </view>

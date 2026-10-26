@@ -1,0 +1,32 @@
+<view class="service-page management-page">
+ <view class="service-hero"><text class="page-title">服务管理</text><text class="muted">统一安排服务人员与方案信息。</text></view>
+ <view wx:if="{{error}}" class="error" role="alert"><text>{{error}}</text><button wx:if="{{!allowed}}" bindtap="load">重新核实身份</button></view>
+ <text wx:if="{{loading}}" class="muted">正在核实总管身份…</text>
+ <block wx:if="{{allowed}}">
+  <block wx:if="{{!selected}}">
+   <button class="text-button" bindtap="openPermissions">工作人员身份管理 ›</button>
+   <input aria-label="查找孩子或家长" placeholder="查找孩子、家长或档案编号" value="{{search}}" bindinput="searchCases" />
+   <view wx:for="{{filteredCases}}" wx:key="id" class="assignment-row"><view class="row"><text class="card-title">{{item.childName}}</text><text class="muted">{{item.parentName}}</text></view><text class="body">总监：{{item.directorName || '待分配'}}</text><text class="muted">监护专员：{{item.guardianName || '暂未分配'}}</text><button class="secondary" disabled="{{busy}}" data-id="{{item.id}}" bindtap="selectCase">管理服务分配</button></view>
+   <view wx:if="{{!filteredCases.length}}" class="empty">{{nextCursor ? '当前已加载档案中没有匹配项，可继续加载。' : '暂无符合条件的孩子档案。'}}</view>
+   <button wx:if="{{nextCursor}}" class="secondary" loading="{{busy}}" disabled="{{busy}}" bindtap="more">加载更多档案</button>
+  </block>
+  <block wx:else>
+   <button class="text-button" disabled="{{busy}}" bindtap="closeCase">‹ 返回服务管理列表</button>
+   <text class="section-title">{{selected.childName}} · 服务分配</text>
+   <text class="muted">家长：{{selected.parentName}}</text>
+   <text wx:if="{{busy && !appointment}}" class="muted">正在读取当前服务安排…</text>
+   <view wx:if="{{appointment}}" class="assignment-form">
+    <text class="field-label">监护专员</text><picker range="{{guardians}}" range-key="display_name" value="{{guardianIndex}}" data-field="guardianIndex" bindchange="changeStaff" disabled="{{busy}}"><view class="picker-field">{{guardians[guardianIndex].display_name}} ⌄</view></picker>
+    <text class="field-label">总监</text><picker range="{{directors}}" range-key="display_name" value="{{directorIndex}}" data-field="directorIndex" bindchange="changeStaff" disabled="{{busy}}"><view class="picker-field">{{directors[directorIndex].display_name || '请先授权总监'}} ⌄</view></picker>
+    <text wx:if="{{!directors.length}}" class="muted">暂无可分配总监，请先在工作人员身份管理中设置。</text>
+    <text class="field-label">方案等级</text><picker range="{{levels}}" value="{{levelIndex}}" bindchange="changeLevel" disabled="{{busy}}"><view class="picker-field">{{meta.level || '暂不设置'}} ⌄</view></picker>
+    <text class="field-label">副等级</text><input aria-label="副等级" value="{{meta.subLevel}}" data-field="subLevel" bindinput="changeMeta" maxlength="30" disabled="{{busy}}" />
+    <text class="field-label">方案阶段</text><input aria-label="方案阶段" value="{{meta.phase}}" data-field="phase" bindinput="changeMeta" maxlength="60" disabled="{{busy}}" />
+    <text class="field-label">危险因素</text><textarea aria-label="危险因素" value="{{meta.danger}}" data-field="danger" bindinput="changeMeta" maxlength="2000" disabled="{{busy}}" />
+    <text class="field-label">方案备忘录</text><textarea aria-label="方案备忘录" value="{{meta.memo}}" data-field="memo" bindinput="changeMeta" maxlength="4000" disabled="{{busy}}" />
+    <view class="row priority-row"><text>标记重点</text><switch aria-label="标记重点" checked="{{meta.priority}}" bindchange="changePriority" disabled="{{busy}}" /></view>
+    <button class="primary" loading="{{busy}}" disabled="{{busy || !directors.length}}" bindtap="save">保存服务分配</button>
+   </view>
+  </block>
+ </block>
+</view>

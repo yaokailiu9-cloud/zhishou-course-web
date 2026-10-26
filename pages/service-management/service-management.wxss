@@ -1,0 +1,13 @@
+@import "../../styles/consultation-components.wxss";
+.management-page .service-hero{margin-bottom:32rpx;}
+.assignment-row{padding:32rpx 0;border-bottom:1rpx solid #d9e2df;}
+.assignment-row .body,.assignment-row .muted{display:block;margin-top:12rpx;}
+.assignment-row button{margin-top:20rpx;}
+.assignment-form{margin-top:28rpx;}
+.assignment-form .field-label{display:block;margin-top:28rpx;margin-bottom:12rpx;}
+.assignment-form input,.assignment-form textarea{box-sizing:border-box;width:100%;}
+.priority-row{margin:32rpx 0;min-height:88rpx;}
+.management-page input,.management-page textarea{padding:22rpx;border:1rpx solid #d9e2df;border-radius:12rpx;background:#fcfcfa;color:#143832;}
+.management-page input{min-height:88rpx;}
+.management-page textarea{min-height:180rpx;}
+.management-page input:focus,.management-page textarea:focus{outline:2rpx solid #42645a;outline-offset:2rpx;}

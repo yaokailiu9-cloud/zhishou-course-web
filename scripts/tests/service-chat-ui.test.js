@@ -50,19 +50,7 @@ test('工作台或我的方案指定档案后，聊天直接打开该档案',asy
  const h=harness();h.wx.storage.serviceChatCaseId='32';h.service.call=async(op,payload)=>op==='SERVICE_CHAT_OVERVIEW'?{staff:true,cases:[{id:31,childName:'甲'},{id:32,childName:'乙'}]}:op==='GET_SERVICE_CASE'?{staff:true,appointment:{id:payload.appointmentId,child_info:{}},feedback:[]}:{};
  await h.p.loadServiceChat();assert.equal(h.p.data.serviceActive.id,32);assert.equal(h.wx.storage.serviceChatCaseId,undefined);
 });
-test('服务管理可暂不分配监护专员：默认选中“暂不分配”，只分配总监时提交空的监护专员；已有监护专员时预选并提交',async()=>{
- const h=harness();const staff=[{id:7,display_name:'监护甲',service_kind:'GUARDIAN'},{id:8,display_name:'总监乙',service_kind:'STAFF',review_role:'DIRECTOR'},{id:9,display_name:'代理丙',service_kind:'AGENT'}];
- h.service.call=async(op,payload)=>{h.calls.push({op,payload});return op==='LIST_SERVICE_STAFF'?{items:staff}:{};};
- h.p.refreshServiceCase=async()=>{};h.p.scrollServiceContentToTop=()=>{};
- h.p.data.serviceDetail={appointment:{id:31,guardian_id:null,director_id:null,updated_at:'t1'}};
- await h.p.openServiceAssignment();
- assert.deepEqual(Array.from(h.p.data.serviceGuardians,g=>g.display_name),['暂不分配监护专员','监护甲','总监乙']);assert.equal(h.p.data.serviceGuardianIndex,0);
- h.p.data.serviceDirectorIndex=0;await h.p.saveServiceAssignment();
- const save=h.calls.find(c=>c.op==='ASSIGN_SERVICE_CASE');assert.equal(save.payload.guardianId,null);assert.equal(save.payload.directorId,8);
- h.calls.length=0;h.p.data.serviceDetail={appointment:{id:31,guardian_id:7,director_id:8,updated_at:'t2'}};await h.p.openServiceAssignment();assert.equal(h.p.data.serviceGuardianIndex,1);
- await h.p.saveServiceAssignment();assert.equal(h.calls.find(c=>c.op==='ASSIGN_SERVICE_CASE').payload.guardianId,7);
- h.calls.length=0;h.p.data.serviceDirectors=[];await h.p.saveServiceAssignment();assert.equal(h.calls.length,0);assert.match(h.p.data.serviceError,/授权总监/);
-});
+test('孩子沟通页不再承载人员分配操作',()=>{const h=harness();assert.equal(h.p.openServiceAssignment,undefined);assert.equal(h.p.saveServiceAssignment,undefined);});
 test('档案头像显示其他档案的新消息数，列表把有新消息的档案排前并标出发送家长，打开后清零',async()=>{
  const h=harness();h.p.serviceSelectedId=null;
  h.service.call=async op=>op==='SERVICE_CHAT_OVERVIEW'?{staff:true,unreadTotal:5,cases:[{id:31,childName:'甲',unread:2,latest:'甲家长消息',latestFrom:'甲妈妈（家长）'},{id:30,childName:'乙',unread:3,latest:'乙家长消息',latestFrom:'乙爸爸（家长）'},{id:32,childName:'丙',unread:0}]}:{owner:false,staff:true,unread:0,appointment:{id:31,child_info:{}},feedback:[]};

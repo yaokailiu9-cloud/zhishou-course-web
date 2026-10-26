@@ -205,6 +205,10 @@ Page({
     wx.switchTab({ url: "/pages/profile/profile" });
   },
 
+  goServiceManagement() {
+    wx.navigateTo({ url: "/pages/service-management/service-management" });
+  },
+
   goOfflineWorkbench() {
     wx.navigateTo({ url: "/pages/service-workbench/service-workbench" });
   },

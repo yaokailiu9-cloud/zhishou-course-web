@@ -1116,17 +1116,17 @@ test('老师沟通打开即显示：家长反馈、老师公开回复与老师�
  h.document.querySelector('.service-composer .service-secondary').click();await tick();assert.match(h.document.querySelector('.service-composer-label').textContent,/直接给家长发消息/);assert.deepEqual(h.errors,[]);
 });
 
-test('档案未分配总监时不显示提交总监复核，改为提示；总管可直接去服务管理分配，分配后恢复提交按钮',async()=>{
+test('档案未分配总监时不显示提交总监复核，改为提示；不在孩子页提供分配入口，分配后恢复提交按钮',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
  p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {items:[{id:7,display_name:'合成监护',service_kind:'STAFF'},{id:8,display_name:'合成总监',review_role:'DIRECTOR'}]};};
  const draft={id:52,stage:'DRAFT',revision:1,kind:'REPLY',body:{content:'草稿'},history:[]};
  p.setData({serviceMode:true,serviceTab:'feedback',serviceCanManage:true,serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:null}},serviceFeedback:[{id:17,content:'合成反馈',createdAt:'2026-10-20T01:00:00Z',reply:draft}],serviceLoading:false});p.buildServiceTimeline();await tick();
  let text=h.document.querySelector('.service-chat-content').textContent;assert.doesNotMatch(text,/提交总监复核/);assert.match(text,/还没有分配总监/);
- h.document.querySelector('.review-hint button').click();await tick();assert.equal(calls[0].op,'LIST_SERVICE_STAFF');assert.equal(p.data.serviceAssignOpen,true);
- p.setData({serviceAssignOpen:false,serviceCanManage:false});await tick();assert.equal(h.document.querySelector('.review-hint button'),null);assert.match(h.document.querySelector('.review-hint').textContent,/请联系总管/);
+ assert.equal(h.document.querySelector('.review-hint button'),null);assert.match(h.document.querySelector('.review-hint').textContent,/我的 → 工作台 → 服务管理/);assert.equal(p.openServiceAssignment,undefined);
+ p.setData({serviceAssignOpen:false,serviceCanManage:false});await tick();assert.equal(h.document.querySelector('.review-hint button'),null);assert.match(h.document.querySelector('.review-hint').textContent,/请由总管/);
  p.setData({serviceDetail:{staff:true,canDraft:true,appointment:{id:31,director_id:8}}});await tick();text=h.document.querySelector('.service-chat-content').textContent;assert.match(text,/提交总监复核/);assert.equal(h.document.querySelector('.review-hint'),null);assert.deepEqual(h.errors,[]);
 });
-test('聊天档案：筛选标签与内容标签只高亮当前项，「标记重点」开关在网页可见并可切换',async()=>{
+test('聊天档案保留审核筛选与内容标签，不显示服务管理和人员分配表单',async()=>{
   const h=await host({fetch:sessionFetch({id:'1000000000000019',name:'刘曜恺'},MANAGER_PROVIDER),location:{hash:'#/pages/chat/chat'}});await tick();
   const page=h.host.current;assert.equal(page.route,'pages/chat/chat');
   const detail={staff:true,owner:false,canDraft:true,appointment:{id:31,contact_name:'王女士',director_id:9}};
@@ -1135,12 +1135,8 @@ test('聊天档案：筛选标签与内容标签只高亮当前项，「标记�
     serviceDrawer:true,serviceFilter:'PENDING',serviceCases:[]});await tick();
   const active=sel=>[...h.document.querySelectorAll(sel+' button.active')].map(b=>b.textContent.trim());
   assert.deepEqual(active('.service-list-tabs'),['待回复']);
-  assert.deepEqual(active('.service-content-tabs'),['服务管理']);
-  const sw=h.document.querySelector('.service-switch [role="switch"]');assert.ok(sw,'switch must render as a toggle');
-  assert.equal(sw.getAttribute('aria-checked'),'false');assert.equal(sw.getAttribute('aria-label'),'标记重点');
-  sw.click();await tick();
-  assert.equal(page.data.serviceMeta.priority,true);
-  assert.equal(h.document.querySelector('.service-switch [role="switch"]').getAttribute('aria-checked'),'true');
+  assert.deepEqual(active('.service-content-tabs'),['方案审核']);assert.doesNotMatch(h.document.querySelector('.service-content-tabs').textContent,/服务管理/);
+  assert.equal(h.document.querySelector('.service-switch'),null);
   page.setData({serviceAssignOpen:false,serviceFilter:'GENERAL'});await tick();
   assert.deepEqual(active('.service-content-tabs'),['方案审核']);
   assert.deepEqual(active('.service-list-tabs'),['总管审核']);
@@ -1163,3 +1159,13 @@ test('聊天和孩子档案仅滚动内容容器到底部，阅读历史后刷�
 });
 
 test('iPhone微信旧/web文档在初始化SDK前完整跳转，保留课程、查询参数及hash',async()=>{let replaced='',calls=0;const h=await host({navigator:{userAgent:'iPhone MicroMessenger'},location:{pathname:'/web',search:'?ref=keep',hash:'#/pages/education-bundle/education-bundle',href:'https://www.apply.tianqiwushu.cn/web?ref=keep#/pages/education-bundle/education-bundle',replace:url=>replaced=url},fetch:async()=>{calls++;throw Error('Must not initialize in noncanonical document');}});assert.equal(replaced,'https://www.apply.tianqiwushu.cn/web/?ref=keep#/pages/education-bundle/education-bundle');assert.equal(calls,0);assert.equal(h.host,undefined);assert.deepEqual(h.errors,[]);});
+
+test('独立服务管理页面支持选择档案、标记重点和保存；孩子沟通页没有管理入口',async()=>{
+ const h=await host({fetch:sessionFetch({id:'1000000000000019',name:'合成总管'},MANAGER_PROVIDER)});await tick();const calls=[];
+ h.host.requireModule('utils/consultationService').call=async(op,payload)=>{calls.push({op,payload});return op==='LIST_SERVICE_STAFF'?{items:[{id:8,display_name:'合成总监',review_role:'DIRECTOR',service_kind:'STAFF'}]}:op==='SERVICE_CHAT_OVERVIEW'?{canManage:true,cases:[{id:31,childName:'合成孩子',parentName:'合成家长'}]}:op==='GET_SERVICE_CASE'?{canManage:true,appointment:{id:31,director_id:8,updated_at:'t1',service_metadata:{priority:false}}}:{};};
+ h.host.wx.navigateTo({url:'/pages/service-management/service-management'});await tick();await tick();
+ assert.match(h.document.getElementById('page').textContent,/合成孩子|工作人员身份管理/);
+ h.document.querySelector('.assignment-row button').click();await tick();
+ assert.equal(h.host.current.data.appointment.id,31);const sw=h.document.querySelector('[role="switch"]');assert.ok(sw);sw.click();await tick();assert.equal(h.host.current.data.meta.priority,true);
+ h.document.querySelector('.assignment-form button.primary').click();await tick();await tick();const save=calls.find(c=>c.op==='ASSIGN_SERVICE_CASE');assert.equal(save.payload.directorId,8);assert.equal(save.payload.guardianId,null);assert.equal(save.payload.priority,true);assert.equal(save.payload.previousUpdatedAt,'t1');assert.deepEqual(h.errors,[]);
+});
