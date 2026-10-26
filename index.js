@@ -76,6 +76,14 @@ async function serveWeb(req, res, pathname) {
 function createServer() {
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    // WeChat Pay authorizes https://www.apply.tianqiwushu.cn/web/ only; send bare-host pages there.
+    if (url.hostname === 'apply.tianqiwushu.cn' && ['GET','HEAD'].includes(req.method)
+      && (url.pathname === '/' || url.pathname === '/web' || url.pathname.startsWith('/web/'))) {
+      const target = url.pathname === '/' || url.pathname === '/web' ? '/web/' : url.pathname;
+      res.writeHead(302, {location:'https://www.apply.tianqiwushu.cn' + target + url.search, 'cache-control':'no-store'});
+      res.end();
+      return;
+    }
     if (url.pathname === '/') {
       res.writeHead(302, {location: '/web/'});
       res.end();

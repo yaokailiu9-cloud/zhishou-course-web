@@ -1169,3 +1169,12 @@ test('独立服务管理页面支持选择档案、标记重点和保存；孩�
  assert.equal(h.host.current.data.appointment.id,31);const sw=h.document.querySelector('[role="switch"]');assert.ok(sw);sw.click();await tick();assert.equal(h.host.current.data.meta.priority,true);
  h.document.querySelector('.assignment-form button.primary').click();await tick();await tick();const save=calls.find(c=>c.op==='ASSIGN_SERVICE_CASE');assert.equal(save.payload.directorId,8);assert.equal(save.payload.guardianId,null);assert.equal(save.payload.priority,true);assert.equal(save.payload.previousUpdatedAt,'t1');assert.deepEqual(h.errors,[]);
 });
+
+test('正式域名非www、http或index.html入口在初始化前统一跳到已登记的微信支付目录',async()=>{
+  for(const [origin,pathname] of [['https://apply.tianqiwushu.cn','/web/'],['http://www.apply.tianqiwushu.cn','/web/'],['https://www.apply.tianqiwushu.cn','/web/index.html']]){
+    let replaced='',calls=0;const hostname=new URL(origin).hostname;
+    const h=await host({navigator:{userAgent:'Android MicroMessenger'},location:{hostname,origin,pathname,search:'?ref=keep',hash:'#/pages/class-enroll/class-enroll?id=9',href:origin+pathname+'?ref=keep#/pages/class-enroll/class-enroll?id=9',replace:url=>replaced=url},fetch:async()=>{calls++;throw Error('Must not initialize in noncanonical document');}});
+    assert.equal(replaced,'https://www.apply.tianqiwushu.cn/web/?ref=keep#/pages/class-enroll/class-enroll?id=9',origin+pathname);assert.equal(calls,0);assert.equal(h.host,undefined);
+  }
+  let replaced='';await host({location:{hostname:'www.apply.tianqiwushu.cn',origin:'https://www.apply.tianqiwushu.cn',pathname:'/web/',search:'',hash:'',href:'https://www.apply.tianqiwushu.cn/web/',replace:url=>replaced=url}});assert.equal(replaced,'');
+});

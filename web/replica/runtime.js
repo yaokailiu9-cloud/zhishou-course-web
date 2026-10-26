@@ -1,9 +1,13 @@
 /* Browser host for the preserved mini-program. Source expressions are compiled at build time. */
 (function () {
   // Old /web links must open a fresh canonical document before any WeChat SDK or bridge work.
-  if (location.pathname === '/web') {
+  // On the production domain that document is exactly the registered WeChat Pay directory.
+  const PAY_ORIGIN = 'https://www.apply.tianqiwushu.cn';
+  const production = /^(www\.)?apply\.tianqiwushu\.cn$/.test(location.hostname);
+  if (location.pathname === '/web' || (production && (location.origin !== PAY_ORIGIN || location.pathname !== '/web/'))) {
     const canonical = new URL(location.href);
-    canonical.pathname = '/web/';
+    if (production) canonical.href = PAY_ORIGIN + '/web/' + location.search + location.hash;
+    else canonical.pathname = '/web/';
     location.replace(canonical.href);
     return;
   }

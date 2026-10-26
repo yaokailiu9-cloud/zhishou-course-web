@@ -243,4 +243,11 @@ test('外部浏览器不能发起或完成微信登录，拒绝时不调用上�
   assert.equal(calls,0);
 });
 
+test('不带www的正式域名页面跳转到唯一的微信支付授权目录，接口与校验文件不受影响',async t=>{const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>server.close());const get=(path,host,method='GET')=>new Promise((resolve,reject)=>{const req=require('node:http').request({host:'127.0.0.1',port:server.address().port,path,method,headers:{host,'User-Agent':'MicroMessenger/8.0'}},res=>{res.resume();res.on('end',()=>resolve(res))});req.on('error',reject);req.end();});
+  for(const [path,location] of [['/','/web/'],['/web','/web/'],['/web/?ref=a&paymentError=retry','/web/?ref=a&paymentError=retry'],['/web/index.html','/web/index.html']]){const r=await get(path,'apply.tianqiwushu.cn');assert.equal(r.statusCode,302,path);assert.equal(r.headers.location,'https://www.apply.tianqiwushu.cn'+location);assert.equal(r.headers['cache-control'],'no-store');}
+  assert.equal((await get('/MP_verify_ywP9K8aHniKOJR49.txt','apply.tianqiwushu.cn')).statusCode,200);
+  assert.notEqual((await get('/api/h5?action=session','apply.tianqiwushu.cn')).statusCode,302);
+  assert.notEqual((await get('/web/','apply.tianqiwushu.cn','POST')).statusCode,302);
+  assert.equal((await get('/web/','www.apply.tianqiwushu.cn')).statusCode,200);
+});
 test('旧/web入口重定向到/web/，保留邀请与支付查询参数，避免支付目录有两种写法',async t=>{const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>server.close());const r=await request(server,'/web?ref=existing-invitation&paymentError=retry');assert.equal(r.status,302);assert.equal(r.headers.location,'/web/?ref=existing-invitation&paymentError=retry');assert.equal(r.headers['cache-control'],'no-store');assert.equal((await request(server,'/web/')).status,200);});
