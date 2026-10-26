@@ -146,7 +146,7 @@
   function dispatch(page, name, element, native, detail={}) {
     if(!name||typeof page[name]!=='function')return;
     const target={dataset:{...element.dataset},id:element.id};
-    try {Promise.resolve(page[name]({type:native?.type||'tap',currentTarget:target,target,detail})).catch(error=>wx.showToast({title:error.message||'操作未完成'}))}
+    try {Promise.resolve(page[name]({type:native?.type||'tap',currentTarget:target,target,detail,touches:native?.touches,changedTouches:native?.changedTouches})).catch(error=>wx.showToast({title:error.message||'操作未完成'}))}
     catch(error){console.error(error);wx.showToast({title:error.message||'操作未完成'})}
   }
   const pickerMemory=new Map();
@@ -264,13 +264,13 @@
       if(tag==='video'){el.setAttribute('controlslist','nodownload');el.setAttribute('playsinline','');el.setAttribute('webkit-playsinline','');el.setAttribute('x5-playsinline','');el.draggable=false;on('contextmenu',event=>event.preventDefault())}
       if(tag==='scroll-view'&&values['scroll-y']!==undefined)el.setAttribute('scroll-y','');
       if(tag==='scroll-view'&&values['scroll-x']!==undefined)el.setAttribute('scroll-x','');
-      if(tag==='scroll-view')for(const event of ['wheel','touchstart','pointerdown'])on(event,()=>{el._autoScrolling=false;});
-      const eventMap={tap:'click',input:'input',change:'change',confirm:'keydown',submit:'submit',error:'error',load:'load',blur:'blur',focus:'focus',longpress:'contextmenu',scroll:'scroll',scrolltolower:'scroll',touchstart:'touchstart',touchend:'touchend'};
+      if(tag==='scroll-view')for(const event of ['wheel','touchstart','touchmove','pointerdown','keydown'])on(event,()=>{el._autoScrolling=false;el._userScrolling=true;});
+      const eventMap={tap:'click',input:'input',change:'change',confirm:'keydown',submit:'submit',error:'error',load:'load',blur:'blur',focus:'focus',longpress:'contextmenu',scroll:'scroll',scrolltolower:'scroll',touchstart:'touchstart',touchmove:'touchmove',touchend:'touchend',touchcancel:'touchcancel'};
       for(const [key,handler]of Object.entries(values)){
         const match=key.match(/^(bind|catch):?(.+)$/);if(!match||!eventMap[match[2]])continue;
         const emit=event=>{
           if(match[2]==='error'&&el._mediaStream)return;
-          if(match[2]==='scroll'&&el._autoScrolling)return;
+          if(match[2]==='scroll'&&(el._autoScrolling||el.id==='service-message-scroll'&&!el._userScrolling))return;
           if(match[1]==='catch')event.stopPropagation();
           if(match[2]==='confirm'&&(event.key!=='Enter'||event.isComposing||event.keyCode===229||composition?.element===el))return;
           if(match[2]==='scrolltolower'&&el.scrollTop+el.clientHeight<el.scrollHeight-30)return;
@@ -322,7 +322,7 @@
         const target=document.getElementById(values['scroll-into-view']);
         if(!el.isConnected||!target||!el.contains(target))return;
         // Move only this scroll-view. Native scrollIntoView can also move the page and its fixed header.
-        if(values['scroll-into-view']==='service-feedback-end')moveScrollView(el,el.scrollHeight);
+        if(values['scroll-into-view']==='service-feedback-end'){el._userScrolling=false;moveScrollView(el,el.scrollHeight);}
         else if(values['scroll-into-view']==='service-content-top')moveScrollView(el,0);
         else if(target.getBoundingClientRect&&el.getBoundingClientRect){const a=target.getBoundingClientRect(),b=el.getBoundingClientRect();if(a.bottom>b.bottom)el.scrollTop+=a.bottom-b.bottom;else if(a.top<b.top)el.scrollTop+=a.top-b.top;}
       });
@@ -372,7 +372,7 @@
     if(held<HOLD_MS){renderDeferred=true;clearTimeout(pressTimer);pressTimer=setTimeout(releasePress,HOLD_MS-held);return;}
     composition=null;renderDeferred=false;
     const focused=document.activeElement,focusKey=focused?.dataset.focusKey,start=focused?.selectionStart,end=focused?.selectionEnd;
-    const scrollers=[...root.querySelectorAll('scroll-view')].map(el=>({id:el.id,top:el.scrollTop}));
+    const scrollers=renderedPage===current?[...root.querySelectorAll('scroll-view')].map(el=>({id:el.id,top:el.scrollTop,userScrolling:el._userScrolling})):[];
     const canvases=renderedPage===current?new Map([...root.querySelectorAll('canvas[id]')].map(el=>[el.id,el])):new Map();
     const videos=renderedPage===current?new Map([...root.querySelectorAll('video[id]')].map(el=>[el.id,el])):new Map();
     const fragment=document.createDocumentFragment();current._inputKeys=new Map();
@@ -399,7 +399,7 @@
       const benefits=root.querySelector('.login-benefits');if(benefits)benefits.textContent='登录后可报名公开课、查看自己的方案和聊天记录；昵称和头像可在个人资料中修改。';
     }
     if(!keptEditor&&focusKey!=null){const next=[...root.querySelectorAll('[data-focus-key]')].find(el=>el.dataset.focusKey===focusKey);if(next){next.focus({preventScroll:true});try{next.setSelectionRange(start,end)}catch(_){}}}
-    scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el)el.scrollTop=v.top});
+    scrollers.forEach((v,i)=>{const el=v.id?document.getElementById(v.id):root.querySelectorAll('scroll-view')[i];if(el){el._userScrolling=v.userScrolling;if(el.id!=='service-message-scroll'||current.data.serviceFeedbackScrollTarget!=='service-feedback-end')moveScrollView(el,v.top);}});
     serviceScrollObserver?.disconnect();serviceScrollObserver=null;
     const serviceScroller=root.querySelector('#service-message-scroll');
     if(serviceScroller&&typeof ResizeObserver==='function'){

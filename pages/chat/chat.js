@@ -97,6 +97,7 @@ Page({
   },
 
   onTabItemTap() {
+    this.chatOpenAtLatest = true;
     if (chatContext.isManagerChatEntry()) {
       chatContext.preserveManagerChatContext();
     } else {
@@ -108,6 +109,7 @@ Page({
   },
 
   onShow() {
+    this.chatOpenAtLatest = true;
     chatBadge.refresh();
     this.hidden = false;
     const identity = viewSession.capture();
@@ -1009,7 +1011,10 @@ Page({
           this.refreshManagerUnreadDisplay();
         }
         const messages = rawMessages.map(item => this.toDisplayMessage(item)).filter(Boolean);
-        if (JSON.stringify(messages) !== JSON.stringify(this.data.messages)) {
+        const openAtLatest = this.chatOpenAtLatest;
+        this.chatOpenAtLatest = false;
+        if (openAtLatest) this.setData({scrollIntoView:""});
+        if (openAtLatest || JSON.stringify(messages) !== JSON.stringify(this.data.messages)) {
           const next = {messages};
           if (messages.length) next.scrollIntoView = `msg-${messages[messages.length-1].id}`;
           this.setData(next);

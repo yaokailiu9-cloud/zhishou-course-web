@@ -856,3 +856,28 @@
 .service-quote-bar button { flex:none; width:48rpx; height:48rpx; min-height:0; margin:0; padding:0; line-height:48rpx; font-size:30rpx; background:transparent; color:#77746c; }
 .service-read-state { align-self:flex-end; font-size:22rpx; color:#b07a3a; }
 .service-read-state.read { color:#8a9188; }
+
+/* Reveal one quote action beside a message after a deliberate horizontal swipe. */
+.service-swipe-row { position:relative; margin:20rpx 24rpx; border-radius:20rpx; overflow:hidden; touch-action:pan-y; }
+.service-swipe-row.message-row { margin-left:44rpx; }
+.service-swipe-row.teacher-row { margin-left:24rpx; margin-right:44rpx; }
+.service-swipe-row.talk-row { margin-right:68rpx; }
+.service-swipe-row.mine-row { margin-left:68rpx; margin-right:24rpx; }
+.service-swipe-row > .service-swipe-bubble { position:relative; z-index:1; margin:0; transition:transform 180ms ease-out; }
+.service-swipe-row.is-open > .service-swipe-bubble,
+.service-swipe-quote:focus-visible + .service-swipe-bubble { transform:translateX(-104rpx); }
+.service-swipe-quote { position:absolute; z-index:0; top:50%; right:0; width:88rpx; min-width:44px; min-height:44px; margin:0; padding:10rpx 0; transform:translateY(-50%); border:0; border-radius:12rpx; background:#e9ede5; color:#3c564c; font-size:24rpx; line-height:1.5; opacity:0; pointer-events:none; transition:opacity 180ms ease-out; }
+.service-swipe-quote::after { border:0; }
+.service-swipe-row.is-open > .service-swipe-quote,
+.service-swipe-quote:focus-visible { opacity:1; pointer-events:auto; }
+.service-swipe-quote:focus-visible { outline:2px solid #3c564c; outline-offset:-3px; }
+.service-swipe-quote:active { background:#dce3d6; }
+.service-swipe-row.service-swipe-reply { margin:16rpx 0 0; border-radius:14rpx; }
+.service-swipe-row.service-swipe-reply > .service-reply { background:#f0f2eb; }
+@media (prefers-reduced-motion:reduce) { .service-swipe-row > .service-swipe-bubble,.service-swipe-quote { transition:none; } }
+
+.service-chat-content { overflow-anchor:none; }
+/* Long quote previews must never widen the composer or push the send button off screen. */
+.service-composer { flex-wrap:nowrap; min-width:0; }
+.service-composer > view { min-width:0; max-width:100%; }
+.service-quote-bar { box-sizing:border-box; width:100%; }

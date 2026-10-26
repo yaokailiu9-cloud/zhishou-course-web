@@ -69,3 +69,21 @@ test('打开聊天和孩子档案默认定位底部；读历史时轮询不拉�
  h.p.data.serviceTab='feedback';h.p.onServiceFeedbackScroll({detail:{scrollTop:0,scrollHeight:1500,clientHeight:500}});await h.p.refreshServiceCase(true);assert.equal(h.calls.at(-1).p.markRead,false);assert.equal(h.p.data.serviceFeedbackScrollTarget,'');
  h.service.call=async()=>{throw Error('读取失败')};h.p.data.serviceAllCases[0].serverUnread=2;h.p.serviceUnreadTotal=2;h.p.applyServiceUnread();await h.p.selectServiceCase({currentTarget:{dataset:{id:32}}});assert.equal(h.p.data.serviceAllCases[0].unread,2);assert.equal(h.p.data.serviceOtherUnread,2);
 });
+
+test('消息滑动只响应明确左滑，短滑、纵向滚动、多指与取消不会显示引用',()=>{
+ const h=harness(),p=h.p;p.data.serviceDetail={owner:true};
+ const event=(x,y,extra={})=>({currentTarget:{dataset:{swipe:'dialogue-1:dialogue'}},touches:[{clientX:x,clientY:y}],changedTouches:[{clientX:x,clientY:y}],...extra});
+ p.startServiceSwipe(event(220,100));p.moveServiceSwipe(event(140,102));p.endServiceSwipe(event(120,102));assert.equal(p.data.serviceSwipeKey,'dialogue-1:dialogue');assert.equal(p.data.serviceQuote,null);
+ p.startServiceSwipe(event(120,100));p.endServiceSwipe(event(220,100));assert.equal(p.data.serviceSwipeKey,'');
+ p.startServiceSwipe(event(220,100));p.endServiceSwipe(event(195,100));assert.equal(p.data.serviceSwipeKey,'');
+ p.startServiceSwipe(event(220,100));p.moveServiceSwipe(event(216,130));p.endServiceSwipe(event(100,140));assert.equal(p.data.serviceSwipeKey,'');
+ p.startServiceSwipe(event(220,100));p.moveServiceSwipe(event(160,100,{touches:[{},{}]}));p.endServiceSwipe(event(100,100));assert.equal(p.data.serviceSwipeKey,'');
+ p.startServiceSwipe(event(220,100));p.closeServiceSwipe();p.endServiceSwipe(event(100,100));assert.equal(p.data.serviceSwipeKey,'');
+ p.data.serviceDetail={staff:true};p.data.canTalk=false;p.startServiceSwipe(event(220,100));p.endServiceSwipe(event(100,100));assert.equal(p.data.serviceSwipeKey,'');
+});
+test('只有一条消息显示引用入口；引用嵌套老师回复时保留对应消息标识',()=>{
+ const {p}=harness();p.data.serviceDetail={staff:true};p.data.canTalk=true;p.data.serviceTimeline=[{key:'feedback-17',id:17,content:'家长反馈',reply:{id:60,body:{content:'老师的回复'}}}];
+ p.data.serviceSwipeKey='feedback-17:reply';p.quoteServiceItem({currentTarget:{dataset:{key:'feedback-17',kind:'reply',id:60}}});
+ assert.equal(p.data.serviceSwipeKey,'');assert.equal(p.data.serviceQuote.kind,'reply');assert.equal(p.data.serviceQuote.id,60);assert.equal(p.data.serviceQuote.text,'老师的回复');
+ p.clearServiceQuote();assert.equal(p.data.serviceQuote,null);
+});

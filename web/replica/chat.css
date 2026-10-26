@@ -856,3 +856,28 @@
 .service-quote-bar button { flex:none; width:calc(48 * var(--rpx)); height:calc(48 * var(--rpx)); min-height:0; margin:0; padding:0; line-height:calc(48 * var(--rpx)); font-size:calc(30 * var(--rpx)); background:transparent; color:#77746c; }
 .service-read-state { align-self:flex-end; font-size:calc(22 * var(--rpx)); color:#b07a3a; }
 .service-read-state.read { color:#8a9188; }
+
+/* Reveal one quote action beside a message after a deliberate horizontal swipe. */
+.service-swipe-row { position:relative; margin:calc(20 * var(--rpx)) calc(24 * var(--rpx)); border-radius:calc(20 * var(--rpx)); overflow:hidden; touch-action:pan-y; }
+.service-swipe-row.message-row { margin-left:calc(44 * var(--rpx)); }
+.service-swipe-row.teacher-row { margin-left:calc(24 * var(--rpx)); margin-right:calc(44 * var(--rpx)); }
+.service-swipe-row.talk-row { margin-right:calc(68 * var(--rpx)); }
+.service-swipe-row.mine-row { margin-left:calc(68 * var(--rpx)); margin-right:calc(24 * var(--rpx)); }
+.service-swipe-row > .service-swipe-bubble { position:relative; z-index:1; margin:0; transition:transform 180ms ease-out; }
+.service-swipe-row.is-open > .service-swipe-bubble,
+.service-swipe-quote:focus-visible + .service-swipe-bubble { transform:translateX(calc(-104 * var(--rpx))); }
+.service-swipe-quote { position:absolute; z-index:0; top:50%; right:0; width:calc(88 * var(--rpx)); min-width:44px; min-height:44px; margin:0; padding:calc(10 * var(--rpx)) 0; transform:translateY(-50%); border:0; border-radius:calc(12 * var(--rpx)); background:#e9ede5; color:#3c564c; font-size:calc(24 * var(--rpx)); line-height:1.5; opacity:0; pointer-events:none; transition:opacity 180ms ease-out; }
+.service-swipe-quote::after { border:0; }
+.service-swipe-row.is-open > .service-swipe-quote,
+.service-swipe-quote:focus-visible { opacity:1; pointer-events:auto; }
+.service-swipe-quote:focus-visible { outline:2px solid #3c564c; outline-offset:-3px; }
+.service-swipe-quote:active { background:#dce3d6; }
+.service-swipe-row.service-swipe-reply { margin:calc(16 * var(--rpx)) 0 0; border-radius:calc(14 * var(--rpx)); }
+.service-swipe-row.service-swipe-reply > .service-reply { background:#f0f2eb; }
+@media (prefers-reduced-motion:reduce) { .service-swipe-row > .service-swipe-bubble,.service-swipe-quote { transition:none; } }
+
+.service-chat-content { overflow-anchor:none; }
+/* Long quote previews must never widen the composer or push the send button off screen. */
+.service-composer { flex-wrap:nowrap; min-width:0; }
+.service-composer > view { min-width:0; max-width:100%; }
+.service-quote-bar { box-sizing:border-box; width:100%; }

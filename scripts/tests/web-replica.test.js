@@ -816,9 +816,9 @@ test('服务反馈空状态不显示无法输入的回复框，没有直接发�
  assert.equal(h.document.querySelector('.service-reply-button'),null);assert.equal(h.document.querySelector('.service-composer textarea'),null);
  assert.match(h.document.querySelector('.service-composer').textContent,/仅可查看/);assert.deepEqual(h.errors,[]);
 });
-test('老师沟通不再整理审核回复：长按反馈引用后直接发消息，家长也可长按引用老师回复',async()=>{
+test('老师沟通左滑显示引用入口，老师与家长点击后发送原消息引用',async()=>{
  const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
- h.host.wx.showActionSheet=o=>o.success({tapIndex:0});
+ h.host.wx.showActionSheet=()=>assert.fail('引用不应弹出长按菜单');
  h.host.requireModule('utils/consultationService').call=async(op,payload)=>{calls.push({op,payload});return op==='SEND_CONSULTATION_MESSAGE'?{message:{id:10,content:'\u2063【引用】家长反馈：合成反馈\u2063\n'+payload.content,createdAt:'2026-10-20T06:00:00Z',senderRole:'teacher',isMine:true}}:{};};
  p.serviceSelectedId=31;p.appointmentId=31;p.refreshServiceCase=async()=>{};p.dialogueIdentity=h.host.requireModule('utils/viewSession').capture();
  p.serviceAction=async(op,payload)=>{calls.push({op,payload});return {id:31};};
@@ -827,16 +827,22 @@ test('老师沟通不再整理审核回复：长按反馈引用后直接发消�
  const text=h.document.querySelector('.service-chat-content').textContent;
  for(const gone of ['提交总监复核','还没有分配总监','编辑回复草稿','回复这条反馈','监护专员整理'])assert.ok(!text.includes(gone),gone);
  assert.match(text,/家长看不到/);assert.equal(h.document.querySelector('.service-review-settings'),null);
- h.document.querySelector('.service-chat-content .service-feedback-card').dispatchEvent(new h.Event('contextmenu',{bubbles:true,cancelable:true}));await tick();
+ const swipeRow=()=>h.document.querySelector('.service-chat-content .service-swipe-row');
+ const swipeTouch=(type,x,y)=>{const e=new h.Event(type,{bubbles:true,cancelable:true}),point={clientX:x,clientY:y};e.touches=type==='touchend'?[]:[point];e.changedTouches=[point];swipeRow().dispatchEvent(e);};
+ swipeRow().dispatchEvent(new h.Event('contextmenu',{bubbles:true,cancelable:true}));await tick();
+ assert.equal(p.data.serviceQuote,null);assert.equal(p.data.serviceSwipeKey,'');
+ swipeTouch('touchstart',260,240);swipeTouch('touchmove',180,242);swipeTouch('touchend',160,242);await tick();
+ assert.equal(p.data.serviceSwipeKey,'feedback-17:feedback');assert.ok(swipeRow().classList.contains('is-open'));assert.equal(p.data.serviceQuote,null);
+ swipeRow().querySelector('.service-swipe-quote').click();await tick();
  assert.match(h.document.querySelector('.service-quote-bar').textContent,/家长反馈：合成反馈/);
  const input=h.document.querySelector('.service-composer textarea');input.value='收到，我们这样做';input.dispatchEvent(new h.Event('input'));await tick();
  h.document.querySelector('.service-composer .service-primary').click();await tick();await tick();
  const sent=calls.find(c=>c.op==='SEND_CONSULTATION_MESSAGE');assert.equal(sent.payload.quoteKind,'feedback');assert.equal(String(sent.payload.quoteId),'17');assert.equal(sent.payload.content,'收到，我们这样做');
  assert.equal(p.data.serviceQuote,null);assert.equal(h.document.querySelector('.service-quote-bar'),null);
  const mine=p.data.serviceTimeline.find(t=>t.key==='dialogue-10');assert.equal(mine.quote,'家长反馈：合成反馈');assert.equal(mine.content,'收到，我们这样做');
- // Parent: long-press an approved teacher reply and send feedback quoting it.
+ // Parent: swipe an approved teacher reply, then tap quote and send feedback.
  p.setData({serviceDetail:{owner:true,staff:false,canDraft:false,appointment:{}},canTalk:true,serviceInput:'',serviceFeedback:[],dialogueMessages:[],serviceMessages:[{id:'reply-60',content:'审核后的老师回复',quote:'',quoteKind:'reply',quoteId:60,time:'2026-10-20T05:00:00Z',timeText:'晚',isReply:true}]});p.buildServiceTimeline();await tick();
- h.document.querySelector('.service-chat-content .service-feedback-card').dispatchEvent(new h.Event('contextmenu',{bubbles:true,cancelable:true}));await tick();
+ swipeTouch('touchstart',260,240);swipeTouch('touchend',160,242);await tick();assert.equal(p.data.serviceQuote,null);swipeRow().querySelector('.service-swipe-quote').click();await tick();
  assert.match(h.document.querySelector('.service-quote-bar').textContent,/老师回复：审核后的老师回复/);
  const box=h.document.querySelector('.service-composer textarea');box.value='明白了';box.dispatchEvent(new h.Event('input'));await tick();h.document.querySelector('.service-composer .service-primary').click();await tick();
  const fb=calls.find(c=>c.op==='SEND_SERVICE_FEEDBACK');assert.equal(fb.payload.quoteKind,'reply');assert.equal(String(fb.payload.quoteId),'60');assert.equal(p.data.serviceQuote,null);assert.deepEqual(h.errors,[]);
@@ -1166,7 +1172,7 @@ test('聊天和孩子档案仅滚动内容容器到底部，阅读历史后刷�
  let outerScrolls=0;h.context.scrollTo=()=>outerScrolls++;
  p.setData({serviceMode:true,serviceLoading:false,serviceTab:'feedback',serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,appointment:{}},serviceTimeline:[{kind:'feedback',key:'feedback-1',id:1,content:'最新反馈'}]});
  p.scrollServiceFeedbackToBottom();await tick();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,1600);assert.equal(outerScrolls,0);contentHeight=1900;observers.at(-1).callback();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,1900);
- const box=h.document.getElementById('service-message-scroll');box.dispatchEvent(new h.Event('scroll'));assert.equal(p.data.serviceFeedbackScrollTarget,'service-feedback-end');box.dispatchEvent(new h.Event('wheel'));box.scrollTop=100;box.dispatchEvent(new h.Event('scroll'));await tick();p.setData({serviceError:'刷新后的状态'});await tick();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,100);contentHeight=2200;observers.at(-1).callback();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,100);
+ const box=h.document.getElementById('service-message-scroll');box.scrollTop=0;box.dispatchEvent(new h.Event('scroll'));assert.equal(p.data.serviceFeedbackScrollTarget,'service-feedback-end','初始布局产生的滚动事件不能取消底部定位');box.dispatchEvent(new h.Event('wheel'));box.scrollTop=100;box.dispatchEvent(new h.Event('scroll'));await tick();p.setData({serviceError:'刷新后的状态'});await tick();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,100);contentHeight=2200;observers.at(-1).callback();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,100);
  p.openServiceArchive();await tick();assert.equal(h.document.getElementById('service-message-scroll').scrollTop,2200);assert.equal(outerScrolls,0);assert.deepEqual(h.errors,[]);
 });
 
@@ -1189,4 +1195,13 @@ test('正式域名非www、http或index.html入口在初始化前统一跳到已
     assert.equal(replaced,'https://www.apply.tianqiwushu.cn/web/?ref=keep#/pages/class-enroll/class-enroll?id=9',origin+pathname);assert.equal(calls,0);assert.equal(h.host,undefined);
   }
   let replaced='';await host({location:{hostname:'www.apply.tianqiwushu.cn',origin:'https://www.apply.tianqiwushu.cn',pathname:'/web/',search:'',hash:'',href:'https://www.apply.tianqiwushu.cn/web/',replace:url=>replaced=url}});assert.equal(replaced,'');
+});
+
+test('重新进入旧文字会话时，即使消息未变化也恢复最新消息位置',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current;
+ h.host.wx.setStorageSync('consultationSessionId','31');
+ h.host.requireModule('utils/zion').getSessionMessages=async()=>({messages:[{id:72,content:'最后一条消息',senderRole:'customer',sentAt:'2026-10-26T01:00:00Z'}]});
+ await p.loadBackendMessages();p.setData({scrollIntoView:''});await tick();
+ p.chatOpenAtLatest=true;await p.loadBackendMessages();assert.equal(p.data.scrollIntoView,'msg-72');assert.equal(p.chatOpenAtLatest,false);
+ p.setData({scrollIntoView:''});await p.loadBackendMessages({silent:true});assert.equal(p.data.scrollIntoView,'','普通轮询不重复定位');assert.deepEqual(h.errors,[]);
 });
