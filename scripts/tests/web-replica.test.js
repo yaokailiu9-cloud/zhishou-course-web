@@ -1205,3 +1205,18 @@ test('重新进入旧文字会话时，即使消息未变化也恢复最新消�
  p.chatOpenAtLatest=true;await p.loadBackendMessages();assert.equal(p.data.scrollIntoView,'msg-72');assert.equal(p.chatOpenAtLatest,false);
  p.setData({scrollIntoView:''});await p.loadBackendMessages({silent:true});assert.equal(p.data.scrollIntoView,'','普通轮询不重复定位');assert.deepEqual(h.errors,[]);
 });
+
+test('老师自己消息下方可删除；删除后聊天隐藏原文并在顶部历史栏目查看，家长无操作入口',async()=>{
+ const h=await host();h.host.wx.navigateTo({url:'/pages/chat/chat'});await tick();const p=h.host.current,calls=[];
+ p.serviceChatIdentity=h.host.requireModule('utils/viewSession').capture();p.serviceEpoch=1;p.serviceCaseVersion=1;p.serviceSelectedId=31;p.refreshServiceCase=async()=>{};p.refreshServiceOverview=()=>{};
+ const own={id:9,content:'删除前的老师原文',createdAt:'2026-10-26T08:00:00Z',senderRole:'teacher',isMine:true,canDelete:true};
+ h.host.wx.showModal=options=>options.success({confirm:true});
+ h.host.requireModule('utils/consultationService').call=async(op,payload)=>{calls.push({op,payload});return op==='DELETE_SERVICE_MESSAGE'?{message:{...own,content:'',isDeleted:true,canDelete:false}}:op==='GET_SERVICE_MESSAGE_HISTORY'?{events:[{key:'91:0',itemId:91,kind:'MESSAGE_LOG',action:'DELETE',actorName:'合成老师',actorAccountId:'101',at:'2026-10-26T09:00:00Z',beforeBody:{content:own.content}}],nextCursor:null}:{};};
+ p.setData({serviceMode:true,serviceTab:'feedback',serviceActive:{id:31,childName:'合成孩子'},serviceDetail:{staff:true,appointment:{}},serviceLoading:false,canTalk:true,dialogueMessages:[own,{...own,id:10,content:'其他老师消息',isMine:false,canDelete:false}]});p.buildServiceTimeline();await tick();
+ assert.equal(h.document.querySelectorAll('.service-message-delete').length,1);assert.ok(h.document.querySelector('[data-tab="history"]'));
+ h.document.querySelector('.service-message-delete').click();await tick();await tick();
+ assert.equal(calls[0].op,'DELETE_SERVICE_MESSAGE');assert.equal(String(calls[0].payload.messageId),'9');assert.match(h.document.querySelector('.service-chat-content').textContent,/该消息已删除/);assert.doesNotMatch(h.document.querySelector('.service-chat-content').textContent,/删除前的老师原文/);
+ h.document.querySelector('[data-tab="history"]').click();await tick();await tick();
+ assert.match(h.document.querySelector('.service-history-item').textContent,/删除消息.*合成老师[\s\S]*删除前的老师原文/);assert.equal(h.document.querySelector('.service-composer'),null);
+ p.setData({serviceDetail:{owner:true,staff:false,appointment:{}},serviceTab:'feedback',dialogueMessages:[{...own,isMine:false,canDelete:false}]});p.buildServiceTimeline();await tick();assert.equal(h.document.querySelector('[data-tab="history"]'),null);assert.equal(h.document.querySelector('.service-message-delete'),null);assert.deepEqual(h.errors,[]);
+});

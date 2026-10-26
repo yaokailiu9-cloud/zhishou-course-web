@@ -19,7 +19,7 @@ if (["SUMMARIZE_TEXT","PREPARE_RECORDING","PROCESS_RECORDING","RETRY_SUMMARY"].i
         upload=gql('mutation AllocateRecording($md5: String!, $size: Int!) { filePresignedUrl(md5Base64:$md5, sizeBytes:$size, name:"consultation-recording", suffix:"mp3", format:MP3, acl:PRIVATE) { fileId uploadUrl uploadHeaders contentType } }',{md5:md5,size:size}).filePresignedUrl;
         object.recording_id=upload.fileId;object.consented_at=consent;object.status="UPLOADING";
       } else {
-        var rows=list("consultation_feedback",eq("appointment_id",a.id),FEEDBACK_FIELDS,501);
+        var rows=list("consultation_feedback",and(eq("appointment_id",a.id),{_not:eq("status","DELETED","text")}),FEEDBACK_FIELDS,501);
         if (!rows.length) fail("本次咨询还没有文字沟通，请先在下方留言或反馈");
         var hasMore=rows.length>500;rows=rows.slice(0,500).reverse();
         var lines=[];rows.forEach(function(f){var dialogue=f.advice_key==="__consultation_dialogue__",teacher=dialogue && String(f.author_id)!==String(a.customer_id);lines.push((teacher?"老师：":dialogue?"学生/家长：":"家长：")+f.content);(f.replies||[]).slice().sort(function(x,y){return Number(x.id)-Number(y.id);}).forEach(function(r){lines.push("老师："+r.content);});});

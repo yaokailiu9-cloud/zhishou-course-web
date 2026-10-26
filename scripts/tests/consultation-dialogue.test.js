@@ -40,3 +40,10 @@ test('未经服务端开放时没有发送和读取请求，空白消息不提�
 test('收起对话后切换账号不能重新展开旧账号的历史消息',async()=>{
  const h=harness();h.service.call=async()=>({messages:[{id:1,content:'原账号消息'}]});await h.page.openDialogue();h.page.closeDialogue();h.changeIdentity('202');await h.page.openDialogue();assert.equal(h.page.data.canTalk,false);assert.equal(h.page.data.dialogueOpen,false);assert.equal(h.page.data.dialogueMessages.length,0);
 });
+
+test('轮询同步已删除的旧消息，延迟返回的旧正文不会覆盖删除状态',async()=>{
+ const h=harness();h.page.mergeDialogue([{id:5,content:'旧正文',isMine:false,senderRole:'teacher'}]);
+ h.service.call=async()=>({messages:[],deletedIds:[5]});await h.page.openDialogue();
+ assert.equal(h.page.data.dialogueMessages[0].isDeleted,true);assert.equal(h.page.data.dialogueMessages[0].content,'');
+ h.page.mergeDialogue([{id:5,content:'迟到的旧正文',isMine:false,senderRole:'teacher'}]);assert.equal(h.page.data.dialogueMessages[0].content,'');assert.equal(h.page.data.dialogueMessages[0].canDelete,false);
+});

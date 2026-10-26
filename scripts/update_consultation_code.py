@@ -24,6 +24,7 @@ for (fid,nodes),detail in zip(flows,details['responses']):
  for node,file in nodes:
   assert 'id: '+node+'\n    type: CUSTOM_CODE' in detail, 'Node identity mismatch'
   code=common+'\n'+Path('backend/consultation/'+file+'.js').read_text()
+  code=code.replace('// MESSAGE_HISTORY_HANDLERS: build inserts message-history.js here.',Path('backend/consultation/message-history.js').read_text())
   if file=='authorize': code+='\n'+Path('backend/consultation/referral.js').read_text()+'\n'+Path('backend/consultation/checkin.js').read_text()
   if file=='classes': code=code.replace('// FAMILY_HANDLERS: build script inserts family.js here.',Path('backend/consultation/family.js').read_text())
   if file=='classes': code=code.replace('// PAYMENT_HANDLERS: build script inserts course-payment.js and MD5 here.',Path('backend/consultation/wechat-web-login.js').read_text()+'\n'+Path('utils/md5.js').read_text().replace('module.exports = { md5Base64 };','')+'\n'+Path('backend/consultation/course-payment.js').read_text().replace('// PURCHASE_LINK_HANDLERS: build inserts link-signature.js and purchase-links.js here.',Path('backend/consultation/link-signature.js').read_text()+'\n'+Path('backend/consultation/purchase-links.js').read_text()))

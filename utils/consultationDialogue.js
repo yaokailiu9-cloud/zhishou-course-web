@@ -21,7 +21,7 @@ const methods={
  inputDialogue(e){this.dialogueEditVersion=(this.dialogueEditVersion||0)+1;this.setData({dialogueContent:e.detail.value});},
  mergeDialogue(messages){
   const rows=new Map(this.data.dialogueMessages.map(row=>[String(row.id),row]));
-  for(const message of messages||[])rows.set(String(message.id),{...message,...splitQuote(message.content),timeText:service.formatTime(message.createdAt),senderLabel:message.senderRole==='teacher'?'老师':'学生/家长',isNew:!message.isMine&&this.dialogueSeenId!=null&&Number(message.id)>Number(this.dialogueSeenId)});
+  for(const incoming of messages||[]){const previous=rows.get(String(incoming.id)),message=previous&&previous.isDeleted?{...incoming,isDeleted:true,canDelete:false,content:''}:incoming;rows.set(String(message.id),{...message,...splitQuote(message.content),timeText:service.formatTime(message.createdAt),senderLabel:message.senderRole==='teacher'?'老师':'学生/家长',isNew:!message.isMine&&this.dialogueSeenId!=null&&Number(message.id)>Number(this.dialogueSeenId)});}
   this.setData({dialogueMessages:[...rows.values()].sort((a,b)=>Number(a.id)-Number(b.id))});
  },
  refreshDialogue(){return this.loadDialogue(this.dialogueAfterId?'poll':'initial');},
@@ -32,12 +32,12 @@ const methods={
   const identity=this.dialogueIdentity,generation=this.dialogueGeneration,request={};this.dialogueRequest=request;
   this.setData({dialogueLoading:true});
   try{
-   const params={appointmentId:this.appointmentId,...(mode==='more'?{beforeId:this.data.dialogueCursor}:mode==='poll'&&this.dialogueAfterId?{afterId:this.dialogueAfterId}:{})};
+   const params={appointmentId:this.appointmentId,visibleIds:this.data.dialogueMessages.map(m=>m.id).slice(-200),...(mode==='more'?{beforeId:this.data.dialogueCursor}:mode==='poll'&&this.dialogueAfterId?{afterId:this.dialogueAfterId}:{})};
    const result=await service.call('GET_CONSULTATION_DIALOGUE',params);
    if(!active(this,identity,generation))return;
    // Staff only: how far the parent has read. Parents never receive any staff read state.
    if(result.parentReadId!=null)this.setData({dialogueParentReadId:Number(result.parentReadId)||0});
-   this.mergeDialogue(result.messages);const rows=result.messages||[];if(mode!=='more'&&rows.length)this.dialogueAfterId=rows[rows.length-1].id;
+   this.mergeDialogue((result.messages||[]).concat((result.deletedIds||[]).map(id=>({...(this.data.dialogueMessages.find(m=>String(m.id)===String(id))||{}),id,isDeleted:true,canDelete:false,content:''}))));const rows=result.messages||[];if(mode!=='more'&&rows.length)this.dialogueAfterId=rows[rows.length-1].id;
    this.setData({dialogueError:'',...(mode==='more'?{}:{dialogueUnread:0}),...(mode==='poll'?{}:{dialogueCursor:result.nextCursor||null})});
   }catch(error){if(active(this,identity,generation))this.setData({dialogueError:error.message||'对话读取失败，请重试'});}
   finally{if(this.dialogueRequest===request){this.dialogueRequest=null;if(active(this,identity,generation))this.setData({dialogueLoading:false});}}

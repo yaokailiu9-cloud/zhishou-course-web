@@ -8,7 +8,7 @@ function dialogueUnread(apps) {
   var scope={_or:ids.map(function(v){return eq("appointment_id",v);})};
   var marks=gql("query DialogueReadMarks($where:consultation_dialogue_read_bool_exp!){rows: consultation_dialogue_read(where:$where,limit:501){appointment_id last_read_id}}",{where:and(eq("reader_id",s.actor.accountId),scope)}).rows||[];
   marks.forEach(function(r){var o=out[r.appointment_id];if(o)o.mark=Math.max(o.mark,Number(r.last_read_id)||0);});
-  var rows=gql("query DialogueUnreadRows($where:consultation_feedback_bool_exp!){rows: consultation_feedback(where:$where,order_by:{id:desc},limit:501){id appointment_id author_id}}",{where:and(eq("advice_key","__consultation_dialogue__","text"),scope)}).rows||[];
+  var rows=gql("query DialogueUnreadRows($where:consultation_feedback_bool_exp!){rows: consultation_feedback(where:$where,order_by:{id:desc},limit:501){id appointment_id author_id}}",{where:and(eq("advice_key","__consultation_dialogue__","text"),{_not:eq("status","DELETED","text")},scope)}).rows||[];
   function ownSide(row){var a=byId[row.appointment_id],readerIsCustomer=String(a.customer_id)===String(s.actor.accountId);return (String(row.author_id)===String(a.customer_id))===readerIsCustomer;}
   rows.forEach(function(row){var o=out[row.appointment_id];if(o&&String(row.author_id)===String(s.actor.accountId))o.mark=Math.max(o.mark,Number(row.id));});
   rows.forEach(function(row){var o=out[row.appointment_id];if(o&&!ownSide(row)&&Number(row.id)>o.mark)o.unread++;});
@@ -37,11 +37,11 @@ function dialogueQuote(a){
   if(p.quoteKind!=="dialogue"&&!own)serviceCase(a.id);
   if(p.quoteKind==="reply"){
     var r=list("service_review_item",and(eq("id",id(p.quoteId)),eq("appointment_id",a.id),eq("kind","REPLY","text")),"id stage available_at body",1)[0];
-    if(!r||(own&&!serviceVisible(r))||!r.body||!r.body.content)fail("引用的消息不存在或不可见");
+    if(!r||r.stage==="DELETED"||(own&&!serviceVisible(r))||!r.body||!r.body.content)fail("引用的消息不存在或不可见");
     label="老师回复";body=r.body.content;
   } else if(p.quoteKind==="dialogue"||p.quoteKind==="feedback") {
-    var f=list("consultation_feedback",and(eq("id",id(p.quoteId)),eq("appointment_id",a.id),eq("advice_key",p.quoteKind==="dialogue"?"__consultation_dialogue__":"__service_feedback__","text")),"id author_id content",1)[0];
-    if(!f)fail("引用的消息不存在或不可见");
+    var f=list("consultation_feedback",and(eq("id",id(p.quoteId)),eq("appointment_id",a.id),eq("advice_key",p.quoteKind==="dialogue"?"__consultation_dialogue__":"__service_feedback__","text")),"id author_id content status",1)[0];
+    if(!f||f.status==="DELETED")fail("引用的消息不存在或不可见");
     label=String(f.author_id)===String(a.customer_id)?(p.quoteKind==="feedback"?"家长反馈":"家长"):"老师";body=quoteBody(f.content);
   } else fail("引用类型无效");
   body=String(body).replace(/\u2063/g,"").replace(/\s+/g," ").trim();if(body.length>80)body=body.slice(0,80)+"…";

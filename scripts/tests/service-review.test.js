@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.join(__dirname,'../..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
-const common=read('backend/consultation/common.js'),authorize=common+'\n'+read('backend/consultation/authorize.js'),review=common+'\n'+read('backend/consultation/dialogue-unread.js')+'\n'+read('backend/consultation/service-review.js')+'\ncontext.setReturn("state",s);';
+const common=read('backend/consultation/common.js'),authorize=common+'\n'+read('backend/consultation/authorize.js'),review=common+'\n'+read('backend/consultation/dialogue-unread.js')+'\n'+read('backend/consultation/service-review.js')+'\n'+read('backend/consultation/message-history.js')+'\ncontext.setReturn("state",s);';
 function harness(){
  const db={service_provider:[{id:1,account_id:101,service_kind:'STAFF',service_status:'ACTIVE',can_reply:true,can_accept_order:true},{id:2,account_id:102,service_kind:'STAFF',review_role:'DIRECTOR',service_status:'ACTIVE',can_reply:true,can_accept_order:false},{id:3,account_id:103,service_kind:'GUARDIAN',review_role:'GUARDIAN',service_status:'ACTIVE',can_reply:true,can_accept_order:false},{id:4,account_id:104,service_kind:'GUARDIAN',review_role:'GUARDIAN',service_status:'ACTIVE',can_reply:true}],offline_appointment:[{id:31,customer_id:201,provider_id:1,guardian_id:3,director_id:2,status:'COMPLETED',updated_at:'2026-10-09T00:00:00Z',contact_name:'合成家长',child_info:{name:'合成孩子'}}],consultation_feedback:[],service_review_item:[],consultation_dialogue_read:[]};let next=1000,state;
  function match(row,w){if(w._and)return w._and.every(c=>match(row,c));if(w._or)return w._or.some(c=>match(row,c));if(w._not)return !match(row,w._not);const [op,data]=Object.entries(w)[0],[type,operand]=Object.entries(data)[0];if(op==='_is_null')return row[operand.column]==null;const l=row[operand.left_operand.column],r=operand.right_operand.literal,number=v=>type==='timestamptz_operand'?Date.parse(v):Number(v);return op==='_eq'?String(l)===String(r):op==='_lt'?number(l)<number(r):op==='_gt'?number(l)>number(r):op==='_lte'?number(l)<=number(r):false;}
@@ -64,4 +64,20 @@ test('引用由后台读取原文：家长只能引用已公开的老师回复�
  assert.equal(h.run(103,'GET_SERVICE_CASE',{appointmentId:31}).parentServiceReadAt,null);
  h.run(201,'GET_SERVICE_CASE',{appointmentId:31,markRead:true});
  assert.ok(h.run(103,'GET_SERVICE_CASE',{appointmentId:31}).parentServiceReadAt);
+});
+
+test('已发出的审核回复仅作者能删除，历史保存删除原文；后续不能覆盖或重新审核',()=>{
+ const h=harness();let item=h.draft();item=h.advance(103,item,'SUBMIT');item=h.advance(102,item);item=h.advance(101,item,'APPROVE',{availableAt:new Date().toISOString()});
+ assert.equal(h.run(103,'GET_SERVICE_CASE',{appointmentId:31}).feedback[0].reply.canDelete,true);
+ assert.throws(()=>h.run(101,'DELETE_SERVICE_MESSAGE',{appointmentId:31,kind:'reply',messageId:item.id,revision:item.revision}),/只能删除自己/);
+ assert.throws(()=>h.run(103,'DELETE_SERVICE_MESSAGE',{appointmentId:31,kind:'reply',messageId:item.id,revision:item.revision-1}),/内容已更新/);
+ h.run(103,'DELETE_SERVICE_MESSAGE',{appointmentId:31,kind:'reply',messageId:item.id,revision:item.revision});
+ assert.equal(h.run(201,'GET_SERVICE_CASE',{appointmentId:31}).feedback[0].reply,null);
+ const history=h.run(103,'GET_SERVICE_MESSAGE_HISTORY',{appointmentId:31}).events;assert.equal(history[0].action,'DELETE');assert.equal(history[0].beforeBody.content,'待审核的合成回复');assert.equal(history[0].afterBody,null);
+ assert.throws(()=>h.run(201,'GET_SERVICE_MESSAGE_HISTORY',{appointmentId:31}),/工作人员/);
+ const saved=h.db.service_review_item[0];assert.throws(()=>h.run(103,'SAVE_SERVICE_DRAFT',{appointmentId:31,kind:'REPLY',feedbackId:h.db.consultation_feedback[0].id,revision:saved.revision,content:'恢复'}),/先退回修改/);
+});
+test('草稿每次修改都保存修改前后正文，旧版记录不伪造缺失正文',()=>{
+ const h=harness(),item=h.draft();h.run(103,'SAVE_SERVICE_DRAFT',{appointmentId:31,kind:'REPLY',feedbackId:h.db.consultation_feedback[0].id,revision:item.revision,content:'新的正文'});
+ const log=h.run(103,'GET_SERVICE_MESSAGE_HISTORY',{appointmentId:31}).events.find(e=>e.action==='SAVE_DRAFT');assert.equal(log.beforeBody.content,'待审核的合成回复');assert.equal(log.afterBody.content,'新的正文');
 });
