@@ -97,6 +97,10 @@ const methods={
     const result=await service.call('DELETE_SERVICE_MESSAGE',{appointmentId,kind:ds.kind,messageId:ds.id,...(ds.kind==='reply'?{revision:reply.revision}:{})});
     if(!current(this,identity,epoch)||version!==this.serviceCaseVersion)return;
     if(result.message)this.mergeDialogue([result.message]);
+    if(ds.kind==='reply'){
+     this.setData({serviceFeedback:this.data.serviceFeedback.map(row=>row.reply&&String(row.reply.id)===String(ds.id)?{...row,reply:null}:row),serviceMessages:this.data.serviceMessages.filter(row=>!(row.isReply&&String(row.quoteId)===String(ds.id)))});
+     this.buildServiceTimeline();
+    }
     const quote=this.data.serviceQuote;if(quote&&quote.kind===ds.kind&&String(quote.id)===String(ds.id))this.clearServiceQuote();
     this.closeServiceSwipe();await this.refreshServiceCase(true);this.refreshServiceOverview();wx.showToast({title:'消息已删除',icon:'success'});
    }catch(error){if(current(this,identity,epoch)&&version===this.serviceCaseVersion)this.setData({serviceError:error.message||'删除失败，请重试'});}

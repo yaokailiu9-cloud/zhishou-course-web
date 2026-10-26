@@ -87,3 +87,11 @@ test('只有一条消息显示引用入口；引用嵌套老师回复时保留�
  assert.equal(p.data.serviceSwipeKey,'');assert.equal(p.data.serviceQuote.kind,'reply');assert.equal(p.data.serviceQuote.id,60);assert.equal(p.data.serviceQuote.text,'老师的回复');
  p.clearServiceQuote();assert.equal(p.data.serviceQuote,null);
 });
+
+test('删除较早已加载的本人审核回复立即移除，不依赖最新一页轮询',async()=>{
+ const {p,wx,service}=harness();let finish;
+ wx.showModal=options=>{finish=options.success({confirm:true});};p.refreshServiceCase=async()=>{};p.refreshServiceOverview=()=>{};
+ p.data.serviceDetail={staff:true};p.data.serviceFeedback=[{id:17,content:'旧反馈',reply:{id:60,canDelete:true,revision:4,body:{content:'较早的本人回复'}}}];p.buildServiceTimeline();
+ service.call=async()=>({id:60,kind:'reply'});p.deleteServiceMessage({currentTarget:{dataset:{key:'feedback-17',kind:'reply',id:60}}});await finish;
+ assert.equal(p.data.serviceFeedback[0].reply,null);assert.equal(p.data.serviceTimeline[0].reply,null);assert.equal(p.data.serviceDeletingKey,'');
+});
