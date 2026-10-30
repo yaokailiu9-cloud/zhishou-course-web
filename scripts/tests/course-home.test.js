@@ -33,7 +33,7 @@ test('课程介绍按后台段落展示，收费、免费权益及学习规则�
 });
 
 test('公开录播与封存课程分别进入独立入口，不混入付费课程包',async()=>{
- const rows=[{id:'19',title:'认知改变世界',subtitle:'孩子教育公开课',badge:'公开'},{id:'20',title:'知鹿',subtitle:'知鹿系列课程',badge:'封存'}];
+ const rows=[{id:'19',title:'认知改变世界',subtitle:'孩子教育公开课',badge:'公开'},{id:'20',title:'未公开系列课程',subtitle:'未公开系列课程',badge:'封存'}];
  const {page}=home(async()=>({courses:rows}));await page.fetchFeaturedCourses();
  assert.deepEqual(Array.from(page.data.publicCourses,c=>c.id),['19']);
  assert.deepEqual(Array.from(page.data.archivedCourses,c=>c.id),['20']);

@@ -38,11 +38,11 @@
   ],
   "sha256": {
     "pages/index/index.js": "d579cb6044bb969673c6a055137c857fd0eaf5257eb2a29067dd2c2a472f17de",
-    "pages/index/index.wxml": "31b67af1d6a4c80d1e57e6d337c0442a3285884808be36ff08df1f0acc4d6cd8",
+    "pages/index/index.wxml": "884dc371d4c91054172d38696b06d2be1cf0b3c0fd11e7d05ee5c63f5ca20327",
     "pages/index/index.wxss": "4e5518475622d3e17266216cd995f441294e62cc9caa9d8abace7baa4ebbbf46",
     "pages/index/index.json": "2c728cc275cad57201431c201d07ef269461e778694f2be33c75c1af5c5794f3",
     "pages/plaza/plaza.js": "4d1026c31dd90818d45d59755dbb9dbe80c44b1e2bea788960ef6ff261e01624",
-    "pages/plaza/plaza.wxml": "118737dcc32a3cbf4d00dc1b7b25d10998d8f6c16df884241f487ee4c5e946b8",
+    "pages/plaza/plaza.wxml": "f42348e64db8fc2735740784276ce0d0eef0315d6732f853a19c40971c9c76a5",
     "pages/plaza/plaza.wxss": "5cdee7528f43ad716280dd3983a61e1d3950f676f4d18b54b08f8be0534e2bd3",
     "pages/plaza/plaza.json": "3bb9dadce615635f65ad15f3e3c93e0ab9120fe3a2b17a81990bc710f5633df8",
     "pages/course-detail/course-detail.js": "72d8cb4c606a5e6cc84245f3d000d26236ea767a70d311afd4aa28f94093205f",

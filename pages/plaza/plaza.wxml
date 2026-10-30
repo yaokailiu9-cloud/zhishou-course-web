@@ -44,7 +44,7 @@
     </view>
 
     <view wx:if="{{archivedCourses.length}}" class="archived-series">
-      <view class="library-heading"><text class="library-title">知鹿系列课程</text><text class="section-count">已封存</text></view>
+      <view class="library-heading"><text class="library-title">未公开系列课程</text><text class="section-count">已封存</text></view>
       <view wx:for="{{archivedCourses}}" wx:key="id" class="archived-course" bindtap="showArchivedCourse" aria-label="{{item.title}}，已封存，暂未开放">
         <image class="public-recording-cover" src="{{item.coverUrl}}" mode="aspectFit"/>
         <view class="archived-course-copy"><text>{{item.title}}</text><text>🔒 暂未开放</text></view>
