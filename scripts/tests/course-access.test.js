@@ -129,3 +129,18 @@ test('课程包付款权限按真实账号和订单快照开放，退款、待�
 test('观看期从发起付款建单时开始，到下一年同一时刻停止，不从首次观看或到账重新起算',()=>{const h=harness();h.db.course[0].subtitle='《答案库》系列课程';const start=h.now.value;h.db.course_registration_order.push({id:1,created_at:new Date(start).toISOString(),paid_at:new Date(start+86400000).toISOString(),customer_id:201,public_class_id:99,status:'PAID',amount:688,amount_paid:688,transaction_id:'420000001',source:JSON.stringify({educationBundle:{version:1,courseIds:['14']}})});h.now.value=Date.parse('2027-10-10T10:00:00Z')-1;assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,true);h.now.value++;const access=h.run(201,'COURSE_VIEW_ACCESS',{courseId:14});assert.equal(access.canWatch,false);assert.equal(access.reason,'PURCHASE_EXPIRED');assert.equal(access.lessons[0].videoUrl,'');assert.doesNotMatch(JSON.stringify(access),/2027-|expiresAt|remaining|duration/);assert.equal(h.db.course_registration_order[0].created_at,new Date(start).toISOString());assert.equal(h.run(101,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,true);});
 test('闰年周年按中国时区计算，2月29日到次年2月28日，跨UTC日界不提前一天',()=>{const scope={};vm.runInNewContext(common,scope);assert.equal(scope.educationYearEnd('2028-02-29T16:30:00+08:00'),Date.parse('2029-02-28T16:30:00+08:00'));assert.equal(scope.educationYearEnd('2028-03-01T00:30:00+08:00'),Date.parse('2029-03-01T00:30:00+08:00'));assert.equal(scope.educationYearEnd('2027-06-10T16:30:00+08:00'),Date.parse('2028-06-10T16:30:00+08:00'));assert.equal(scope.educationYearEnd(null),0);assert.equal(scope.educationYearEnd('invalid'),0);});
 test('过期付款不能观看，重新付费只解锁新订单快照内课程',()=>{const h=harness();h.db.course.forEach(c=>c.subtitle='《答案库》系列课程');const base={customer_id:201,public_class_id:99,status:'PAID',amount:688,amount_paid:688,transaction_id:'420000001'};h.db.course_registration_order.push({...base,id:1,created_at:'2025-10-10T10:00:00Z',source:JSON.stringify({educationBundle:{version:1,courseIds:['14','8']}})},{...base,id:2,created_at:new Date(h.now.value).toISOString(),source:JSON.stringify({educationBundle:{version:1,courseIds:['14']}})});assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,true);assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:8}).canWatch,false);assert.equal(h.run(202,'COURSE_VIEW_ACCESS',{courseId:14}).canWatch,false);});
+
+test('未公开系列不因购买而解锁，只有指定授权和管理人员可看，撤销后已购用户仍被拒绝',()=>{
+ const h=harness();
+ h.db.course.push({id:20,title:'未公开系列课程',subtitle:'未公开系列课程',badge:'封存',enabled:true,public_video:false});
+ h.db.course_lesson.push({id:29,course_id:20,sort_order:1,video:{id:24,url:'https://cdn.test/unpublished.mp4'}});
+ h.db.course_registration_order.push({id:10,created_at:new Date(h.now.value).toISOString(),customer_id:201,public_class_id:99,status:'PAID',amount:688,amount_paid:688,transaction_id:'420000001',source:JSON.stringify({educationBundle:{version:1,courseIds:['14','20']}})});
+ let a=h.run(201,'COURSE_VIEW_ACCESS',{courseId:20,paid:true,canWatch:true});
+ assert.equal(a.canWatch,false);assert.equal(a.lessons[0].videoUrl,'');
+ assert.equal(h.run(101,'COURSE_VIEW_ACCESS',{courseId:20}).canWatch,true);
+ const grant=h.run(101,'COURSE_VIEW_GRANT',{viewerAccountId:'201',courseId:'20',hours:24,requestKey:'unpublished-only'}).grant;
+ assert.equal(h.run(201,'COURSE_VIEW_ACCESS',{courseId:20}).canWatch,true);
+ assert.equal(h.run(202,'COURSE_VIEW_ACCESS',{courseId:20}).canWatch,false);
+ h.run(101,'COURSE_VIEW_REVOKE',{grantId:grant.id});
+ a=h.run(201,'COURSE_VIEW_ACCESS',{courseId:20});assert.equal(a.canWatch,false);assert.equal(a.lessons[0].videoUrl,'');
+});
