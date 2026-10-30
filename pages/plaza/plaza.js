@@ -1,6 +1,6 @@
 const zion = require("../../utils/zion");
 const chatBadge = require("../../utils/chatBadge");
-const { isAnswerLibraryCourse, isPersonalGrowthCourse } = require("../../utils/courseContent");
+const { isAnswerLibraryCourse, isPersonalGrowthCourse, isChildPublicCourse, isArchivedCourse } = require("../../utils/courseContent");
 
 Page({
   data: {
@@ -8,6 +8,8 @@ Page({
     navHeight: 104,
     navPaddingRight: 180,
     activeCategory: "child",
+    publicCourses: [],
+    archivedCourses: [],
     childCourses: [],
     personalGrowthCourses: [],
     visibleCourses: [],
@@ -68,6 +70,8 @@ Page({
     const childCourses = courses.filter(isAnswerLibraryCourse);
     const personalGrowthCourses = courses.filter(isPersonalGrowthCourse);
     this.setData({
+      publicCourses:courses.filter(isChildPublicCourse),
+      archivedCourses:courses.filter(isArchivedCourse),
       childCourses,
       personalGrowthCourses,
       visibleCourses: this.filterCourses(this.data.activeCategory, this.data.searchKeyword, childCourses, personalGrowthCourses)
@@ -98,6 +102,8 @@ Page({
   clearSearch() {
     this.setData({searchKeyword:"",visibleCourses:this.filterCourses(this.data.activeCategory,"")});
   },
+
+  showArchivedCourse() { wx.showToast({title:"课程已封存，暂未开放",icon:"none"}); },
 
   openCourse(event) {
     const courseId = event.currentTarget.dataset.id;

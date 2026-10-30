@@ -23,4 +23,6 @@ function isAnswerLibraryCourse(course) {
 function isPersonalGrowthCourse(course) {
   return !!course && course.subtitle===PERSONAL_GROWTH_SUBTITLE;
 }
-module.exports={courseSections,ANSWER_LIBRARY_SUBTITLE,PERSONAL_GROWTH_SUBTITLE,isAnswerLibraryCourse,isPersonalGrowthCourse};
+function isChildPublicCourse(course) { return !!course && course.subtitle === "孩子教育公开课"; }
+function isArchivedCourse(course) { return !!course && course.badge === "封存"; }
+module.exports={isChildPublicCourse,isArchivedCourse,courseSections,ANSWER_LIBRARY_SUBTITLE,PERSONAL_GROWTH_SUBTITLE,isAnswerLibraryCourse,isPersonalGrowthCourse};

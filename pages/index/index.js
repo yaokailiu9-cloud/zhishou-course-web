@@ -2,7 +2,7 @@ const zion = require("../../utils/zion");
 const chatBadge = require("../../utils/chatBadge");
 const chatContext = require("../../utils/chatContext");
 const auth = require("../../utils/auth");
-const { isAnswerLibraryCourse, isPersonalGrowthCourse } = require("../../utils/courseContent");
+const { isAnswerLibraryCourse, isPersonalGrowthCourse, isChildPublicCourse, isArchivedCourse } = require("../../utils/courseContent");
 
 const PHONE_COURSE_TITLES = ["沉迷手机", "该不该使用手机"];
 
@@ -19,6 +19,8 @@ Page({
     statusBarHeight: 54,
     navHeight: 104,
     navPaddingRight: 180,
+    publicCourses: [],
+    archivedCourses: [],
     childCourses: [],
     personalGrowthCourses: [],
     phoneCourses: [],
@@ -90,16 +92,20 @@ Page({
       const list = Array.isArray(response.courses) ? response.courses : [];
       const childCourses = list.filter(isAnswerLibraryCourse);
       this.setData({
+        publicCourses:list.filter(isChildPublicCourse),
+        archivedCourses:list.filter(isArchivedCourse),
         childCourses,
         personalGrowthCourses: list.filter(isPersonalGrowthCourse),
         phoneCourses: PHONE_COURSE_TITLES.map(title=>childCourses.find(course=>course.title===title)).filter(Boolean)
       });
     } catch (_) {
-      this.setData({childCourses:[],personalGrowthCourses:[],phoneCourses:[],courseError:"课程暂时加载失败，请重试。"});
+      this.setData({publicCourses:[],archivedCourses:[],childCourses:[],personalGrowthCourses:[],phoneCourses:[],courseError:"课程暂时加载失败，请重试。"});
     } finally {
       this.setData({loadingCourses:false});
     }
   },
+  showArchivedCourse() { wx.showToast({title:"课程已封存，暂未开放",icon:"none"}); },
+
   openCourse(event) {
     const id = event.currentTarget.dataset.id;
     if (id) wx.navigateTo({url:'/pages/course-detail/course-detail?id='+encodeURIComponent(id)});

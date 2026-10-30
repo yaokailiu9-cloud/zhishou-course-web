@@ -211,3 +211,8 @@
 .topic-label { color:#827452; }
 .topic-title { color:#002727; }
 .topic-footer { color:#717878; }
+
+.public-recording{overflow:hidden;margin-bottom:24rpx;background:#fff;border:1rpx solid #e6e1da;border-radius:18rpx}
+.public-recording-cover{display:block;width:100%;height:auto;aspect-ratio:3 / 2}
+.archived-series{margin-top:48rpx}.archived-series .library-heading{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24rpx}.archived-series .library-title{font-family:var(--em-font-serif);font-size:36rpx;color:#002727}.archived-series .section-count{font-size:24rpx;color:#49625a}
+.archived-course{overflow:hidden;background:#fff;border:1rpx solid #e6e1da;border-radius:18rpx}.archived-course-copy{display:flex;justify-content:space-between;gap:20rpx;padding:28rpx 30rpx;color:#49625a;font-size:26rpx;line-height:1.5}

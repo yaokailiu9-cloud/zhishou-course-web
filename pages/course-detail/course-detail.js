@@ -144,6 +144,10 @@ Page({
   },
 
   playChapterAtIndex(index) {
+    if (this.data.course && this.data.course.badge === "封存") {
+      wx.showToast({title:"课程已封存，暂未开放",icon:"none"});
+      return;
+    }
     const chapters = (this.data.course && this.data.course.chapters) || [];
     const chapter = chapters[index];
     if (!chapter) {

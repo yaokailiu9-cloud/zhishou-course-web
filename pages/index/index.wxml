@@ -34,6 +34,14 @@
   <view wx:if="{{loadingCourses}}" class="loading-notice">正在加载课程…</view>
   <view wx:elif="{{courseError}}" class="loading-notice"><text>{{courseError}}</text><button class="retry-button" bindtap="fetchFeaturedCourses">重新加载</button></view>
   <block wx:else>
+    <view wx:if="{{publicCourses.length}}" class="section-head">
+      <view><text class="section-kicker">从认知开始 · 读懂孩子</text><text class="section-title">孩子教育公开课</text></view>
+    </view>
+    <view wx:for="{{publicCourses}}" wx:key="id" class="home-course-card public-recording" data-id="{{item.id}}" bindtap="openCourse" aria-label="观看公开课{{item.title}}">
+      <image class="public-recording-cover" src="{{item.coverUrl}}" mode="aspectFit"/>
+      <view class="home-course-body"><text class="home-course-title">{{item.title}}</text><view class="series-entry-footer"><text>公开课 · {{item.durationText}}</text><text>立即观看 ↗</text></view></view>
+    </view>
+
     <view class="section-head">
       <view><text class="section-kicker">亲子关系 · 孩子成长</text><text class="section-title">孩子系列课程</text></view>
       <text class="section-note">答案库系列</text>
@@ -74,5 +82,13 @@
       </view>
       <view class="home-series-link"><text>查看系列课程</text><text aria-hidden="true">↗</text></view>
     </button>
+
+    <view wx:if="{{archivedCourses.length}}" class="archived-series">
+      <view class="library-heading"><text class="library-title">知鹿系列课程</text><text class="section-count">已封存</text></view>
+      <view wx:for="{{archivedCourses}}" wx:key="id" class="archived-course" bindtap="showArchivedCourse" aria-label="{{item.title}}，已封存，暂未开放">
+        <image class="public-recording-cover" src="{{item.coverUrl}}" mode="aspectFit"/>
+        <view class="archived-course-copy"><text>{{item.title}}</text><text>🔒 暂未开放</text></view>
+      </view>
+    </view>
   </block>
 </view>

@@ -211,3 +211,8 @@
 .topic-label { color:#827452; }
 .topic-title { color:#002727; }
 .topic-footer { color:#717878; }
+
+.public-recording{overflow:hidden;margin-bottom:calc(24 * var(--rpx));background:#fff;border:calc(1 * var(--rpx)) solid #e6e1da;border-radius:calc(18 * var(--rpx))}
+.public-recording-cover{display:block;width:100%;height:auto;aspect-ratio:3 / 2}
+.archived-series{margin-top:calc(48 * var(--rpx))}.archived-series .library-heading{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:calc(24 * var(--rpx))}.archived-series .library-title{font-family:var(--em-font-serif);font-size:calc(36 * var(--rpx));color:#002727}.archived-series .section-count{font-size:calc(24 * var(--rpx));color:#49625a}
+.archived-course{overflow:hidden;background:#fff;border:calc(1 * var(--rpx)) solid #e6e1da;border-radius:calc(18 * var(--rpx))}.archived-course-copy{display:flex;justify-content:space-between;gap:calc(20 * var(--rpx));padding:calc(28 * var(--rpx)) calc(30 * var(--rpx));color:#49625a;font-size:calc(26 * var(--rpx));line-height:1.5}

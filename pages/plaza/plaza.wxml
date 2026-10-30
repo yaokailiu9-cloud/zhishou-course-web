@@ -4,6 +4,14 @@
     <text class="nav-title">课程</text>
   </view>
   <view class="course-body">
+
+    <view wx:if="{{publicCourses.length}}" class="section-head">
+      <view><text class="section-kicker">从认知开始 · 读懂孩子</text><text class="section-title">孩子教育公开课</text></view>
+    </view>
+    <view wx:for="{{publicCourses}}" wx:key="id" class="home-course-card public-recording" data-id="{{item.id}}" bindtap="openCourse" aria-label="观看公开课{{item.title}}">
+      <image class="public-recording-cover" src="{{item.coverUrl}}" mode="aspectFit"/>
+      <view class="home-course-body"><text class="home-course-title">{{item.title}}</text><view class="series-entry-footer"><text>公开课 · {{item.durationText}}</text><text>立即观看 ↗</text></view></view>
+    </view>
     <view class="library-intro">
       <text class="library-kicker">按主题学习</text>
       <view class="library-tabs">
@@ -32,6 +40,14 @@
           <text class="card-title">{{item.title}}</text>
           <view class="card-meta"><text>课程 {{index + 1}}</text><text>查看目录</text></view>
         </view>
+      </view>
+    </view>
+
+    <view wx:if="{{archivedCourses.length}}" class="archived-series">
+      <view class="library-heading"><text class="library-title">知鹿系列课程</text><text class="section-count">已封存</text></view>
+      <view wx:for="{{archivedCourses}}" wx:key="id" class="archived-course" bindtap="showArchivedCourse" aria-label="{{item.title}}，已封存，暂未开放">
+        <image class="public-recording-cover" src="{{item.coverUrl}}" mode="aspectFit"/>
+        <view class="archived-course-copy"><text>{{item.title}}</text><text>🔒 暂未开放</text></view>
       </view>
     </view>
     <view wx:if="{{loading}}" class="empty-state">正在加载课程…</view>
