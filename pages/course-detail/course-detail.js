@@ -144,10 +144,6 @@ Page({
   },
 
   playChapterAtIndex(index) {
-    if (this.data.course && this.data.course.badge === "封存") {
-      wx.showToast({title:"课程已封存，暂未开放",icon:"none"});
-      return;
-    }
     const chapters = (this.data.course && this.data.course.chapters) || [];
     const chapter = chapters[index];
     if (!chapter) {
@@ -163,7 +159,7 @@ Page({
       wx.showToast({ title: "该课时视频准备中", icon: "none" });
       return;
     }
-    if (!chapter.videoUrl) {
+    if (!this.data.viewAccess.canWatch || !chapter.videoUrl) {
       const blocked = VIEW_BLOCKED[this.data.viewAccess.reason] || VIEW_BLOCKED.NOT_GRANTED;
       wx.showModal({
         title: blocked.title,

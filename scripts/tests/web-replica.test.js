@@ -1221,3 +1221,19 @@ test('老师自己消息下方可删除；删除后聊天隐藏原文并在顶�
  assert.match(h.document.querySelector('.service-history-item').textContent,/删除消息.*合成老师[\s\S]*删除前的老师原文/);assert.equal(h.document.querySelector('.service-composer'),null);
  p.setData({serviceDetail:{owner:true,staff:false,appointment:{}},serviceTab:'feedback',dialogueMessages:[{...own,isMine:false,canDelete:false}]});p.buildServiceTimeline();await tick();assert.equal(h.document.querySelector('[data-tab="history"]'),null);assert.equal(h.document.querySelector('.service-message-delete'),null);assert.deepEqual(h.errors,[]);
 });
+
+test('未公开课程入口可进入，指定人员和管理人员按后台许可播放，未授权用户不能播放',async()=>{
+ const h=await host({navigator:{userAgent:'MicroMessenger/8.0.50'}});
+ const course={id:'20',title:'未公开系列课程',subtitle:'未公开系列课程',badge:'封存',enabled:true,chapters:[{id:'29',title:'未公开系列课程'}]};
+ h.host.requireModule('utils/zion').getCourse=async()=>({course:structuredClone(course)});
+ let granted=false;h.host.requireModule('utils/consultationService').call=async()=>({canWatch:granted,isPublic:false,reason:granted?'':'NOT_GRANTED',lessons:[{id:'29',hasVideo:true,videoUrl:granted?'https://cdn.test/private.mp4':''}]});
+ h.host.current.setData({loadingCourses:false,archivedCourses:[course]});await tick();
+ h.document.querySelector('.archived-course').click();await tick();await tick();
+ assert.equal(h.host.current.data.course.id,'20');
+ h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+ assert.equal(h.host.current.data.showVideoPlayer,false);assert.match(h.document.querySelector('#modal').textContent,/开通/);h.document.querySelector('#modal').close();
+ granted=true;await h.host.current.fetchCourse('20');await tick();
+ assert.match(h.document.querySelector('#page').textContent,/已开通 · 可以观看/);
+ h.host.current.videoContext={play(){},stop(){}};h.host.current.openChapter({currentTarget:{dataset:{index:0}}});await tick();
+ assert.equal(h.host.current.data.playingVideoUrl,'https://cdn.test/private.mp4');assert.equal(h.host.current.data.showVideoPlayer,true);
+});

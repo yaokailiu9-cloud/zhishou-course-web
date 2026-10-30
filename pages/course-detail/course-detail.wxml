@@ -36,7 +36,7 @@
     <view class="detail-main">
       <view class="title-block">
         <view class="course-title-row"><text class="course-title">{{course.title}}</text><button class="course-forward" open-type="share" aria-label="转发课程"><image class="course-forward-icon" src="/assets/icons/course-forward-blue.svg" mode="aspectFit"></image><text>转发</text></button></view>
-        <text wx:if="{{course.badge === '封存'}}" class="course-subtitle">🔒 已封存 · 暂未开放</text>
+        <text wx:if="{{course.badge === '封存'}}" class="course-subtitle">{{viewAccess.checked && viewAccess.canWatch ? '已开通 · 可以观看' : '未公开 · 授权观看'}}</text>
         <text wx:if="{{course.subtitle}}" class="course-subtitle">{{course.subtitle}}</text>
       </view>
 

@@ -103,8 +103,6 @@ Page({
     this.setData({searchKeyword:"",visibleCourses:this.filterCourses(this.data.activeCategory,"")});
   },
 
-  showArchivedCourse() { wx.showToast({title:"课程已封存，暂未开放",icon:"none"}); },
-
   openCourse(event) {
     const courseId = event.currentTarget.dataset.id;
     if (!courseId) return;

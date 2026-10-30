@@ -104,8 +104,6 @@ Page({
       this.setData({loadingCourses:false});
     }
   },
-  showArchivedCourse() { wx.showToast({title:"课程已封存，暂未开放",icon:"none"}); },
-
   openCourse(event) {
     const id = event.currentTarget.dataset.id;
     if (id) wx.navigateTo({url:'/pages/course-detail/course-detail?id='+encodeURIComponent(id)});
