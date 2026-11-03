@@ -4,9 +4,12 @@
   // On the production domain that document is exactly the registered WeChat Pay directory.
   const PAY_ORIGIN = 'https://www.apply.tianqiwushu.cn';
   const production = /^(www\.)?apply\.tianqiwushu\.cn$/.test(location.hostname);
-  if (location.pathname === '/web' || (production && (location.origin !== PAY_ORIGIN || location.pathname !== '/web/'))) {
+  // Android WeChat Pay drops only the query when locating the page directory: without a '?'
+  // before '#', the hash route is read as part of the directory and the payment is rejected.
+  const payDirectoryQuery = () => location.href.split('#')[0].includes('?');
+  if (location.pathname === '/web' || (production && (location.origin !== PAY_ORIGIN || location.pathname !== '/web/' || !payDirectoryQuery()))) {
     const canonical = new URL(location.href);
-    if (production) canonical.href = PAY_ORIGIN + '/web/' + location.search + location.hash;
+    if (production) canonical.href = PAY_ORIGIN + '/web/' + (location.search || '?') + location.hash;
     else canonical.pathname = '/web/';
     location.replace(canonical.href);
     return;
@@ -718,6 +721,7 @@
     requestPayment:o=>{
       if(!/MicroMessenger/i.test(navigator.userAgent)||!window.WeixinJSBridge){complete(o,{errMsg:'请在微信中打开课程网页后缴费'},true);return;}
       if(o.appId!=='wx8daa76a8eb887e47'||!/^prepay_id=\w{10,128}$/.test(o.package||'')||o.signType!=='MD5'||!/^[A-F0-9]{32}$/.test(o.paySign||'')){complete(o,{errMsg:'微信支付参数无效'},true);return;}
+      if(production&&!payDirectoryQuery())history.replaceState(history.state,'',location.pathname+'?'+location.hash);
       window.WeixinJSBridge.invoke('getBrandWCPayRequest',{appId:o.appId,timeStamp:o.timeStamp,nonceStr:o.nonceStr,package:o.package,signType:o.signType,paySign:o.paySign},r=>complete(o,{errMsg:r.err_msg||'微信支付结果未知'},r.err_msg!=='get_brand_wcpay_request:ok'));
     },
     chooseLocation:o=>{

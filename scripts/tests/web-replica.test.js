@@ -1194,7 +1194,19 @@ test('正式域名非www、http或index.html入口在初始化前统一跳到已
     const h=await host({navigator:{userAgent:'Android MicroMessenger'},location:{hostname,origin,pathname,search:'?ref=keep',hash:'#/pages/class-enroll/class-enroll?id=9',href:origin+pathname+'?ref=keep#/pages/class-enroll/class-enroll?id=9',replace:url=>replaced=url},fetch:async()=>{calls++;throw Error('Must not initialize in noncanonical document');}});
     assert.equal(replaced,'https://www.apply.tianqiwushu.cn/web/?ref=keep#/pages/class-enroll/class-enroll?id=9',origin+pathname);assert.equal(calls,0);assert.equal(h.host,undefined);
   }
-  let replaced='';await host({location:{hostname:'www.apply.tianqiwushu.cn',origin:'https://www.apply.tianqiwushu.cn',pathname:'/web/',search:'',hash:'',href:'https://www.apply.tianqiwushu.cn/web/',replace:url=>replaced=url}});assert.equal(replaced,'');
+  let replaced='';await host({location:{hostname:'www.apply.tianqiwushu.cn',origin:'https://www.apply.tianqiwushu.cn',pathname:'/web/',search:'',hash:'',href:'https://www.apply.tianqiwushu.cn/web/?',replace:url=>replaced=url}});assert.equal(replaced,'');
+});
+
+test('正式付款页在#前始终保留?，避免安卓微信把hash路由算进支付授权目录',async()=>{
+  const base={hostname:'www.apply.tianqiwushu.cn',origin:'https://www.apply.tianqiwushu.cn',pathname:'/web/',search:''};
+  let replaced='';await host({navigator:{userAgent:'Android MicroMessenger'},location:{...base,hash:'#/pages/class-enroll/class-enroll?id=28',href:'https://www.apply.tianqiwushu.cn/web/#/pages/class-enroll/class-enroll?id=28',replace:url=>replaced=url}});
+  assert.equal(replaced,'https://www.apply.tianqiwushu.cn/web/?#/pages/class-enroll/class-enroll?id=28');
+  const location={...base,hash:'#/pages/class-enroll/class-enroll',href:'https://www.apply.tianqiwushu.cn/web/?#/pages/class-enroll/class-enroll',replace:()=>{throw Error('Already canonical');}};
+  const h=await host({navigator:{userAgent:'Android MicroMessenger'},location});
+  h.context.location.href='https://www.apply.tianqiwushu.cn/web/#/pages/class-enroll/class-enroll';h.replacements.length=0;let urlAtInvoke;
+  h.context.WeixinJSBridge={invoke:(method,args,callback)=>{urlAtInvoke=h.replacements.at(-1);callback({err_msg:'get_brand_wcpay_request:cancel'});}};
+  await new Promise(resolve=>h.host.wx.requestPayment({appId:'wx8daa76a8eb887e47',timeStamp:'1',nonceStr:'nonce',package:'prepay_id=wx1234567890123',signType:'MD5',paySign:'A'.repeat(32),success:resolve,fail:resolve}));
+  assert.equal(urlAtInvoke,'/web/?#/pages/class-enroll/class-enroll');
 });
 
 test('重新进入旧文字会话时，即使消息未变化也恢复最新消息位置',async()=>{
